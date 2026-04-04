@@ -1,0 +1,21 @@
+class Example {
+void foo() {
+// first
+int a = 1;
+// between
+
+int b = 2;
+// last
+}
+}
+---
+class Example {
+    void foo() {
+        // first
+        int a = 1;
+        // between
+
+        int b = 2;
+        // last
+    }
+}

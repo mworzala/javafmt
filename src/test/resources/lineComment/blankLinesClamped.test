@@ -1,0 +1,17 @@
+class Example {
+int a;
+
+
+
+// three blank lines above, one below
+
+int b;
+}
+---
+class Example {
+    int a;
+
+    // three blank lines above, one below
+
+    int b;
+}

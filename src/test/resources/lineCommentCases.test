@@ -23,9 +23,21 @@ private int b = "";
 //      blah
 ---
 class Example {
+    // abc
     private int a = 1;
-    void foo() {}
+
+    // def
+
+    void foo() {
+        //abc
+        int i = 0;
+
+        //def
+    }
+
+    // aaaaa
 
     private int b = "";
 
 }
+//      blah

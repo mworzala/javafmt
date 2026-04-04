@@ -1,0 +1,13 @@
+class Example {
+// comment on field
+int a;
+// comment on method
+void foo() {}
+}
+---
+class Example {
+    // comment on field
+    int a;
+    // comment on method
+    void foo() {}
+}

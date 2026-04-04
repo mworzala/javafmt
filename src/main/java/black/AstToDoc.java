@@ -4,6 +4,7 @@ import org.eclipse.jdt.core.dom.*;
 import org.jetbrains.annotations.UnknownNullability;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import static black.Doc.*;
@@ -13,6 +14,7 @@ public class AstToDoc extends ASTVisitor {
 
     private final String source;
     private Doc result;
+    private CompilationUnit compilationUnit;
 
     public AstToDoc(String source) {
         this.source = source;
@@ -28,6 +30,7 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(CompilationUnit node) {
+        this.compilationUnit = node;
         var parts = new ArrayList<Doc>();
 
         // todo MODULE_PROPERTY
@@ -43,11 +46,30 @@ public class AstToDoc extends ASTVisitor {
         // TODO IMPORTS_PROPERTY
 
         var types = getProperty(node, CompilationUnit.TYPES_PROPERTY);
-        for (var type : types) {
-            type.accept(this);
+        for (int i = 0; i < types.size(); i++) {
+            types.get(i).accept(this);
             parts.add(result);
-            parts.add(hardLine());
-            parts.add(hardLine());
+
+            // Collect line comments between this type and the next (or EOF)
+            int afterTypeEnd = types.get(i).getStartPosition() + types.get(i).getLength();
+            int nextBoundary = (i + 1 < types.size())
+                    ? types.get(i + 1).getStartPosition()
+                    : (source != null ? source.length() : afterTypeEnd);
+            var trailingComments = collectLineCommentsInRange(afterTypeEnd, nextBoundary);
+
+            if (trailingComments.isEmpty()) {
+                parts.add(hardLine());
+                parts.add(hardLine());
+            } else {
+                ASTNode prev = types.get(i);
+                for (var lc : trailingComments) {
+                    parts.add(hardLine());
+                    if (blankLinesBetween(prev, lc) > 0) parts.add(hardLine());
+                    parts.add(renderLineComment(lc));
+                    prev = lc;
+                }
+                parts.add(hardLine());
+            }
         }
 
         result = concat(parts);
@@ -155,37 +177,59 @@ public class AstToDoc extends ASTVisitor {
             boolean withBraces
     ) {
         var body = getProperty(node, property);
-        if (body.isEmpty()) {
-            if (withBraces) {
-                parts.add(text("{}"));
-            }
-        } else {
-            if (withBraces) parts.add(text("{"));
 
-            var bodyParts = new ArrayList<Doc>();
+        // Find open/close brace positions to scope comment collection
+        int nodeStart = node.getStartPosition();
+        int nodeEnd = nodeStart + node.getLength();
+        int openBrace = nodeStart;
+        while (openBrace < nodeEnd && source != null && source.charAt(openBrace) != '{') openBrace++;
+
+        // Collect line comments that appear at the body level (not inside a member's range)
+        var bodyComments = collectLineCommentsInRange(openBrace + 1, nodeEnd - 1);
+        bodyComments.removeIf(lc -> body.stream().anyMatch(decl ->
+                lc.getStartPosition() >= decl.getStartPosition() &&
+                lc.getStartPosition() < decl.getStartPosition() + decl.getLength()));
+
+        // Build merged sorted list of body members and line comments
+        var items = new ArrayList<ASTNode>(body);
+        items.addAll(bodyComments);
+        items.sort(Comparator.comparingInt(ASTNode::getStartPosition));
+
+        if (items.isEmpty()) {
+            if (withBraces) parts.add(text("{}"));
+            return;
+        }
+
+        if (withBraces) parts.add(text("{"));
+
+        var bodyParts = new ArrayList<Doc>();
+        bodyParts.add(hardLine());
+        if (blankLinesAfterOpenBrace(node, items.getFirst()) > 0) {
             bodyParts.add(hardLine());
-            if (blankLinesAfterOpenBrace(node, body.getFirst()) > 0) {
+        }
+        for (int i = 0; i < items.size(); i++) {
+            if (i > 0) {
                 bodyParts.add(hardLine());
-            }
-            for (int i = 0; i < body.size(); i++) {
-                if (i > 0) {
+                if (blankLinesBetween(items.get(i - 1), items.get(i)) > 0) {
                     bodyParts.add(hardLine());
-                    if (blankLinesBetween(body.get(i - 1), body.get(i)) > 0) {
-                        bodyParts.add(hardLine());
-                    }
                 }
-                body.get(i).accept(this);
+            }
+            var item = items.get(i);
+            if (item instanceof LineComment lc) {
+                bodyParts.add(renderLineComment(lc));
+            } else {
+                item.accept(this);
                 bodyParts.add(result);
             }
-            var bodyDoc = concat(bodyParts);
-            parts.add(withBraces ? indent(bodyDoc) : bodyDoc);
-
-            parts.add(hardLine());
-            if (blankLinesBeforeCloseBrace(node, body.getLast()) > 0) {
-                parts.add(hardLine());
-            }
-            if (withBraces) parts.add(text("}"));
         }
+        var bodyDoc = concat(bodyParts);
+        parts.add(withBraces ? indent(bodyDoc) : bodyDoc);
+
+        parts.add(hardLine());
+        if (blankLinesBeforeCloseBrace(node, items.getLast()) > 0) {
+            parts.add(hardLine());
+        }
+        if (withBraces) parts.add(text("}"));
     }
 
     // type members
@@ -344,19 +388,31 @@ public class AstToDoc extends ASTVisitor {
         var stmts = new ArrayList<>(getProperty(node, Block.STATEMENTS_PROPERTY));
         stmts.removeIf(stmt -> stmt instanceof EmptyStatement);
 
-        if (stmts.isEmpty()) {
+        // Build merged sorted list of statements and line comments
+        var items = new ArrayList<ASTNode>(stmts);
+        items.addAll(collectLineCommentsInRange(
+                node.getStartPosition(),
+                node.getStartPosition() + node.getLength()));
+        items.sort(Comparator.comparingInt(ASTNode::getStartPosition));
+
+        if (items.isEmpty()) {
             result = text("{}");
             return false;
         }
 
         var parts = new ArrayList<Doc>();
-        for (int i = 0; i < stmts.size(); i++) {
-            if (i > 0 && blankLinesBetween(stmts.get(i - 1), stmts.get(i)) > 0) {
+        for (int i = 0; i < items.size(); i++) {
+            if (i > 0 && blankLinesBetween(items.get(i - 1), items.get(i)) > 0) {
                 parts.add(hardLine());
             }
-            stmts.get(i).accept(this);
             parts.add(hardLine());
-            parts.add(result);
+            var item = items.get(i);
+            if (item instanceof LineComment lc) {
+                parts.add(renderLineComment(lc));
+            } else {
+                item.accept(this);
+                parts.add(result);
+            }
         }
 
         result = concat(text("{"),
@@ -950,7 +1006,8 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(LineComment node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
+        // Line comments are handled via CompilationUnit.getCommentList(), not via visitor dispatch
+        return false;
     }
 
     @Override
@@ -1294,6 +1351,27 @@ public class AstToDoc extends ASTVisitor {
         if (!mdLines.isEmpty()) {
             appendCommentLines(parts, String.join("\n", mdLines), 0);
         }
+    }
+
+    private List<LineComment> collectLineCommentsInRange(int from, int to) {
+        if (source == null || compilationUnit == null) return List.of();
+        var collected = new ArrayList<LineComment>();
+        for (ASTNode obj : (List<ASTNode>) compilationUnit.getCommentList()) {
+            if (obj instanceof LineComment lc) {
+                int start = lc.getStartPosition();
+                if (start >= from && start < to) {
+                    String text = source.substring(start, start + lc.getLength());
+                    if (!text.startsWith("///")) {
+                        collected.add(lc);
+                    }
+                }
+            }
+        }
+        return collected;
+    }
+
+    private Doc renderLineComment(LineComment lc) {
+        return text(source.substring(lc.getStartPosition(), lc.getStartPosition() + lc.getLength()).stripTrailing());
     }
 
     private void appendCommentLines(List<Doc> parts, String text, int indentToStrip) {

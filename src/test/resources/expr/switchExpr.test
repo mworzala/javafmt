@@ -1,0 +1,108 @@
+void expressionExample() {
+    // Arrow switch expression
+    int a=switch(x){case 1->10;case 2,3->20;default->0;};
+
+    // Arrow with blocks and yield
+    int b=switch(x){case 1->{System.out.println("one");yield 10;}case 2->{yield 20;}default->{yield 0;}};
+
+    // Colon-style switch expression with yield
+    int c=switch(x){case 1:yield 10;case 2:case 3:yield 20;default:yield 0;};
+
+    // Switch expression assigned to var
+    var d=switch(direction){case NORTH->"up";case SOUTH->"down";case EAST->"right";case WEST->"left";};
+
+    // Switch expression as method argument
+    System.out.println(switch(x){case 1->"one";case 2->"two";default->"other";});
+
+    // Switch expression with pattern matching
+    String e=switch(obj){case Integer i->"int: "+i;case String s->"string: "+s;case null->"null";default->"other";};
+
+    // Switch expression with guard
+    String f=switch(obj){case String s when s.isEmpty()->"empty";case String s->"string: "+s;case null,default->"other";};
+
+    // Nested switch expression
+    int g=switch(x){case 1->switch(y){case 1->10;default->20;};default->0;};
+
+    // Switch expression with long values that wrap
+    String h=switch(x){case 1->veryLongMethodName(veryLongArgumentName,anotherVeryLongArgumentName);case 2->anotherVeryLongMethodName(veryLongArgumentName);default->yetAnotherVeryLongMethodName();};
+}
+---
+void expressionExample() {
+    // Arrow switch expression
+    int a = switch (x) {
+        case 1 -> 10;
+        case 2, 3 -> 20;
+        default -> 0;
+    };
+
+    // Arrow with blocks and yield
+    int b = switch (x) {
+        case 1 -> {
+            System.out.println("one");
+            yield 10;
+        }
+        case 2 -> {
+            yield 20;
+        }
+        default -> {
+            yield 0;
+        }
+    };
+
+    // Colon-style switch expression with yield
+    int c = switch (x) {
+        case 1:
+            yield 10;
+        case 2:
+        case 3:
+            yield 20;
+        default:
+            yield 0;
+    };
+
+    // Switch expression assigned to var
+    var d = switch (direction) {
+        case NORTH -> "up";
+        case SOUTH -> "down";
+        case EAST -> "right";
+        case WEST -> "left";
+    };
+
+    // Switch expression as method argument
+    System.out.println(switch (x) {
+        case 1 -> "one";
+        case 2 -> "two";
+        default -> "other";
+    });
+
+    // Switch expression with pattern matching
+    String e = switch (obj) {
+        case Integer i -> "int: " + i;
+        case String s -> "string: " + s;
+        case null -> "null";
+        default -> "other";
+    };
+
+    // Switch expression with guard
+    String f = switch (obj) {
+        case String s when s.isEmpty() -> "empty";
+        case String s -> "string: " + s;
+        case null, default -> "other";
+    };
+
+    // Nested switch expression
+    int g = switch (x) {
+        case 1 -> switch (y) {
+            case 1 -> 10;
+            default -> 20;
+        };
+        default -> 0;
+    };
+
+    // Switch expression with long values that wrap
+    String h = switch (x) {
+        case 1 -> veryLongMethodName(veryLongArgumentName, anotherVeryLongArgumentName);
+        case 2 -> anotherVeryLongMethodName(veryLongArgumentName);
+        default -> yetAnotherVeryLongMethodName();
+    };
+}

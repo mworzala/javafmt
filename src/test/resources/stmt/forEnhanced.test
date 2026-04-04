@@ -1,0 +1,27 @@
+void forEachExample() {
+    for(var item:list){System.out.println(item);}
+    for(String s:getStrings()){process(s);}
+    for(Map.Entry<String,Integer> entry:map.entrySet()){System.out.println(entry.getKey()+" = "+entry.getValue());}
+    for(int[] row:matrix){for(int cell:row){System.out.println(cell);}}
+    for(final var item:list){process(item);}
+}
+---
+void forEachExample() {
+    for (var item : list) {
+        System.out.println(item);
+    }
+    for (String s : getStrings()) {
+        process(s);
+    }
+    for (Map.Entry<String, Integer> entry : map.entrySet()) {
+        System.out.println(entry.getKey() + " = " + entry.getValue());
+    }
+    for (int[] row : matrix) {
+        for (int cell : row) {
+            System.out.println(cell);
+        }
+    }
+    for (final var item : list) {
+        process(item);
+    }
+}

@@ -1,0 +1,106 @@
+enum Empty{}
+enum Color{RED,GREEN,BLUE}
+enum Planet{MERCURY,VENUS,EARTH,MARS,JUPITER,SATURN,URANUS,NEPTUNE}
+enum Status{ACTIVE("active"),INACTIVE("inactive"),DELETED("deleted");private final String value;Status(String value){this.value=value;}String getValue(){return value;}}
+enum Operation{PLUS{@Override public int apply(int a,int b){return a+b;}},MINUS{@Override public int apply(int a,int b){return a-b;}};public abstract int apply(int a,int b);}
+enum Singleton{INSTANCE;public void doSomething(){System.out.println("hello");}}
+enum WithArgs{A(1,2,3),B(4,5,6),C(7,8,9);final int x;final int y;final int z;WithArgs(int x,int y,int z){this.x=x;this.y=y;this.z=z;}}
+enum WithInterface implements Comparable<WithInterface>{FIRST,SECOND,THIRD}
+enum Mixed{FOO("foo"),BAR("bar"),BAZ("baz");private final String label;Mixed(String label){this.label=label;}public String getLabel(){return label;}@Override public String toString(){return label;}}
+---
+enum Empty {}
+
+enum Color {
+    RED,
+    GREEN,
+    BLUE
+}
+
+enum Planet {
+    MERCURY,
+    VENUS,
+    EARTH,
+    MARS,
+    JUPITER,
+    SATURN,
+    URANUS,
+    NEPTUNE
+}
+
+enum Status {
+    ACTIVE("active"),
+    INACTIVE("inactive"),
+    DELETED("deleted");
+
+    private final String value;
+    Status(String value) {
+        this.value = value;
+    }
+    String getValue() {
+        return value;
+    }
+}
+
+enum Operation {
+    PLUS {
+        @Override
+        public int apply(int a, int b) {
+            return a + b;
+        }
+    },
+    MINUS {
+        @Override
+        public int apply(int a, int b) {
+            return a - b;
+        }
+    };
+
+    public abstract int apply(int a, int b)
+}
+
+enum Singleton {
+    INSTANCE;
+
+    public void doSomething() {
+        System.out.println("hello");
+    }
+}
+
+enum WithArgs {
+    A(1, 2, 3),
+    B(4, 5, 6),
+    C(7, 8, 9);
+
+    final int x;
+    final int y;
+    final int z;
+    WithArgs(int x, int y, int z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+    }
+}
+
+enum WithInterface {
+    FIRST,
+    SECOND,
+    THIRD
+}
+
+enum Mixed {
+    FOO("foo"),
+    BAR("bar"),
+    BAZ("baz");
+
+    private final String label;
+    Mixed(String label) {
+        this.label = label;
+    }
+    public String getLabel() {
+        return label;
+    }
+    @Override
+    public String toString() {
+        return label;
+    }
+}

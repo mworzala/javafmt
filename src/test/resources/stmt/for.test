@@ -1,0 +1,40 @@
+void forExample() {
+    for(int i=0;i<10;i++){System.out.println(i);}
+    for(int i=0;i<n;i++){for(int j=0;j<m;j++){grid[i][j]=0;}}
+    for(int i=0,j=10;i<j;i++,j--){System.out.println(i+j);}
+    for(;;){if(done){break;}step();}
+    for(int i=0;;i++){if(i>100){break;}}
+    for(;x>0;){x--;}
+    for(int i=0;i<veryLongVariableName.size()&&someOtherCondition;i++){process(veryLongVariableName.get(i));}
+}
+---
+void forExample() {
+    for (int i = 0; i < 10; i++) {
+        System.out.println(i);
+    }
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < m; j++) {
+            grid[i][j] = 0;
+        }
+    }
+    for (int i = 0 j = 10; i < j; i++, j--) {
+        System.out.println(i + j);
+    }
+    for (; ; ) {
+        if (done) {
+            break;
+        }
+        step();
+    }
+    for (int i = 0; ; i++) {
+        if (i > 100) {
+            break;
+        }
+    }
+    for (; x > 0; ) {
+        x--;
+    }
+    for (int i = 0; i < veryLongVariableName.size() && someOtherCondition; i++) {
+        process(veryLongVariableName.get(i));
+    }
+}

@@ -1,0 +1,134 @@
+void statementExample() {
+    // Classic switch with fall-through
+    switch(x){
+        case 1:System.out.println("one");break;
+        case 2:case 3:System.out.println("two or three");break;
+        case 4:System.out.println("four");System.out.println("still four");break;
+        default:System.out.println("other");break;
+    }
+
+    // Arrow switch statement
+    switch(x){
+        case 1->System.out.println("one");
+        case 2,3->System.out.println("two or three");
+        case 4->{System.out.println("four");System.out.println("still four");}
+        default->System.out.println("other");
+    }
+
+    // Switch on string
+    switch(name){
+        case "hello":System.out.println("greeting");break;
+        case "goodbye":System.out.println("farewell");break;
+        default:System.out.println("unknown");break;
+    }
+
+    // Switch on enum
+    switch(direction){
+        case NORTH:case SOUTH:System.out.println("vertical");break;
+        case EAST:case WEST:System.out.println("horizontal");break;
+    }
+
+    // Arrow switch with complex expressions
+    switch(obj){
+        case Integer i->System.out.println("int: "+i);
+        case String s->System.out.println("string: "+s);
+        case null->System.out.println("null");
+        case default->System.out.println("other");
+    }
+
+    // Pattern matching with guard
+    switch(obj){
+        case String s when s.length()>5->System.out.println("long string");
+        case String s->System.out.println("short string");
+        case Integer i when i>0->System.out.println("positive");
+        case null,default->System.out.println("other");
+    }
+
+    // Empty switch
+    switch(x){}
+
+    // Switch with only default
+    switch(x){default:break;}
+}
+---
+void statementExample() {
+    // Classic switch with fall-through
+    switch (x) {
+        case 1:
+            System.out.println("one");
+            break;
+        case 2:
+        case 3:
+            System.out.println("two or three");
+            break;
+        case 4:
+            System.out.println("four");
+            System.out.println("still four");
+            break;
+        default:
+            System.out.println("other");
+            break;
+    }
+
+    // Arrow switch statement
+    switch (x) {
+        case 1 -> System.out.println("one");
+        case 2, 3 -> System.out.println("two or three");
+        case 4 -> {
+            System.out.println("four");
+            System.out.println("still four");
+        }
+        default -> System.out.println("other");
+    }
+
+    // Switch on string
+    switch (name) {
+        case "hello":
+            System.out.println("greeting");
+            break;
+        case "goodbye":
+            System.out.println("farewell");
+            break;
+        default:
+            System.out.println("unknown");
+            break;
+    }
+
+    // Switch on enum
+    switch (direction) {
+        case NORTH:
+        case SOUTH:
+            System.out.println("vertical");
+            break;
+        case EAST:
+        case WEST:
+            System.out.println("horizontal");
+            break;
+    }
+
+    // Arrow switch with complex expressions
+    switch (obj) {
+        case Integer i -> System.out.println("int: " + i);
+        case String s -> System.out.println("string: " + s);
+        case null -> System.out.println("null");
+        case default -> System.out.println("other");
+    }
+
+    // Pattern matching with guard
+    switch (obj) {
+        case String s when s.length() > 5 -> System.out.println("long string");
+        case String s -> System.out.println("short string");
+        case Integer i when i > 0 -> System.out.println("positive");
+        case null, default -> System.out.println("other");
+    }
+
+    // Empty switch
+    switch (x) {
+    }
+
+    // Switch with only default
+    switch (x) {
+        default:
+            break;
+    }
+}

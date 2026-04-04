@@ -1,0 +1,156 @@
+void example() {
+    // Basic try-catch
+    try{System.out.println("try");}catch(Exception e){System.out.println("catch");}
+
+    // Try-catch-finally
+    try{System.out.println("try");}catch(Exception e){System.out.println("catch");}finally{System.out.println("finally");}
+
+    // Try-finally (no catch)
+    try{System.out.println("try");}finally{System.out.println("finally");}
+
+    // Multiple catch blocks
+    try{System.out.println("try");}catch(IOException e){System.out.println("io");}catch(SQLException e){System.out.println("sql");}catch(Exception e){System.out.println("other");}
+
+    // Multi-catch (union type)
+    try{System.out.println("try");}catch(IOException|SQLException|IllegalArgumentException e){System.out.println("caught");}
+
+    // Try-with-resources single resource
+    try(var stream=new FileInputStream("file")){stream.read();}
+
+    // Try-with-resources multiple resources
+    try(var in=new FileInputStream("input");var out=new FileOutputStream("output");var reallyOut=new FileOutputStream("output")){in.transferTo(out);}
+
+    // Try-with-resources with catch and finally
+    try(var stream=new FileInputStream("file")){stream.read();}catch(IOException e){System.out.println("error");}finally{System.out.println("done");}
+
+    // Try-with-resources using existing variable
+    try(existingStream){existingStream.read();}
+
+    // Try-with-resources multiple on existing variables
+    try(existingIn;existingOut){existingIn.transferTo(existingOut);}
+
+    // Nested try-catch
+    try{try{System.out.println("inner");}catch(Exception e){System.out.println("inner catch");}}catch(Exception e){System.out.println("outer catch");}
+
+    // Catch with empty body
+    try{System.out.println("try");}catch(Exception e){}
+
+    // Try with empty body
+    try{}finally{System.out.println("finally");}
+
+    // Try-with-resources with long resource declarations
+    try(var veryLongVariableName=new VeryLongClassName(veryLongArgumentName,anotherVeryLongArgumentName)){veryLongVariableName.doSomething();}
+
+    // Multi-catch with long type names
+    try{something();}catch(VeryLongExceptionClassName|AnotherVeryLongExceptionClassName|YetAnotherVeryLongExceptionClassName e){handleError(e);}
+}
+---
+void example() {
+    // Basic try-catch
+    try {
+        System.out.println("try");
+    } catch (Exception e) {
+        System.out.println("catch");
+    }
+
+    // Try-catch-finally
+    try {
+        System.out.println("try");
+    } catch (Exception e) {
+        System.out.println("catch");
+    } finally {
+        System.out.println("finally");
+    }
+
+    // Try-finally (no catch)
+    try {
+        System.out.println("try");
+    } finally {
+        System.out.println("finally");
+    }
+
+    // Multiple catch blocks
+    try {
+        System.out.println("try");
+    } catch (IOException e) {
+        System.out.println("io");
+    } catch (SQLException e) {
+        System.out.println("sql");
+    } catch (Exception e) {
+        System.out.println("other");
+    }
+
+    // Multi-catch (union type)
+    try {
+        System.out.println("try");
+    } catch (IOException | SQLException | IllegalArgumentException e) {
+        System.out.println("caught");
+    }
+
+    // Try-with-resources single resource
+    try (var stream = new FileInputStream("file")) {
+        stream.read();
+    }
+
+    // Try-with-resources multiple resources
+    try (var in = new FileInputStream("input");
+    var out = new FileOutputStream("output");
+    var reallyOut = new FileOutputStream("output")) {
+        in.transferTo(out);
+    }
+
+    // Try-with-resources with catch and finally
+    try (var stream = new FileInputStream("file")) {
+        stream.read();
+    } catch (IOException e) {
+        System.out.println("error");
+    } finally {
+        System.out.println("done");
+    }
+
+    // Try-with-resources using existing variable
+    try (existingStream) {
+        existingStream.read();
+    }
+
+    // Try-with-resources multiple on existing variables
+    try (existingIn; existingOut) {
+        existingIn.transferTo(existingOut);
+    }
+
+    // Nested try-catch
+    try {
+        try {
+            System.out.println("inner");
+        } catch (Exception e) {
+            System.out.println("inner catch");
+        }
+    } catch (Exception e) {
+        System.out.println("outer catch");
+    }
+
+    // Catch with empty body
+    try {
+        System.out.println("try");
+    } catch (Exception e) {}
+
+    // Try with empty body
+    try {} finally {
+        System.out.println("finally");
+    }
+
+    // Try-with-resources with long resource declarations
+    try (var veryLongVariableName = new VeryLongClassName(
+        veryLongArgumentName,
+        anotherVeryLongArgumentName
+    )) {
+        veryLongVariableName.doSomething();
+    }
+
+    // Multi-catch with long type names
+    try {
+        something();
+    } catch (VeryLongExceptionClassName | AnotherVeryLongExceptionClassName | YetAnotherVeryLongExceptionClassName e) {
+        handleError(e);
+    }
+}

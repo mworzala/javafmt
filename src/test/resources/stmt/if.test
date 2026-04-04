@@ -1,0 +1,57 @@
+void ifExample() {
+    if(true){System.out.println("yes");}
+    if(false){System.out.println("no");}else{System.out.println("yes");}
+    if(a){System.out.println("a");}else if(b){System.out.println("b");}else if(c){System.out.println("c");}else{System.out.println("d");}
+    if(x>0){System.out.println("positive");System.out.println("really");}else if(x<0){System.out.println("negative");}
+    if(a&&b&&c){System.out.println("all true");}
+    if(check()){doSomething();}
+    if(a){if(b){System.out.println("nested");}}
+    if(a){System.out.println("one liner");}
+    if(map.containsKey("key")){var value=map.get("key");System.out.println(value);}else{throw new RuntimeException("missing key");}
+}
+---
+void ifExample() {
+    if (true) {
+        System.out.println("yes");
+    }
+    if (false) {
+        System.out.println("no");
+    } else {
+        System.out.println("yes");
+    }
+    if (a) {
+        System.out.println("a");
+    } else if (b) {
+        System.out.println("b");
+    } else if (c) {
+        System.out.println("c");
+    } else {
+        System.out.println("d");
+    }
+    if (x > 0) {
+        System.out.println("positive");
+        System.out.println("really");
+    } else if (x < 0) {
+        System.out.println("negative");
+    }
+    if (a && b && c) {
+        System.out.println("all true");
+    }
+    if (check()) {
+        doSomething();
+    }
+    if (a) {
+        if (b) {
+            System.out.println("nested");
+        }
+    }
+    if (a) {
+        System.out.println("one liner");
+    }
+    if (map.containsKey("key")) {
+        var value = map.get("key");
+        System.out.println(value);
+    } else {
+        throw new RuntimeException("missing key");
+    }
+}

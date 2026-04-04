@@ -1,0 +1,30 @@
+void whileExample() {
+    while(true){System.out.println("forever");}
+    while(x>0){x--;System.out.println(x);}
+    while(iterator.hasNext()){var item=iterator.next();process(item);}
+    while(true){if(done){break;}step();}
+    while(a&&b&&c){doWork();}
+}
+---
+void whileExample() {
+    while (true) {
+        System.out.println("forever");
+    }
+    while (x > 0) {
+        x--;
+        System.out.println(x);
+    }
+    while (iterator.hasNext()) {
+        var item = iterator.next();
+        process(item);
+    }
+    while (true) {
+        if (done) {
+            break;
+        }
+        step();
+    }
+    while (a && b && c) {
+        doWork();
+    }
+}

@@ -1,0 +1,43 @@
+@SuppressWarnings(value="unchecked")
+class A{}
+@Author(name="Alice",date="2024-01-01")
+class B{}
+@Endpoint(method="GET",path="/api/users",authenticated=true)
+class C{}
+@Table(name="users",schema="public",indexes={@Index(name="idx_name",columns={"first_name","last_name"}),@Index(name="idx_email",columns={"email"})})
+class D{}
+@RequestMapping(value="/api",method=RequestMethod.GET,produces="application/json",consumes="application/json",headers={"X-Custom=true","Accept=application/json"})
+class E{}
+@Anno()
+class F{}
+---
+@SuppressWarnings(value = "unchecked")
+class A {}
+
+@Author(name = "Alice", date = "2024-01-01")
+class B {}
+
+@Endpoint(method = "GET", path = "/api/users", authenticated = true)
+class C {}
+
+@Table(
+    name = "users",
+    schema = "public",
+    indexes = {
+        @Index(name = "idx_name", columns = {"first_name", "last_name"}),
+        @Index(name = "idx_email", columns = {"email"}),
+    }
+)
+class D {}
+
+@RequestMapping(
+    value = "/api",
+    method = RequestMethod.GET,
+    produces = "application/json",
+    consumes = "application/json",
+    headers = {"X-Custom=true", "Accept=application/json"}
+)
+class E {}
+
+@Anno()
+class F {}

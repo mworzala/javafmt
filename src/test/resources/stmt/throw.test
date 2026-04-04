@@ -1,0 +1,19 @@
+void example() {
+    throw new RuntimeException();
+
+    throw new IllegalArgumentException("bad argument: "+value);
+
+    throw new RuntimeException("failed",cause);
+
+    throw e;
+}
+---
+void example() {
+    throw new RuntimeException();
+
+    throw new IllegalArgumentException("bad argument: " + value);
+
+    throw new RuntimeException("failed", cause);
+
+    throw e;
+}

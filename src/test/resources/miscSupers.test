@@ -1,0 +1,73 @@
+class Child extends Parent {
+    int x=super.x;
+    int y=super.field;
+
+    Child(){super();}
+    Child(int a){super(a);}
+    Child(int a,int b,int c){super(a,b,c);}
+
+    void example(){
+        super.doSomething();
+        super.doSomething(a,b,c);
+        int v=super.getValue();
+        super.field=10;
+    }
+}
+
+class Inner {
+    class Child extends Parent {
+        int x=Outer.super.x;
+
+        Child(){Outer.super();}
+        Child(int a){Outer.super(a);}
+
+        void example(){
+            Outer.super.doSomething();
+            Outer.super.doSomething(a,b,c);
+            int v=Outer.super.getValue();
+            Outer.super.field=10;
+        }
+    }
+}
+---
+class Child {
+    int x = super.x;
+    int y = super.field;
+
+    Child() {
+        super();
+    }
+    Child(int a) {
+        super(a);
+    }
+    Child(int a, int b, int c) {
+        super(a, b, c);
+    }
+
+    void example() {
+        super.doSomething();
+        super.doSomething(a, b, c);
+        int v = super.getValue();
+        super.field = 10;
+    }
+}
+
+class Inner {
+    class Child {
+        int x = Outer.super.x;
+
+        Child() {
+            Outer.super();
+        }
+        Child(int a) {
+            Outer.super(a);
+        }
+
+        void example() {
+            Outer.super.doSomething();
+            Outer.super.doSomething(a, b, c);
+            int v = Outer.super.getValue();
+            Outer.super.field = 10;
+        }
+    }
+}

@@ -3,6 +3,8 @@ package black;
 import org.eclipse.jdt.core.dom.*;
 import org.jetbrains.annotations.UnknownNullability;
 
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -179,6 +181,115 @@ public class AstToDoc extends ASTVisitor {
         parts.add(space());
 
         visitBodyDeclarations(parts, node, RecordDeclaration.BODY_DECLARATIONS_PROPERTY, true);
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(EnumDeclaration node) {
+        var parts = new ArrayList<Doc>();
+
+        visitJavadoc(parts, node);
+
+        visitModifiers(parts, node, EnumDeclaration.MODIFIERS2_PROPERTY);
+
+        parts.add(text("enum"));
+        parts.add(space());
+        parts.add(text(node.getName().getIdentifier()));
+        parts.add(space());
+
+        // todo SUPER_INTERFACE_TYPES_PROPERTY
+
+        var constants = getProperty(node, EnumDeclaration.ENUM_CONSTANTS_PROPERTY);
+        var body = getProperty(node, EnumDeclaration.BODY_DECLARATIONS_PROPERTY);
+
+        if (constants.isEmpty() && body.isEmpty()) {
+            parts.add(text("{}"));
+            result = concat(parts);
+            return false;
+        }
+
+        parts.add(text("{"));
+
+        var innerParts = new ArrayList<Doc>();
+
+        if (!constants.isEmpty()) {
+            innerParts.add(hardLine());
+            for (int i = 0; i < constants.size(); i++) {
+                if (i > 0) {
+                    innerParts.add(hardLine());
+                    if (blankLinesBetween(constants.get(i - 1), constants.get(i)) > 0) {
+                        innerParts.add(hardLine());
+                    }
+                }
+                constants.get(i).accept(this);
+                if (i < constants.size() - 1) {
+                    innerParts.add(concat(result, text(",")));
+                } else if (body.isEmpty()) {
+                    innerParts.add(result);
+                } else {
+                    innerParts.add(concat(result, text(";")));
+                }
+            }
+        }
+
+        if (!body.isEmpty()) {
+            if (!constants.isEmpty()) {
+                innerParts.add(hardLine());
+            }
+            for (int i = 0; i < body.size(); i++) {
+                innerParts.add(hardLine());
+                if (i > 0 && blankLinesBetween(body.get(i - 1), body.get(i)) > 0) {
+                    innerParts.add(hardLine());
+                }
+                body.get(i).accept(this);
+                innerParts.add(result);
+            }
+        }
+
+        parts.add(indent(concat(innerParts)));
+        parts.add(hardLine());
+        parts.add(text("}"));
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(EnumConstantDeclaration node) {
+        var parts = new ArrayList<Doc>();
+
+        visitJavadoc(parts, node);
+
+        visitModifiers(parts, node, EnumConstantDeclaration.MODIFIERS2_PROPERTY);
+
+        parts.add(text(node.getName().getIdentifier()));
+
+        var arguments = getProperty(node, EnumConstantDeclaration.ARGUMENTS_PROPERTY);
+        if (!arguments.isEmpty()) {
+            var argDocs = new ArrayList<Doc>();
+            for (var arg : arguments) {
+                arg.accept(this);
+                argDocs.add(result);
+            }
+            parts.add(group(concat(
+                    text("("),
+                    indent(concat(
+                            line(""),
+                            join(concat(text(","), line()), argDocs)
+                    )),
+                    line(""),
+                    text(")")
+            )));
+        }
+
+        var anonymousClass = getProperty(node, EnumConstantDeclaration.ANONYMOUS_CLASS_DECLARATION_PROPERTY);
+        if (anonymousClass != null) {
+            parts.add(space());
+            anonymousClass.accept(this);
+            parts.add(result);
+        }
 
         result = concat(parts);
         return false;
@@ -387,7 +498,12 @@ public class AstToDoc extends ASTVisitor {
 
         for (var modifier : modifiers) {
             modifier.accept(this);
-            doc.add(result);
+            if (modifier instanceof Annotation) {
+                doc.add(result);
+                doc.add(hardLine());
+            } else {
+                doc.add(result);
+            }
         }
     }
 
@@ -435,6 +551,233 @@ public class AstToDoc extends ASTVisitor {
                         indent(concat(parts)),
                         hardLine(),
                         text("}"));
+        return false;
+    }
+    @Override
+    public boolean visit(IfStatement node) {
+        var parts = new ArrayList<Doc>();
+
+        parts.add(text("if ("));
+        var expression = getProperty(node, IfStatement.EXPRESSION_PROPERTY);
+        expression.accept(this);
+        parts.add(result);
+        parts.add(text(") "));
+
+        var thenStmt = getProperty(node, IfStatement.THEN_STATEMENT_PROPERTY);
+        thenStmt.accept(this);
+        parts.add(result);
+
+        var elseStmt = getProperty(node, IfStatement.ELSE_STATEMENT_PROPERTY);
+        if (elseStmt != null) {
+            if (elseStmt instanceof IfStatement) {
+                parts.add(text(" else "));
+                elseStmt.accept(this);
+                parts.add(result);
+            } else {
+                parts.add(text(" else "));
+                elseStmt.accept(this);
+                parts.add(result);
+            }
+        }
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(WhileStatement node) {
+        var parts = new ArrayList<Doc>();
+
+        parts.add(text("while ("));
+
+        var expression = getProperty(node, WhileStatement.EXPRESSION_PROPERTY);
+        expression.accept(this);
+        parts.add(result);
+
+        parts.add(text(") "));
+
+        var body = getProperty(node, WhileStatement.BODY_PROPERTY);
+        body.accept(this);
+        parts.add(result);
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(DoStatement node) {
+        var parts = new ArrayList<Doc>();
+
+        parts.add(text("do "));
+
+        var body = getProperty(node, DoStatement.BODY_PROPERTY);
+        body.accept(this);
+        parts.add(result);
+
+        parts.add(text(" while ("));
+
+        var expression = getProperty(node, DoStatement.EXPRESSION_PROPERTY);
+        expression.accept(this);
+        parts.add(result);
+
+        parts.add(text(");"));
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(ForStatement node) {
+        var parts = new ArrayList<Doc>();
+
+        parts.add(text("for ("));
+
+        var initializers = getProperty(node, ForStatement.INITIALIZERS_PROPERTY);
+        if (!initializers.isEmpty()) {
+            var initDocs = new ArrayList<Doc>();
+            for (var init : initializers) {
+                init.accept(this);
+                initDocs.add(result);
+            }
+            parts.add(join(concat(text(","), space()), initDocs));
+        }
+        parts.add(text("; "));
+
+        var condition = getProperty(node, ForStatement.EXPRESSION_PROPERTY);
+        if (condition != null) {
+            condition.accept(this);
+            parts.add(result);
+        }
+        parts.add(text("; "));
+
+        var updaters = getProperty(node, ForStatement.UPDATERS_PROPERTY);
+        if (!updaters.isEmpty()) {
+            var updateDocs = new ArrayList<Doc>();
+            for (var updater : updaters) {
+                updater.accept(this);
+                updateDocs.add(result);
+            }
+            parts.add(join(concat(text(","), space()), updateDocs));
+        }
+
+        parts.add(text(") "));
+
+        var body = getProperty(node, ForStatement.BODY_PROPERTY);
+        body.accept(this);
+        parts.add(result);
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(EnhancedForStatement node) {
+        var parts = new ArrayList<Doc>();
+
+        parts.add(text("for ("));
+
+        var parameter = getProperty(node, EnhancedForStatement.PARAMETER_PROPERTY);
+        parameter.accept(this);
+        parts.add(result);
+
+        parts.add(text(" : "));
+
+        var expression = getProperty(node, EnhancedForStatement.EXPRESSION_PROPERTY);
+        expression.accept(this);
+        parts.add(result);
+
+        parts.add(text(") "));
+
+        var body = getProperty(node, EnhancedForStatement.BODY_PROPERTY);
+        body.accept(this);
+        parts.add(result);
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(SwitchStatement node) {
+        var parts = new ArrayList<Doc>();
+
+        parts.add(text("switch ("));
+
+        var expression = getProperty(node, SwitchStatement.EXPRESSION_PROPERTY);
+        expression.accept(this);
+        parts.add(result);
+
+        parts.add(text(") {"));
+
+        var stmtParts = new ArrayList<Doc>();
+        var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
+        for (int i = 0; i < statements.size(); i++) {
+            var statement = statements.get(i);
+            statement.accept(this);
+
+            if (i > 0 && statements.get(i - 1) instanceof SwitchCase sc && sc.isSwitchLabeledRule()) {
+                result = concat(space(), result);
+            } else {
+                result = concat(hardLine(), result);
+                if (!(statement instanceof SwitchCase))
+                    result = indent(result);
+            }
+
+            stmtParts.add(result);
+        }
+
+        parts.add(indent(concat(stmtParts)));
+        parts.add(hardLine());
+        parts.add(text("}"));
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(SwitchCase node) {
+        var parts = new ArrayList<Doc>();
+
+        var expressions = getProperty(node, SwitchCase.EXPRESSIONS2_PROPERTY);
+        if (expressions.isEmpty()) {
+            parts.add(text("default"));
+        } else {
+            parts.add(text("case "));
+            for (int i = 0; i < expressions.size(); i++) {
+                var expression = expressions.get(i);
+                expression.accept(this);
+                parts.add(result);
+
+                if (i < expressions.size() - 1) {
+                    parts.add(text(", "));
+                }
+            }
+        }
+
+        if (node.isSwitchLabeledRule()) {
+            parts.add(text(" ->"));
+        } else {
+            parts.add(text(":"));
+        }
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(GuardedPattern node) {
+        var parts = new ArrayList<Doc>();
+
+        var pattern = getProperty(node, GuardedPattern.PATTERN_PROPERTY);
+        pattern.accept(this);
+        parts.add(result);
+
+        parts.add(text(" when "));
+
+        var expression = getProperty(node, GuardedPattern.EXPRESSION_PROPERTY);
+        expression.accept(this);
+        parts.add(result);
+
+        result = concat(parts);
         return false;
     }
 
@@ -520,6 +863,20 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
+    public boolean visit(TypePattern node) {
+        var variable = getProperty(node, TypePattern.PATTERN_VARIABLE_PROPERTY2);
+        variable.accept(this);
+        // result is already set by SingleVariableDeclaration
+        return false;
+    }
+
+    @Override
+    public boolean visit(NullPattern node) {
+        result = text("null");
+        return false;
+    }
+
+    @Override
     public boolean visit(ConstructorInvocation node) {
         var parts = new ArrayList<Doc>();
 
@@ -553,6 +910,120 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
+    public boolean visit(SuperConstructorInvocation node) {
+        var parts = new ArrayList<Doc>();
+
+        var expression = getProperty(node, SuperConstructorInvocation.EXPRESSION_PROPERTY);
+        if (expression != null) {
+            expression.accept(this);
+            parts.add(result);
+            parts.add(text("."));
+        }
+
+        visitTypeArguments(parts, node, SuperConstructorInvocation.TYPE_ARGUMENTS_PROPERTY);
+
+        parts.add(text("super"));
+
+        var arguments = getProperty(node, SuperConstructorInvocation.ARGUMENTS_PROPERTY);
+        if (arguments.isEmpty()) {
+            parts.add(text("()"));
+        } else {
+            var argDocs = new ArrayList<Doc>();
+            for (var arg : arguments) {
+                arg.accept(this);
+                argDocs.add(result);
+            }
+            parts.add(group(concat(
+                    text("("),
+                    indent(concat(
+                            line(""),
+                            join(concat(text(","), line()), argDocs)
+                    )),
+                    line(""),
+                    text(")")
+            )));
+        }
+
+        parts.add(text(";"));
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(TryStatement node) {
+        var parts = new ArrayList<Doc>();
+        parts.add(text("try "));
+
+        var resources = getProperty(node, TryStatement.RESOURCES2_PROPERTY);
+        if (!resources.isEmpty()) {
+            parts.add(text("("));
+
+            var resourceParts = new ArrayList<Doc>();
+            for (var resource : resources) {
+                resource.accept(this);
+                resourceParts.add(result);
+            }
+            parts.add(group(join(concat(text(";"), line()), resourceParts)));
+
+            parts.add(text(") "));
+        }
+
+        var body = getProperty(node, TryStatement.BODY_PROPERTY);
+        body.accept(this);
+        parts.add(result);
+
+        var catches = getProperty(node, TryStatement.CATCH_CLAUSES_PROPERTY);
+        for (var catchClause : catches) {
+            catchClause.accept(this);
+            parts.add(result);
+        }
+
+        var finallyBlock = getProperty(node, TryStatement.FINALLY_PROPERTY);
+        if (finallyBlock != null) {
+            parts.add(text(" finally "));
+            finallyBlock.accept(this);
+            parts.add(result);
+        }
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(CatchClause node) {
+        var parts = new ArrayList<Doc>();
+        parts.add(text(" catch ("));
+
+        var exception = getProperty(node, CatchClause.EXCEPTION_PROPERTY);
+        exception.accept(this);
+        parts.add(result);
+
+        parts.add(text(") "));
+
+        var body = getProperty(node, CatchClause.BODY_PROPERTY);
+        body.accept(this);
+        parts.add(result);
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(ThrowStatement node) {
+        var parts = new ArrayList<Doc>();
+
+        parts.add(text("throw "));
+
+        var expression = getProperty(node, ThrowStatement.EXPRESSION_PROPERTY);
+        expression.accept(this);
+        parts.add(result);
+
+        parts.add(text(";"));
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
     public boolean visit(ReturnStatement node) {
         var parts = new ArrayList<Doc>();
         parts.add(text("return"));
@@ -572,8 +1043,11 @@ public class AstToDoc extends ASTVisitor {
     @Override
     public boolean visit(YieldStatement node) {
         var parts = new ArrayList<Doc>();
-        parts.add(text("yield"));
-        parts.add(space());
+
+        if (!node.isImplicit()) {
+            parts.add(text("yield"));
+            parts.add(space());
+        }
 
         var expression = getProperty(node, YieldStatement.EXPRESSION_PROPERTY);
         expression.accept(this);
@@ -635,6 +1109,28 @@ public class AstToDoc extends ASTVisitor {
     // expressions
 
     @Override
+    public boolean visit(VariableDeclarationExpression node) {
+        var parts = new ArrayList<Doc>();
+
+        visitModifiers(parts, node, VariableDeclarationExpression.MODIFIERS2_PROPERTY);
+
+        var type = getProperty(node, VariableDeclarationExpression.TYPE_PROPERTY);
+        type.accept(this);
+        parts.add(result);
+
+        var fragments = getProperty(node, VariableDeclarationExpression.FRAGMENTS_PROPERTY);
+        for (var frag : fragments) {
+            parts.add(space());
+
+            frag.accept(this);
+            parts.add(result);
+        }
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
     public boolean visit(Assignment node) {
         var parts = new ArrayList<Doc>();
 
@@ -651,6 +1147,83 @@ public class AstToDoc extends ASTVisitor {
         parts.add(result);
 
         result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(FieldAccess node) {
+        var parts = new ArrayList<Doc>();
+
+        var expression = getProperty(node, FieldAccess.EXPRESSION_PROPERTY);
+        expression.accept(this);
+        parts.add(result);
+
+        parts.add(text("."));
+
+        var name = getProperty(node, FieldAccess.NAME_PROPERTY);
+        name.accept(this);
+        parts.add(result);
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(SuperFieldAccess node) {
+        var parts = new ArrayList<Doc>();
+
+        var qualifier = getProperty(node, SuperFieldAccess.QUALIFIER_PROPERTY);
+        if (qualifier != null) {
+            qualifier.accept(this);
+            parts.add(result);
+            parts.add(text("."));
+        }
+
+        parts.add(text("super."));
+
+        var name = getProperty(node, SuperFieldAccess.NAME_PROPERTY);
+        name.accept(this);
+        parts.add(result);
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(SwitchExpression node) {
+        var parts = new ArrayList<Doc>();
+
+        parts.add(text("switch ("));
+
+        var expression = getProperty(node, SwitchExpression.EXPRESSION_PROPERTY);
+        expression.accept(this);
+        parts.add(result);
+
+        parts.add(text(") {"));
+
+        var stmtParts = new ArrayList<Doc>();
+        var statements = getProperty(node, SwitchExpression.STATEMENTS_PROPERTY);
+        for (int i = 0; i < statements.size(); i++) {
+            var statement = statements.get(i);
+            statement.accept(this);
+
+            if (i > 0 && statements.get(i - 1) instanceof SwitchCase sc && sc.isSwitchLabeledRule()) {
+                result = concat(space(), result);
+            } else {
+                result = concat(hardLine(), result);
+                if (!(statement instanceof SwitchCase))
+                    result = indent(result);
+            }
+
+            stmtParts.add(result);
+        }
+
+        parts.add(indent(concat(stmtParts)));
+        parts.add(hardLine());
+        parts.add(text("}"));
+
+        result = concat(parts);
+        result = conditionalGroup(List.of(result, result));
         return false;
     }
 
@@ -747,10 +1320,14 @@ public class AstToDoc extends ASTVisitor {
         if (expression != null) {
             expression.accept(this);
             parts.add(result);
-            parts.add(indent(concat(new Doc.Line(""), text("."))));
+            if (expression instanceof MethodInvocation) {
+                parts.add(indent(concat(new Doc.Line(""), text("."))));
+            } else {
+                parts.add(text("."));
+            }
         }
 
-        // todo TYPE_ARGUMENTS_PROPERTY
+        visitTypeArguments(parts, node, MethodInvocation.TYPE_ARGUMENTS_PROPERTY);
 
         parts.add(text(node.getName().getIdentifier()));
 
@@ -769,6 +1346,49 @@ public class AstToDoc extends ASTVisitor {
         }
 
         result = group(concat(parts));
+        return false;
+    }
+
+    @Override
+    public boolean visit(SuperMethodInvocation node) {
+        var parts = new ArrayList<Doc>();
+
+        var qualifier = getProperty(node, SuperMethodInvocation.QUALIFIER_PROPERTY);
+        if (qualifier != null) {
+            qualifier.accept(this);
+            parts.add(result);
+            parts.add(text("."));
+        }
+
+        parts.add(text("super."));
+
+        visitTypeArguments(parts, node, SuperMethodInvocation.TYPE_ARGUMENTS_PROPERTY);
+
+        var name = getProperty(node, SuperMethodInvocation.NAME_PROPERTY);
+        name.accept(this);
+        parts.add(result);
+
+        var arguments = getProperty(node, SuperMethodInvocation.ARGUMENTS_PROPERTY);
+        if (arguments.isEmpty()) {
+            parts.add(text("()"));
+        } else {
+            var argDocs = new ArrayList<Doc>();
+            for (var arg : arguments) {
+                arg.accept(this);
+                argDocs.add(result);
+            }
+            parts.add(group(concat(
+                    text("("),
+                    indent(concat(
+                            line(""),
+                            join(concat(text(","), line()), argDocs)
+                    )),
+                    line(""),
+                    text(")")
+            )));
+        }
+
+        result = concat(parts);
         return false;
     }
 
@@ -1224,6 +1844,31 @@ public class AstToDoc extends ASTVisitor {
         return false;
     }
 
+    @Override
+    public boolean visit(UnionType node) {
+        var parts = new ArrayList<Doc>();
+
+        var types = getProperty(node, UnionType.TYPES_PROPERTY);
+        for (int i = 0; i < types.size(); i++) {
+            var type = types.get(i);
+            type.accept(this);
+            parts.add(result);
+
+            if (i < types.size() - 1) {
+                parts.add(text(" | "));
+            }
+        }
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(CaseDefaultExpression node) {
+        result = text("default");
+        return false;
+    }
+
     // annotations
 
     @Override
@@ -1235,13 +1880,67 @@ public class AstToDoc extends ASTVisitor {
         typeName.accept(this);
         parts.add(result);
 
-        parts.add(hardLine());
+        result = concat(parts);
+        return false;
+    }
 
-        result = group(concat(parts));
+    @Override
+    public boolean visit(NormalAnnotation node) {
+        var parts = new ArrayList<Doc>();
+        parts.add(text("@"));
+
+        var typeName = getProperty(node, NormalAnnotation.TYPE_NAME_PROPERTY);
+        typeName.accept(this);
+        parts.add(result);
+
+        var values = getProperty(node, NormalAnnotation.VALUES_PROPERTY);
+        if (values.isEmpty()) {
+            parts.add(text("()"));
+        } else {
+            var valueDocs = new ArrayList<Doc>();
+            for (var value : values) {
+                value.accept(this);
+                valueDocs.add(result);
+            }
+            parts.add(group(concat(
+                    text("("),
+                    indent(concat(
+                            line(""),
+                            join(concat(text(","), line()), valueDocs)
+                    )),
+                    line(""),
+                    text(")")
+            )));
+        }
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(MemberValuePair node) {
+        var parts = new ArrayList<Doc>();
+
+        var name = getProperty(node, MemberValuePair.NAME_PROPERTY);
+        name.accept(this);
+        parts.add(result);
+
+        parts.add(text(" = "));
+
+        var value = getProperty(node, MemberValuePair.VALUE_PROPERTY);
+        value.accept(this);
+        parts.add(result);
+
+        result = concat(parts);
         return false;
     }
 
     // --- the rest :)
+
+    @Override
+    public boolean visit(ImportDeclaration node) {
+        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
+    }
 
     @Override
     public boolean visit(AnnotationTypeDeclaration node) {
@@ -1254,93 +1953,12 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
-    public boolean visit(BlockComment node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(CaseDefaultExpression node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(CatchClause node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
     public boolean visit(ConditionalExpression node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
     @Override
-    public boolean visit(DoStatement node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(EnhancedForStatement node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(EnumConstantDeclaration node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(EnumDeclaration node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(FieldAccess node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(ForStatement node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(GuardedPattern node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(IfStatement node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(ImportDeclaration node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(LineComment node) {
-        // Line comments are handled via CompilationUnit.getCommentList(), not via visitor dispatch
-        return false;
-    }
-
-    @Override
-    public boolean visit(MemberValuePair node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
     public boolean visit(NameQualifiedType node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(NormalAnnotation node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(NullPattern node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
@@ -1375,50 +1993,10 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
-    public boolean visit(SuperConstructorInvocation node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(SuperFieldAccess node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(SuperMethodInvocation node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(SwitchCase node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(SwitchExpression node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(SwitchStatement node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
     public boolean visit(SynchronizedStatement node) {
         // todo EXPRESSION_PROPERTY
         // todo BODY_PROPERTY
 
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(ThrowStatement node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(TryStatement node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
@@ -1434,26 +2012,6 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(TypeParameter node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(TypePattern node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(UnionType node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(VariableDeclarationExpression node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(WhileStatement node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
@@ -1547,6 +2105,17 @@ public class AstToDoc extends ASTVisitor {
     }
 
     // nodes to always be handled by their parents.
+
+    @Override
+    public boolean visit(LineComment node) {
+        // Line comments are handled via CompilationUnit.getCommentList(), not via visitor dispatch
+        return false;
+    }
+
+    @Override
+    public boolean visit(BlockComment node) {
+        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
+    }
 
     @Override
     public boolean visit(EmptyStatement node) {

@@ -1,0 +1,24 @@
+void doExample() {
+    do{System.out.println("once");}while(false);
+    do{x++;System.out.println(x);}while(x<10);
+    do{var line=reader.readLine();process(line);}while(line!=null);
+    do{step();step2();}while(a&&b&&c);
+}
+---
+void doExample() {
+    do {
+        System.out.println("once");
+    } while (false);
+    do {
+        x++;
+        System.out.println(x);
+    } while (x < 10);
+    do {
+        var line = reader.readLine();
+        process(line);
+    } while (line != null);
+    do {
+        step();
+        step2();
+    } while (a && b && c);
+}

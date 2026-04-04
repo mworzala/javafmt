@@ -1,0 +1,77 @@
+class Example {
+    void foo() {
+        // Short chain stays flat
+        var x = list.stream();
+
+        // 2-call chain stays flat when it fits
+        var x = list.stream().collect(Collectors.toList());
+
+        // 3-call chain that fits stays flat
+        var x = list.stream().map(String::trim).collect(Collectors.toList());
+
+        // Long chain that doesn't fit breaks all-or-none
+        var x = list.stream().filter(s -> !s.isEmpty()).map(String::trim).sorted().collect(Collectors.toList());
+
+        // QualifiedName root stays glued
+        System.out.println("hello");
+
+        // Nested chain in args is independent
+        a.b(c.d().e()).f();
+
+        // Assignment context
+        formatted = Arrays.stream(formatted.split("\n")).map(String::stripTrailing).collect(Collectors.joining("\n"));
+
+        // Chain starting with no-expression method call
+        getList().stream().map(String::trim).collect(Collectors.toList());
+
+        // Chain with lambda block body forces chain to break
+        list.stream().map(x -> { return x + 1; }).collect(Collectors.toList());
+
+        // Chain starting with new expression
+        new ArrayList<>().stream().map(String::trim).collect(Collectors.toList());
+    }
+}
+---
+class Example {
+    void foo() {
+        // Short chain stays flat
+        var x = list.stream();
+
+        // 2-call chain stays flat when it fits
+        var x = list.stream().collect(Collectors.toList());
+
+        // 3-call chain that fits stays flat
+        var x = list.stream().map(String::trim).collect(Collectors.toList());
+
+        // Long chain that doesn't fit breaks all-or-none
+        var x = list.stream()
+            .filter(s -> !s.isEmpty())
+            .map(String::trim)
+            .sorted()
+            .collect(Collectors.toList());
+
+        // QualifiedName root stays glued
+        System.out.println("hello");
+
+        // Nested chain in args is independent
+        a.b(c.d().e()).f();
+
+        // Assignment context
+        formatted = Arrays.stream(formatted.split("\n"))
+            .map(String::stripTrailing)
+            .collect(Collectors.joining("\n"));
+
+        // Chain starting with no-expression method call
+        getList().stream().map(String::trim).collect(Collectors.toList());
+
+        // Chain with lambda block body forces chain to break
+        list.stream()
+            .map(x -> {
+                return x + 1;
+            })
+            .collect(Collectors.toList());
+
+        // Chain starting with new expression
+        new ArrayList<>().stream().map(String::trim).collect(Collectors.toList());
+    }
+}

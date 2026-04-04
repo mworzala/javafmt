@@ -1252,8 +1252,8 @@ public class AstToDoc extends ASTVisitor {
     public boolean visit(ContinueStatement node) {
         var label = node.getLabel();
         result = label != null
-                ? concat(text("break"), space(), text(label.getIdentifier()), text(";"))
-                : text("break;");
+                ? concat(text("continue"), space(), text(label.getIdentifier()), text(";"))
+                : text("continue;");
         return false;
     }
 
@@ -1562,6 +1562,17 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(MethodInvocation node) {
+        // Collect chain by walking down EXPRESSION_PROPERTY through MethodInvocations.
+        // Result order: [innermost, ..., outermost]
+        var chain = new ArrayList<MethodInvocation>();
+        collectMethodChain(node, chain);
+
+        if (chain.size() >= 3) {
+            visitMethodChain(chain);
+            return false;
+        }
+
+        // Single call or 2-call chain: use original per-call formatting
         var parts = new ArrayList<Doc>();
 
         var expression = getProperty(node, MethodInvocation.EXPRESSION_PROPERTY);
@@ -1579,7 +1590,92 @@ public class AstToDoc extends ASTVisitor {
 
         parts.add(text(node.getName().getIdentifier()));
 
-        var arguments = getProperty(node, MethodInvocation.ARGUMENTS_PROPERTY);
+        formatArguments(parts, getProperty(node, MethodInvocation.ARGUMENTS_PROPERTY));
+
+        result = group(concat(parts));
+        return false;
+    }
+
+    /**
+     * Format a method chain of 3+ calls with "break all or none" semantics.
+     * Uses conditionalGroup with two alternatives:
+     *   Alt 1 (flat): root.s1.s2.s3
+     *   Alt 2 (broken): root.s1\n    .s2\n    .s3
+     * First segment stays with root; remaining segments break together.
+     */
+    private void visitMethodChain(List<MethodInvocation> chain) {
+        var innermost = chain.getFirst();
+        var rootExpr = getProperty(innermost, MethodInvocation.EXPRESSION_PROPERTY);
+
+        Doc rootDoc;
+        int startIndex;
+        if (rootExpr != null) {
+            rootExpr.accept(this);
+            rootDoc = result;
+            startIndex = 0;
+        } else {
+            // No expression — innermost itself is the root (e.g., getList())
+            rootDoc = formatMethodCallNoDot(innermost);
+            startIndex = 1;
+        }
+
+        // Build segment docs (each is .methodName(args))
+        var segDocs = new ArrayList<Doc>();
+        for (int i = startIndex; i < chain.size(); i++) {
+            segDocs.add(formatMethodCallWithDot(chain.get(i)));
+        }
+
+        // Alt 1: everything flat
+        var flatParts = new ArrayList<Doc>();
+        flatParts.add(rootDoc);
+        flatParts.addAll(segDocs);
+        var flatAlt = concat(flatParts);
+
+        // Alt 2: first segment stays with root, rest break with indent
+        var brokenParts = new ArrayList<Doc>();
+        brokenParts.add(rootDoc);
+        if (!segDocs.isEmpty()) {
+            brokenParts.add(segDocs.getFirst());
+        }
+        if (segDocs.size() > 1) {
+            var indentParts = new ArrayList<Doc>();
+            for (int i = 1; i < segDocs.size(); i++) {
+                indentParts.add(line(""));
+                indentParts.add(segDocs.get(i));
+            }
+            brokenParts.add(indent(concat(indentParts)));
+        }
+        var brokenAlt = concat(brokenParts);
+
+        result = conditionalGroup(List.of(flatAlt, brokenAlt));
+    }
+
+    private void collectMethodChain(MethodInvocation node, List<MethodInvocation> chain) {
+        var expr = getProperty(node, MethodInvocation.EXPRESSION_PROPERTY);
+        if (expr instanceof MethodInvocation inner) {
+            collectMethodChain(inner, chain);
+        }
+        chain.add(node);
+    }
+
+    private Doc formatMethodCallNoDot(MethodInvocation node) {
+        var parts = new ArrayList<Doc>();
+        visitTypeArguments(parts, node, MethodInvocation.TYPE_ARGUMENTS_PROPERTY);
+        parts.add(text(node.getName().getIdentifier()));
+        formatArguments(parts, getProperty(node, MethodInvocation.ARGUMENTS_PROPERTY));
+        return concat(parts);
+    }
+
+    private Doc formatMethodCallWithDot(MethodInvocation node) {
+        var parts = new ArrayList<Doc>();
+        parts.add(text("."));
+        visitTypeArguments(parts, node, MethodInvocation.TYPE_ARGUMENTS_PROPERTY);
+        parts.add(text(node.getName().getIdentifier()));
+        formatArguments(parts, getProperty(node, MethodInvocation.ARGUMENTS_PROPERTY));
+        return concat(parts);
+    }
+
+    private void formatArguments(List<Doc> parts, List<ASTNode> arguments) {
         if (arguments.isEmpty()) {
             parts.add(text("()"));
         } else {
@@ -1592,9 +1688,6 @@ public class AstToDoc extends ASTVisitor {
             parts.add(join(concat(text(","), space()), argDocs));
             parts.add(text(")"));
         }
-
-        result = group(concat(parts));
-        return false;
     }
 
     @Override

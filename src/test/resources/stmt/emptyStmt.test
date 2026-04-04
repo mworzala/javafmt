@@ -1,0 +1,9 @@
+class Example {
+    void foo() {
+        ;;;;;;;;;
+    }
+}
+---
+class Example {
+    void foo() {}
+}

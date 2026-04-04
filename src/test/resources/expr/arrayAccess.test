@@ -1,0 +1,18 @@
+class Example {
+    void foo() {
+        int x = myArray[0];
+
+        int aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa];
+
+    }
+}
+---
+class Example {
+    void foo() {
+        int x = myArray[0];
+
+        int aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa[
+            aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        ];
+    }
+}

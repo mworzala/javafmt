@@ -26,6 +26,13 @@ public sealed interface Doc {
      */
     record Group(Doc doc) implements Doc {}
 
+    /**
+     * Try each alternative in order; use the first that fits flat.
+     * If none fit, use the last alternative in breaking mode.
+     * Mirrors Prettier's conditionalGroup / propagateBreak concept.
+     */
+    record ConditionalGroup(java.util.List<Doc> alternatives) implements Doc {}
+
     // ── convenience builders ──
 
     static Doc space()                  { return text(" "); }
@@ -34,6 +41,7 @@ public sealed interface Doc {
     static Doc hardLine()               { return new HardLine(); }
     static Doc indent(Doc d)            { return new Indent(d); }
     static Doc group(Doc d)             { return new Group(d); }
+    static Doc conditionalGroup(java.util.List<Doc> alts) { return new ConditionalGroup(alts); }
 
     static Doc concat(Doc... parts) {
         return new Concat(java.util.List.of(parts));

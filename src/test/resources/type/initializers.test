@@ -1,0 +1,21 @@
+class Example {
+    {
+var a = 1;
+
+    }
+
+    static
+
+
+    {     var a = 1;}
+}
+---
+class Example {
+    {
+        var a = 1;
+    }
+
+    static {
+        var a = 1;
+    }
+}

@@ -117,6 +117,25 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
+    public boolean visit(Initializer node) {
+        var parts = new ArrayList<Doc>();
+
+        visitJavadoc(parts, node);
+
+        visitModifiers(parts, node, Initializer.MODIFIERS2_PROPERTY);
+
+        // TODO: if the body is empty, should we just delete this entire node?
+        var body = getProperty(node, Initializer.BODY_PROPERTY);
+        if (body != null) {
+            body.accept(this);
+            parts.add(result);
+        }
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
     public boolean visit(FieldDeclaration node) {
         var parts = new ArrayList<Doc>();
 
@@ -200,93 +219,6 @@ public class AstToDoc extends ASTVisitor {
         return false;
     }
 
-    private int blankLinesBetweenPositions(int from, int to) {
-        int newlines = 0;
-        for (int i = from; i < to; i++) {
-            if (source.charAt(i) == '\n') newlines++;
-        }
-        return Math.max(0, Math.min(newlines - 1, 1));
-    }
-
-    private int blankLinesBetween(ASTNode first, ASTNode second) {
-        if (source == null) return 1;
-        return blankLinesBetweenPositions(
-                first.getStartPosition() + first.getLength(),
-                second.getStartPosition());
-    }
-
-    private int blankLinesAfterOpenBrace(TypeDeclaration node, ASTNode firstBodyDecl) {
-        if (source == null) return 1;
-        int firstBodyStart = firstBodyDecl.getStartPosition();
-        int pos = firstBodyStart - 1;
-        while (pos >= node.getStartPosition() && source.charAt(pos) != '{') pos--;
-        return blankLinesBetweenPositions(pos + 1, firstBodyStart);
-    }
-
-    private int blankLinesBeforeCloseBrace(TypeDeclaration node, ASTNode lastBodyDecl) {
-        if (source == null) return 1;
-        int lastBodyEnd = lastBodyDecl.getStartPosition() + lastBodyDecl.getLength();
-        int closeBrace = node.getStartPosition() + node.getLength() - 1;
-        return blankLinesBetweenPositions(lastBodyEnd, closeBrace);
-    }
-
-    private void visitJavadoc(List<Doc> parts, BodyDeclaration node) {
-        if (source == null) return;
-
-        // Check for legacy /** ... */ javadoc via the AST
-        var javadoc = node.getJavadoc();
-        if (javadoc != null) {
-            int startPos = javadoc.getStartPosition();
-            var text = source.substring(startPos, startPos + javadoc.getLength());
-            // Compute the column of /** to strip that indentation from subsequent lines
-            int col = 0;
-            for (int i = startPos - 1; i >= 0 && source.charAt(i) != '\n'; i--) col++;
-            appendCommentLines(parts, text, col);
-            return;
-        }
-
-        // Check for markdown /// javadoc (not recognized by Eclipse JDT as Javadoc)
-        int declStart = node.getStartPosition();
-        // Walk backwards past whitespace to find preceding lines
-        int pos = declStart - 1;
-        while (pos >= 0 && source.charAt(pos) == ' ') pos--;
-        if (pos >= 0 && source.charAt(pos) == '\n') pos--;
-
-        // Collect /// lines going backwards
-        var mdLines = new ArrayList<String>();
-        while (pos >= 0) {
-            // Find start of this line
-            int lineEnd = pos;
-            int lineStart = pos;
-            while (lineStart > 0 && source.charAt(lineStart - 1) != '\n') lineStart--;
-            var line = source.substring(lineStart, lineEnd + 1);
-            var trimmed = line.stripLeading();
-            if (trimmed.startsWith("///")) {
-                mdLines.add(0, trimmed);
-                // Move to previous line
-                pos = lineStart - 1;
-                if (pos >= 0 && source.charAt(pos) == '\n') pos--;
-            } else {
-                break;
-            }
-        }
-
-        if (!mdLines.isEmpty()) {
-            appendCommentLines(parts, String.join("\n", mdLines), 0);
-        }
-    }
-
-    private void appendCommentLines(List<Doc> parts, String text, int indentToStrip) {
-        var lines = text.split("\n");
-        for (var line : lines) {
-            // Strip up to indentToStrip leading spaces
-            int i = 0;
-            while (i < indentToStrip && i < line.length() && line.charAt(i) == ' ') i++;
-            parts.add(text(line.substring(i).stripTrailing()));
-            parts.add(hardLine());
-        }
-    }
-
     private void visitModifiers(List<Doc> doc, ASTNode node, ChildListPropertyDescriptor property) {
         var modifiers = getProperty(node, property);
         if (modifiers.isEmpty()) return;
@@ -305,23 +237,112 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(Block node) {
-        var stmts = getProperty(node, Block.STATEMENTS_PROPERTY);
+        var stmts = new ArrayList<>(getProperty(node, Block.STATEMENTS_PROPERTY));
+        stmts.removeIf(stmt -> stmt instanceof EmptyStatement);
+
         if (stmts.isEmpty()) {
             result = text("{}");
             return false;
         }
 
         var parts = new ArrayList<Doc>();
-        parts.add(text("{"));
-        parts.add(hardLine());
-        for (var stmt : stmts) {
-            stmt.accept(this);
-            parts.add(result);
+        for (int i = 0; i < stmts.size(); i++) {
+            if (i > 0 && blankLinesBetween(stmts.get(i - 1), stmts.get(i)) > 0) {
+                parts.add(hardLine());
+            }
+            stmts.get(i).accept(this);
             parts.add(hardLine());
+            parts.add(result);
         }
-        parts.add(text("}"));
 
+        result = concat(text("{"),
+                        indent(concat(parts)),
+                        hardLine(),
+                        text("}"));
+        return false;
+    }
+
+    @Override
+    public boolean visit(VariableDeclarationStatement node) {
+        var parts = new ArrayList<Doc>();
+
+        visitModifiers(parts, node, VariableDeclarationStatement.MODIFIERS2_PROPERTY);
+
+        var type = getProperty(node, VariableDeclarationStatement.TYPE_PROPERTY);
+        type.accept(this);
+        parts.add(result);
+        parts.add(space());
+
+        var fragments = getProperty(node, VariableDeclarationStatement.FRAGMENTS_PROPERTY);
+        var fragDocs = new ArrayList<Doc>();
+        for (var frag : fragments) {
+            frag.accept(this);
+            fragDocs.add(result);
+        }
+
+        if (fragDocs.size() == 1) {
+            parts.add(fragDocs.getFirst());
+        } else {
+            parts.add(group(concat(
+                    fragDocs.getFirst(),
+                    text(","),
+                    indent(concat(
+                            line(),
+                            join(concat(text(","), line()),
+                                 fragDocs.subList(1, fragDocs.size()))
+                    ))
+            )));
+        }
+
+        parts.add(text(";"));
         result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(VariableDeclarationFragment node) {
+        var name = text(node.getName().getIdentifier());
+        var init = node.getInitializer();
+        if (init == null) {
+            result = name;
+            return false;
+        }
+        init.accept(this);
+        var initDoc = result;
+        if (initDoc instanceof Doc.ConditionalGroup) {
+            // Wrap the whole "name = initDoc" in a group. When it doesn't fit flat,
+            // non-flat mode propagates to the ConditionalGroup at the current column,
+            // where the flat alt no longer fits and the breaking alt is chosen.
+            result = group(concat(name, text(" = "), initDoc));
+        } else {
+            // Keep "= init" on same line; if line is too long, break before initializer
+            result = concat(
+                    name,
+                    group(concat(text(" ="), indent(concat(line(), initDoc))))
+            );
+        }
+        return false;
+    }
+
+    @Override
+    public boolean visit(ArrayAccess node) {
+        var array = getProperty(node, ArrayAccess.ARRAY_PROPERTY);
+        array.accept(this);
+        var arrayDoc = result;
+
+        var index = getProperty(node, ArrayAccess.INDEX_PROPERTY);
+        index.accept(this);
+        var indexDoc = result;
+
+        var flat = concat(arrayDoc, text("["), indexDoc, text("]"));
+        var breaking = concat(arrayDoc, text("["), indent(concat(new Doc.Line(""), indexDoc)), new Doc.Line(""), text("]"));
+        result = conditionalGroup(List.of(flat, breaking));
+        return false;
+    }
+
+    @Override
+    public boolean visit(NullLiteral node) {
+        result = text("null");
         return false;
     }
 
@@ -345,11 +366,6 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(AnonymousClassDeclaration node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(ArrayAccess node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
@@ -449,11 +465,6 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
-    public boolean visit(EmptyStatement node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
     public boolean visit(EnhancedForStatement node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
@@ -510,11 +521,6 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(InfixExpression node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(Initializer node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
@@ -605,11 +611,6 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(NormalAnnotation node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(NullLiteral node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
@@ -843,26 +844,6 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
-    public boolean visit(VariableDeclarationStatement node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(VariableDeclarationFragment node) {
-        var name = text(node.getName().getIdentifier());
-        var init = node.getInitializer();
-        if (init == null) {
-            result = name;
-            return false;
-        }
-        init.accept(this);
-        var initDoc = result;
-        // Keep "= init" on same line; if line is too long, break before initializer
-        result = concat(name, group(concat(text(" ="), indent(concat(line(), initDoc)))));
-        return false;
-    }
-
-    @Override
     public boolean visit(WhileStatement node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
@@ -882,6 +863,11 @@ public class AstToDoc extends ASTVisitor {
         return super.visit(implicitTypeDeclaration);
     }
 
+    @Override
+    public boolean visit(EmptyStatement node) {
+        throw new IllegalStateException("EmptyStatement should have been removed");
+    }
+
     // Helpers
 
     private static @UnknownNullability ASTNode getProperty(ASTNode node, ChildPropertyDescriptor property) {
@@ -890,6 +876,101 @@ public class AstToDoc extends ASTVisitor {
 
     private static List<ASTNode> getProperty(ASTNode node, ChildListPropertyDescriptor property) {
         return (List<ASTNode>) node.getStructuralProperty(property);
+    }
+
+    private int blankLinesBetweenPositions(int from, int to) {
+        int newlines = 0;
+        for (int i = from; i < to; i++) {
+            if (source.charAt(i) == '\n') newlines++;
+        }
+        return Math.max(0, Math.min(newlines - 1, 1));
+    }
+
+    private int blankLinesBetween(ASTNode first, ASTNode second) {
+        if (source == null) return 1;
+        return blankLinesBetweenPositions(
+                first.getStartPosition() + first.getLength(),
+                second.getStartPosition());
+    }
+
+    private int blankLinesAfterOpenBrace(TypeDeclaration node, ASTNode firstBodyDecl) {
+        if (source == null) return 1;
+        int firstBodyStart = firstBodyDecl.getStartPosition();
+        int pos = firstBodyStart - 1;
+        while (pos >= node.getStartPosition() && source.charAt(pos) != '{') {
+            pos--;
+        }
+        return blankLinesBetweenPositions(pos + 1, firstBodyStart);
+    }
+
+    private int blankLinesBeforeCloseBrace(TypeDeclaration node, ASTNode lastBodyDecl) {
+        if (source == null) return 1;
+        int lastBodyEnd = lastBodyDecl.getStartPosition() + lastBodyDecl.getLength();
+        int closeBrace = node.getStartPosition() + node.getLength() - 1;
+        return blankLinesBetweenPositions(lastBodyEnd, closeBrace);
+    }
+
+    private void visitJavadoc(List<Doc> parts, BodyDeclaration node) {
+        if (source == null) return;
+
+        // Check for legacy /** ... */ javadoc via the AST
+        var javadoc = node.getJavadoc();
+        if (javadoc != null) {
+            int startPos = javadoc.getStartPosition();
+            var text = source.substring(startPos, startPos + javadoc.getLength());
+            // Compute the column of /** to strip that indentation from subsequent lines
+            int col = 0;
+            for (int i = startPos - 1; i >= 0 && source.charAt(i) != '\n'; i--) col++;
+            appendCommentLines(parts, text, col);
+            return;
+        }
+
+        // Check for markdown /// javadoc (not recognized by Eclipse JDT as Javadoc)
+        int declStart = node.getStartPosition();
+        // Walk backwards past whitespace to find preceding lines
+        int pos = declStart - 1;
+        while (pos >= 0 && source.charAt(pos) == ' ') {
+            pos--;
+        }
+        if (pos >= 0 && source.charAt(pos) == '\n') pos--;
+
+        // Collect /// lines going backwards
+        var mdLines = new ArrayList<String>();
+        while (pos >= 0) {
+            // Find start of this line
+            int lineEnd = pos;
+            int lineStart = pos;
+            while (lineStart > 0 && source.charAt(lineStart - 1) != '\n') {
+                lineStart--;
+            }
+            var line = source.substring(lineStart, lineEnd + 1);
+            var trimmed = line.stripLeading();
+            if (trimmed.startsWith("///")) {
+                mdLines.add(0, trimmed);
+                // Move to previous line
+                pos = lineStart - 1;
+                if (pos >= 0 && source.charAt(pos) == '\n') pos--;
+            } else {
+                break;
+            }
+        }
+
+        if (!mdLines.isEmpty()) {
+            appendCommentLines(parts, String.join("\n", mdLines), 0);
+        }
+    }
+
+    private void appendCommentLines(List<Doc> parts, String text, int indentToStrip) {
+        var lines = text.split("\n");
+        for (var line : lines) {
+            // Strip up to indentToStrip leading spaces
+            int i = 0;
+            while (i < indentToStrip && i < line.length() && line.charAt(i) == ' ') {
+                i++;
+            }
+            parts.add(text(line.substring(i).stripTrailing()));
+            parts.add(hardLine());
+        }
     }
 
 }

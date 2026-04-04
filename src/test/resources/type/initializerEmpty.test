@@ -1,0 +1,17 @@
+class Example {
+    {
+
+
+    }
+
+    static
+
+
+    {     }
+}
+---
+class Example {
+    {}
+
+    static {}
+}

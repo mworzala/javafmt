@@ -62,6 +62,21 @@ public final class DocPrinter {
                         stack.push(new Frame(frame.indent(), false, g.doc()));
                     }
                 }
+
+                case Doc.ConditionalGroup cg -> {
+                    var alts = cg.alternatives();
+                    boolean found = false;
+                    for (Doc alt : alts) {
+                        if (fits(frame.indent(), alt)) {
+                            stack.push(new Frame(frame.indent(), true, alt));
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        stack.push(new Frame(frame.indent(), false, alts.getLast()));
+                    }
+                }
             }
         }
         return out.toString();
@@ -92,6 +107,7 @@ public final class DocPrinter {
                 }
                 case Doc.Indent i -> work.push(i.doc());
                 case Doc.Group g -> work.push(g.doc());
+                case Doc.ConditionalGroup cg -> work.push(cg.alternatives().getFirst());
                 case Doc.Concat c -> {
                     for (int i = c.parts().size() - 1; i >= 0; i--) {
                         work.push(c.parts().get(i));

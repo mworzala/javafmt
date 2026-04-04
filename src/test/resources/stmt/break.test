@@ -1,0 +1,19 @@
+class Example {
+    Example() {
+        break;
+
+        break
+
+
+
+        foo;
+    }
+}
+---
+class Example {
+    Example() {
+        break;
+
+        break foo;
+    }
+}

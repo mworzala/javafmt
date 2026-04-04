@@ -1,0 +1,19 @@
+class Example {
+    Example() {
+        return;
+
+        return 1;
+
+        return reallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallylong;
+    }
+}
+---
+class Example {
+    Example() {
+        return;
+
+        return 1;
+
+        return reallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallylong;
+    }
+}

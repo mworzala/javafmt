@@ -1,0 +1,19 @@
+class Example {
+    Example() {
+        a = b;
+        a = b = c;
+
+        a += b;
+        a -= b;
+    }
+}
+---
+class Example {
+    Example() {
+        a = b;
+        a = b = c;
+
+        a += b;
+        a -= b;
+    }
+}

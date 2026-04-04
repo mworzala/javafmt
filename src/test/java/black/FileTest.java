@@ -1,5 +1,6 @@
 package black;
 
+import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -9,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -48,6 +50,10 @@ public class FileTest {
         var parser = ASTParser.newParser(AST.getJLSLatest());
         parser.setSource(input.toCharArray());
         parser.setKind(ASTParser.K_COMPILATION_UNIT);
+        Map<String, String> options = JavaCore.getOptions();
+        options.put(JavaCore.COMPILER_SOURCE, "25");
+        options.put(JavaCore.COMPILER_COMPLIANCE, "25");
+        parser.setCompilerOptions(options);
         var ast = parser.createAST(null);
 
         var a2d = new AstToDoc(input);

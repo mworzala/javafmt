@@ -38,6 +38,7 @@ public sealed interface Doc {
     static Doc space()                  { return text(" "); }
     static Doc text(String s)           { return new Text(s); }
     static Doc line()                   { return new Line(); }
+    static Doc line(String s)                   { return new Line(s); }
     static Doc hardLine()               { return new HardLine(); }
     static Doc indent(Doc d)            { return new Indent(d); }
     static Doc group(Doc d)             { return new Group(d); }

@@ -1,0 +1,9 @@
+record Example(
+int a, int b
+)       {
+
+
+
+}
+---
+record Example(int a, int b) {}

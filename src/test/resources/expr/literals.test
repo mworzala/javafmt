@@ -1,0 +1,21 @@
+class Example {
+    Example() {
+        var a = 1;
+        var b = 1.0;
+        var c = "foo";
+        var d = true;
+        var e = false;
+        var f = null;
+    }
+}
+---
+class Example {
+    Example() {
+        var a = 1;
+        var b = 1.0;
+        var c = "foo";
+        var d = true;
+        var e = false;
+        var f = null;
+    }
+}

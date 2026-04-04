@@ -1,0 +1,9 @@
+void nameQualifiedExample() {
+    java.util.List a=null;
+    java.util.Map.Entry b=null;
+}
+---
+void nameQualifiedExample() {
+    java.util.List a = null;
+    java.util.Map.Entry b = null;
+}

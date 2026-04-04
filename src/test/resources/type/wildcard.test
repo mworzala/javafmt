@@ -1,0 +1,17 @@
+void wildcardExample() {
+    List<?> a=new ArrayList<>();
+    List<? extends Number> b=new ArrayList<Integer>();
+    List<? super Integer> c=new ArrayList<Number>();
+    Map<? extends String,? super Integer> d=new HashMap<>();
+    Class<? extends Comparable<?>> e=null;
+}
+void take(List<? extends Comparable<? super T>> list){}
+---
+void wildcardExample() {
+    List<?> a = new ArrayList<>();
+    List<? extends Number> b = new ArrayList<Integer>();
+    List<? super Integer> c = new ArrayList<Number>();
+    Map<? extends String, ? super Integer> d = new HashMap<>();
+    Class<? extends Comparable<?>> e = null;
+}
+void take(List<? extends Comparable<? super T>> list) {}

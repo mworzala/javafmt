@@ -1,0 +1,19 @@
+void synchronizedExample() {
+    synchronized(lock){counter++;System.out.println(counter);}
+    synchronized(this){doSomething();doSomethingElse();}
+    synchronized(MyClass.class){instance=new MyClass();}
+}
+---
+void synchronizedExample() {
+    synchronized (lock) {
+        counter++;
+        System.out.println(counter);
+    }
+    synchronized (this) {
+        doSomething();
+        doSomethingElse();
+    }
+    synchronized (MyClass.class) {
+        instance = new MyClass();
+    }
+}

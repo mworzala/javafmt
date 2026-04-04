@@ -10,6 +10,18 @@ class D{}
 class E{}
 @Anno()
 class F{}
+
+@SuppressWarnings("unchecked")
+class A{}
+@SuppressWarnings({"unchecked","deprecation","rawtypes"})
+class B{}
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+@interface C{}
+@Generated("com.example.Generator")
+class D{}
+@NamedQuery("SELECT u FROM User u WHERE u.active = true")
+class E{}
 ---
 @SuppressWarnings(value = "unchecked")
 class A {}
@@ -41,3 +53,19 @@ class E {}
 
 @Anno()
 class F {}
+
+@SuppressWarnings("unchecked")
+class A {}
+
+@SuppressWarnings({"unchecked", "deprecation", "rawtypes"})
+class B {}
+
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+@interface C {}
+
+@Generated("com.example.Generator")
+class D {}
+
+@NamedQuery("SELECT u FROM User u WHERE u.active = true")
+class E {}

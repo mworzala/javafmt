@@ -1,0 +1,11 @@
+void eitherOrExample() {
+    switch(obj){case Integer i,Long l->System.out.println("number");case String s,CharSequence cs->System.out.println("text");default->System.out.println("other");}
+}
+---
+void eitherOrExample() {
+    switch (obj) {
+        case Integer i, Long l -> System.out.println("number");
+        case String s, CharSequence cs -> System.out.println("text");
+        default -> System.out.println("other");
+    }
+}

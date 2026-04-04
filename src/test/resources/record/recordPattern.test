@@ -1,0 +1,19 @@
+void recordPatternExample() {
+    if(obj instanceof Point(int x,int y)){System.out.println(x+y);}
+    if(obj instanceof Line(Point(int x1,int y1),Point(int x2,int y2))){System.out.println("line");}
+    switch(shape){case Circle(var radius)->System.out.println(radius);case Rectangle(var w,var h)->System.out.println(w*h);default->System.out.println("unknown");}
+}
+---
+void recordPatternExample() {
+    if (obj instanceof Point(int x, int y)) {
+        System.out.println(x + y);
+    }
+    if (obj instanceof Line(Point(int x1, int y1), Point(int x2, int y2))) {
+        System.out.println("line");
+    }
+    switch (shape) {
+        case Circle(var radius) -> System.out.println(radius);
+        case Rectangle(var w, var h) -> System.out.println(w * h);
+        default -> System.out.println("unknown");
+    }
+}

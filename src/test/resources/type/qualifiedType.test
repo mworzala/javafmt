@@ -1,0 +1,9 @@
+void qualifiedTypeExample() {
+    Outer.Inner a=null;
+    Outer.Middle.Inner b=null;
+}
+---
+void qualifiedTypeExample() {
+    Outer.Inner a = null;
+    Outer.Middle.Inner b = null;
+}

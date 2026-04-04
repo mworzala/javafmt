@@ -1,0 +1,21 @@
+void typeLiteralExample() {
+    Class<?> a=String.class;
+    Class<?> b=int.class;
+    Class<?> c=Object.class;
+    Class<?> d=int[].class;
+    Class<?> e=Map.Entry.class;
+    System.out.println(String.class);
+    var isSame=String.class==Object.class;
+    process(List.class,Map.class,Set.class);
+}
+---
+void typeLiteralExample() {
+    Class<?> a = String.class;
+    Class<?> b = int.class;
+    Class<?> c = Object.class;
+    Class<?> d = int[].class;
+    Class<?> e = Map.Entry.class;
+    System.out.println(String.class);
+    var isSame = String.class == Object.class;
+    process(List.class, Map.class, Set.class);
+}

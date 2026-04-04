@@ -1,0 +1,33 @@
+void example() {
+    class Local{void doStuff(){System.out.println("local");}}
+    var obj=new Local();
+    obj.doStuff();
+    class Another{int x;Another(int x){this.x=x;}int getX(){return x;}}
+    enum LocalEnum{A,B,C}
+    record LocalRecord(int x,int y){}
+}
+---
+void example() {
+    class Local {
+        void doStuff() {
+            System.out.println("local");
+        }
+    }
+    var obj = new Local();
+    obj.doStuff();
+    class Another {
+        int x;
+        Another(int x) {
+            this.x = x;
+        }
+        int getX() {
+            return x;
+        }
+    }
+    enum LocalEnum {
+        A,
+        B,
+        C
+    }
+    record LocalRecord(int x, int y) {}
+}

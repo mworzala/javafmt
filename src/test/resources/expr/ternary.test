@@ -1,0 +1,17 @@
+void ternaryExample() {
+    int a=x>0?1:0;
+    int b=x>0?x:0-x;
+    String c=value!=null?value:"default";
+    int d=a>b?a>c?a:c:b>c?b:c;
+    int e=veryLongConditionVariable?veryLongThenExpressionValue:veryLongElseExpressionValue;
+    var f=check()?doSomething(a,b,c):doSomethingElse(d,e,f);
+}
+---
+void ternaryExample() {
+    int a = x > 0 ? 1 : 0;
+    int b = x > 0 ? x : 0 - x;
+    String c = value != null ? value : "default";
+    int d = a > b ? a > c ? a : c : b > c ? b : c;
+    int e = veryLongConditionVariable ? veryLongThenExpressionValue : veryLongElseExpressionValue;
+    var f = check() ? doSomething(a, b, c) : doSomethingElse(d, e, f);
+}

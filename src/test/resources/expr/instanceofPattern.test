@@ -1,0 +1,21 @@
+void patternInstanceofExample() {
+    if(obj instanceof String s){System.out.println(s);}
+    if(obj instanceof Integer i&&i>0){System.out.println(i);}
+    boolean isString=obj instanceof String s;
+    var result=obj instanceof List<?> list?list.size():0;
+    if(obj instanceof Map<?,?> map&&!map.isEmpty()){process(map);}
+}
+---
+void patternInstanceofExample() {
+    if (obj instanceof String s) {
+        System.out.println(s);
+    }
+    if (obj instanceof Integer i && i > 0) {
+        System.out.println(i);
+    }
+    boolean isString = obj instanceof String s;
+    var result = obj instanceof List<?> list ? list.size() : 0;
+    if (obj instanceof Map<?, ?> map && !map.isEmpty()) {
+        process(map);
+    }
+}

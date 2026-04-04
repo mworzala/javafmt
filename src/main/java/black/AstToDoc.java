@@ -49,7 +49,15 @@ public class AstToDoc extends ASTVisitor {
             parts.add(hardLine());
         }
 
-        // TODO IMPORTS_PROPERTY
+        var imports = getProperty(node, CompilationUnit.IMPORTS_PROPERTY);
+        if (!imports.isEmpty()) {
+            for (var imp : imports) {
+                imp.accept(this);
+                parts.add(result);
+                parts.add(hardLine());
+            }
+            parts.add(hardLine());
+        }
 
         var types = getProperty(node, CompilationUnit.TYPES_PROPERTY);
         for (int i = 0; i < types.size(); i++) {
@@ -82,6 +90,28 @@ public class AstToDoc extends ASTVisitor {
         return false;
     }
 
+    @Override
+    public boolean visit(ImportDeclaration node) {
+        var parts = new ArrayList<Doc>();
+
+        parts.add(text("import "));
+
+        if (node.isStatic()) {
+            parts.add(text("static "));
+        }
+
+        parts.add(text(node.getName().getFullyQualifiedName()));
+
+        if (node.isOnDemand()) {
+            parts.add(text(".*"));
+        }
+
+        parts.add(text(";"));
+
+        result = concat(parts);
+        return false;
+    }
+
     // types
 
     @Override
@@ -103,13 +133,15 @@ public class AstToDoc extends ASTVisitor {
         parts.add(space());
 
         parts.add(text(node.getName().getIdentifier()));
+
+        visitTypeArguments(parts, node, TypeDeclaration.TYPE_PARAMETERS_PROPERTY);
+
         parts.add(space());
 
         // todo SUPERCLASS_PROPERTY
         // todo SUPER_INTERFACES_PROPERTY
         // todo SUPERCLASS_TYPE_PROPERTY
         // todo SUPER_INTERFACE_TYPES_PROPERTY
-        // todo TYPE_PARAMETERS_PROPERTY
         // todo PERMITS_TYPES_PROPERTY
 
         visitBodyDeclarations(parts, node, TypeDeclaration.BODY_DECLARATIONS_PROPERTY, true);
@@ -155,8 +187,9 @@ public class AstToDoc extends ASTVisitor {
         parts.add(space());
         parts.add(text(node.getName().getIdentifier()));
 
+        visitTypeArguments(parts, node, RecordDeclaration.TYPE_PARAMETERS_PROPERTY);
+
         // todo SUPER_INTERFACE_TYPES_PROPERTY
-        // todo TYPE_PARAMETERS_PROPERTY
 
         var components = getProperty(node, RecordDeclaration.RECORD_COMPONENTS_PROPERTY);
         if (components.isEmpty()) {
@@ -290,6 +323,54 @@ public class AstToDoc extends ASTVisitor {
             anonymousClass.accept(this);
             parts.add(result);
         }
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(AnnotationTypeDeclaration node) {
+        var parts = new ArrayList<Doc>();
+
+        visitJavadoc(parts, node);
+
+        visitModifiers(parts, node, AnnotationTypeDeclaration.MODIFIERS2_PROPERTY);
+
+        parts.add(text("@interface"));
+        parts.add(space());
+        parts.add(text(node.getName().getIdentifier()));
+        parts.add(space());
+
+        visitBodyDeclarations(parts, node, AnnotationTypeDeclaration.BODY_DECLARATIONS_PROPERTY, true);
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(AnnotationTypeMemberDeclaration node) {
+        var parts = new ArrayList<Doc>();
+
+        visitJavadoc(parts, node);
+
+        visitModifiers(parts, node, AnnotationTypeMemberDeclaration.MODIFIERS2_PROPERTY);
+
+        var type = getProperty(node, AnnotationTypeMemberDeclaration.TYPE_PROPERTY);
+        type.accept(this);
+        parts.add(result);
+        parts.add(space());
+
+        parts.add(text(node.getName().getIdentifier()));
+        parts.add(text("()"));
+
+        var defaultValue = getProperty(node, AnnotationTypeMemberDeclaration.DEFAULT_PROPERTY);
+        if (defaultValue != null) {
+            parts.add(text(" default "));
+            defaultValue.accept(this);
+            parts.add(result);
+        }
+
+        parts.add(text(";"));
 
         result = concat(parts);
         return false;
@@ -440,6 +521,11 @@ public class AstToDoc extends ASTVisitor {
 
         visitModifiers(parts, node, MethodDeclaration.MODIFIERS2_PROPERTY);
 
+        visitTypeArguments(parts, node, MethodDeclaration.TYPE_PARAMETERS_PROPERTY);
+        if (!getProperty(node, MethodDeclaration.TYPE_PARAMETERS_PROPERTY).isEmpty()) {
+            parts.add(space());
+        }
+
         // todo CONSTRUCTOR_PROPERTY
         // todo COMPACT_CONSTRUCTOR_PROPERTY
 
@@ -454,7 +540,6 @@ public class AstToDoc extends ASTVisitor {
 
         // todo EXTRA_DIMENSIONS_PROPERTY
         // todo EXTRA_DIMENSIONS2_PROPERTY
-        // todo TYPE_PARAMETERS_PROPERTY
 
         var params = getProperty(node, MethodDeclaration.PARAMETERS_PROPERTY);
         if (params.isEmpty()) {
@@ -513,6 +598,29 @@ public class AstToDoc extends ASTVisitor {
         return false;
     }
 
+    @Override
+    public boolean visit(TypeParameter node) {
+        var parts = new ArrayList<Doc>();
+
+        // todo MODIFIERS_PROPERTY (annotations on type params)
+
+        parts.add(text(node.getName().getIdentifier()));
+
+        var bounds = getProperty(node, TypeParameter.TYPE_BOUNDS_PROPERTY);
+        if (!bounds.isEmpty()) {
+            parts.add(text(" extends "));
+            var boundDocs = new ArrayList<Doc>();
+            for (var bound : bounds) {
+                bound.accept(this);
+                boundDocs.add(result);
+            }
+            parts.add(join(text(" & "), boundDocs));
+        }
+
+        result = concat(parts);
+        return false;
+    }
+
     // statements
 
     @Override
@@ -553,6 +661,14 @@ public class AstToDoc extends ASTVisitor {
                         text("}"));
         return false;
     }
+
+    @Override
+    public boolean visit(TypeDeclarationStatement node) {
+        var declaration = getProperty(node, TypeDeclarationStatement.DECLARATION_PROPERTY);
+        declaration.accept(this);
+        return false;
+    }
+
     @Override
     public boolean visit(IfStatement node) {
         var parts = new ArrayList<Doc>();
@@ -782,6 +898,56 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
+    public boolean visit(EitherOrMultiPattern node) {
+        var parts = new ArrayList<Doc>();
+
+        var patterns = getProperty(node, EitherOrMultiPattern.PATTERNS_PROPERTY);
+        for (int i = 0; i < patterns.size(); i++) {
+            patterns.get(i).accept(this);
+            parts.add(result);
+
+            if (i < patterns.size() - 1) {
+                parts.add(text(", "));
+            }
+        }
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(RecordPattern node) {
+        var parts = new ArrayList<Doc>();
+
+        var type = getProperty(node, RecordPattern.PATTERN_TYPE_PROPERTY);
+        type.accept(this);
+        parts.add(result);
+
+        var patterns = getProperty(node, RecordPattern.PATTERNS_PROPERTY);
+        if (patterns.isEmpty()) {
+            parts.add(text("()"));
+        } else {
+            var patternDocs = new ArrayList<Doc>();
+            for (var pattern : patterns) {
+                pattern.accept(this);
+                patternDocs.add(result);
+            }
+            parts.add(group(concat(
+                    text("("),
+                    indent(concat(
+                            line(""),
+                            join(concat(text(","), line()), patternDocs)
+                    )),
+                    line(""),
+                    text(")")
+            )));
+        }
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
     public boolean visit(LabeledStatement node) {
         var parts = new ArrayList<Doc>();
 
@@ -880,7 +1046,7 @@ public class AstToDoc extends ASTVisitor {
     public boolean visit(ConstructorInvocation node) {
         var parts = new ArrayList<Doc>();
 
-        // todo TYPE_ARGUMENTS_PROPERTY
+        visitTypeArguments(parts, node, ConstructorInvocation.TYPE_ARGUMENTS_PROPERTY);
 
         parts.add(text("this"));
 
@@ -1073,6 +1239,26 @@ public class AstToDoc extends ASTVisitor {
         result = label != null
                 ? concat(text("break"), space(), text(label.getIdentifier()), text(";"))
                 : text("break;");
+        return false;
+    }
+
+    @Override
+    public boolean visit(SynchronizedStatement node) {
+        var parts = new ArrayList<Doc>();
+
+        parts.add(text("synchronized ("));
+
+        var expression = getProperty(node, SynchronizedStatement.EXPRESSION_PROPERTY);
+        expression.accept(this);
+        parts.add(result);
+
+        parts.add(text(") "));
+
+        var body = getProperty(node, SynchronizedStatement.BODY_PROPERTY);
+        body.accept(this);
+        parts.add(result);
+
+        result = concat(parts);
         return false;
     }
 
@@ -1295,6 +1481,35 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
+    public boolean visit(ConditionalExpression node) {
+        var parts = new ArrayList<Doc>();
+
+        var condition = getProperty(node, ConditionalExpression.EXPRESSION_PROPERTY);
+        condition.accept(this);
+        parts.add(result);
+
+        var thenExpr = getProperty(node, ConditionalExpression.THEN_EXPRESSION_PROPERTY);
+        thenExpr.accept(this);
+        var thenDoc = result;
+
+        var elseExpr = getProperty(node, ConditionalExpression.ELSE_EXPRESSION_PROPERTY);
+        elseExpr.accept(this);
+        var elseDoc = result;
+
+        parts.add(indent(concat(
+                line(),
+                text("? "),
+                thenDoc,
+                line(),
+                text(": "),
+                elseDoc
+        )));
+
+        result = group(concat(parts));
+        return false;
+    }
+
+    @Override
     public boolean visit(InstanceofExpression node) {
         var parts = new ArrayList<Doc>();
 
@@ -1306,6 +1521,24 @@ public class AstToDoc extends ASTVisitor {
 
         var right = getProperty(node, InstanceofExpression.RIGHT_OPERAND_PROPERTY);
         right.accept(this);
+        parts.add(result);
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(PatternInstanceofExpression node) {
+        var parts = new ArrayList<Doc>();
+
+        var left = getProperty(node, PatternInstanceofExpression.LEFT_OPERAND_PROPERTY);
+        left.accept(this);
+        parts.add(result);
+
+        parts.add(text(" instanceof "));
+
+        var pattern = getProperty(node, PatternInstanceofExpression.PATTERN_PROPERTY);
+        pattern.accept(this);
         parts.add(result);
 
         result = concat(parts);
@@ -1546,13 +1779,14 @@ public class AstToDoc extends ASTVisitor {
         var typeArguments = getProperty(node, property);
         if (typeArguments.isEmpty()) return;
 
+        var typeDocs = new ArrayList<Doc>();
+        for (var typeArg : typeArguments) {
+            typeArg.accept(this);
+            typeDocs.add(result);
+        }
         parts.add(text("<"));
-        parts.add(join(concat(text(","), line()), typeArguments.stream().map(t -> {
-            t.accept(this);
-            return result;
-        }).toList()));
+        parts.add(join(concat(text(","), space()), typeDocs));
         parts.add(text(">"));
-        parts.add(space());
     }
 
     @Override
@@ -1702,6 +1936,20 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
+    public boolean visit(TypeLiteral node) {
+        var parts = new ArrayList<Doc>();
+
+        var type = getProperty(node, TypeLiteral.TYPE_PROPERTY);
+        type.accept(this);
+        parts.add(result);
+
+        parts.add(text(".class"));
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
     public boolean visit(ThisExpression node) {
         result = text("this");
         return false;
@@ -1776,6 +2024,67 @@ public class AstToDoc extends ASTVisitor {
     @Override
     public boolean visit(SimpleType node) {
         result = text(node.getName().getFullyQualifiedName());
+        return false;
+    }
+
+    @Override
+    public boolean visit(QualifiedType node) {
+        var parts = new ArrayList<Doc>();
+
+        var qualifier = getProperty(node, QualifiedType.QUALIFIER_PROPERTY);
+        qualifier.accept(this);
+        parts.add(result);
+
+        parts.add(text("."));
+
+        // todo ANNOTATIONS_PROPERTY
+
+        var name = getProperty(node, QualifiedType.NAME_PROPERTY);
+        name.accept(this);
+        parts.add(result);
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(NameQualifiedType node) {
+        var parts = new ArrayList<Doc>();
+
+        var qualifier = getProperty(node, NameQualifiedType.QUALIFIER_PROPERTY);
+        qualifier.accept(this);
+        parts.add(result);
+
+        parts.add(text("."));
+
+        // todo ANNOTATIONS_PROPERTY
+
+        var name = getProperty(node, NameQualifiedType.NAME_PROPERTY);
+        name.accept(this);
+        parts.add(result);
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(WildcardType node) {
+        var parts = new ArrayList<Doc>();
+
+        parts.add(text("?"));
+
+        var bound = getProperty(node, WildcardType.BOUND_PROPERTY);
+        if (bound != null) {
+            if (node.isUpperBound()) {
+                parts.add(text(" extends "));
+            } else {
+                parts.add(text(" super "));
+            }
+            bound.accept(this);
+            parts.add(result);
+        }
+
+        result = concat(parts);
         return false;
     }
 
@@ -1885,6 +2194,27 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
+    public boolean visit(SingleMemberAnnotation node) {
+        var parts = new ArrayList<Doc>();
+        parts.add(text("@"));
+
+        var typeName = getProperty(node, SingleMemberAnnotation.TYPE_NAME_PROPERTY);
+        typeName.accept(this);
+        parts.add(result);
+
+        parts.add(text("("));
+
+        var value = getProperty(node, SingleMemberAnnotation.VALUE_PROPERTY);
+        value.accept(this);
+        parts.add(result);
+
+        parts.add(text(")"));
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
     public boolean visit(NormalAnnotation node) {
         var parts = new ArrayList<Doc>();
         parts.add(text("@"));
@@ -1933,91 +2263,6 @@ public class AstToDoc extends ASTVisitor {
 
         result = concat(parts);
         return false;
-    }
-
-    // --- the rest :)
-
-    @Override
-    public boolean visit(ImportDeclaration node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(AnnotationTypeDeclaration node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(AnnotationTypeMemberDeclaration node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(ConditionalExpression node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(NameQualifiedType node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(PatternInstanceofExpression node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(QualifiedType node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(ModuleQualifiedName node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(RecordPattern node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(EitherOrMultiPattern node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(SingleMemberAnnotation node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(SynchronizedStatement node) {
-        // todo EXPRESSION_PROPERTY
-        // todo BODY_PROPERTY
-
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(TypeDeclarationStatement node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(TypeLiteral node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(TypeParameter node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(WildcardType node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
     // javadocs
@@ -2101,6 +2346,11 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(ModuleModifier node) {
+        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
+    }
+
+    @Override
+    public boolean visit(ModuleQualifiedName node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 

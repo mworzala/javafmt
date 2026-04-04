@@ -1,0 +1,41 @@
+@interface Empty{}
+@interface Marker{}
+@interface Author{String name();String date();}
+@interface Review{String reviewer();int score() default 0;String comment() default "";}
+@interface Schedule{String dayOfMonth() default "first";String dayOfWeek() default "Mon";int hour() default 12;}
+public @interface Endpoint{String method() default "GET";String path();String[] produces() default {};boolean authenticated() default false;}
+@interface Nested{@interface Inner{String value();}}
+---
+@interface Empty {}
+
+@interface Marker {}
+
+@interface Author {
+    String name();
+    String date();
+}
+
+@interface Review {
+    String reviewer();
+    int score() default 0;
+    String comment() default "";
+}
+
+@interface Schedule {
+    String dayOfMonth() default "first";
+    String dayOfWeek() default "Mon";
+    int hour() default 12;
+}
+
+public @interface Endpoint {
+    String method() default "GET";
+    String path();
+    String[] produces() default {};
+    boolean authenticated() default false;
+}
+
+@interface Nested {
+    @interface Inner {
+        String value();
+    }
+}

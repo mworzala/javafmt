@@ -1,0 +1,25 @@
+class TypeParamExample<T>{
+    <T> void simple(){}
+    <T extends Number> T bounded(T value){return value;}
+    <T extends Comparable<T>&Serializable> void multiBound(T value){}
+    <K,V> Map<K,V> pair(K key,V value){return Map.of(key,value);}
+    <T extends Comparable<T>,U extends List<T>&Serializable> void complex(T a,U b){}
+}
+class Multi<K extends Comparable<K>,V>{}
+record Pair<A,B>(A first,B second){}
+---
+class TypeParamExample<T> {
+    <T> void simple() {}
+    <T extends Number> T bounded(T value) {
+        return value;
+    }
+    <T extends Comparable<T> & Serializable> void multiBound(T value) {}
+    <K, V> Map<K, V> pair(K key, V value) {
+        return Map.of(key, value);
+    }
+    <T extends Comparable<T>, U extends List<T> & Serializable> void complex(T a, U b) {}
+}
+
+class Multi<K extends Comparable<K>, V> {}
+
+record Pair<A, B>(A first, B second) {}

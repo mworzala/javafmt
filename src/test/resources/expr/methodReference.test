@@ -32,7 +32,7 @@ void example() {
     Function<Integer, String> f = Integer::toString;
     UnaryOperator<String> g = this::process;
     UnaryOperator<String> h = super::process;
-    Function<String, Integer> i = String::<Integer> compareTo;
+    Function<String, Integer> i = String::<Integer>compareTo;
     Supplier<List<String>> j = ArrayList<String>::new;
     Function<Outer, String> k = Outer.Inner::toString;
     Supplier<Outer.Inner> l = Outer.Inner::new;

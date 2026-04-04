@@ -6,6 +6,11 @@ class Example {
         var d = true;
         var e = false;
         var f = null;
+        var g =          """
+            Hello!
+
+            World!
+        """;
     }
 }
 ---
@@ -17,5 +22,10 @@ class Example {
         var d = true;
         var e = false;
         var f = null;
+        var g = """
+            Hello!
+
+            World!
+        """;
     }
 }

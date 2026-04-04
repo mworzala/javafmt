@@ -1,0 +1,55 @@
+void example() {
+    int[] a=new int[10];
+    int[] b=new int[]{1,2,3};
+    int[] c=new int[]{};
+    int[][] d=new int[5][10];
+    int[][] e=new int[5][];
+    int[][] f=new int[][]{{1,2},{3,4},{5,6}};
+    int[][][] g=new int[2][3][4];
+    int[][][] h=new int[2][][];
+    String[] i=new String[]{"hello","world"};
+    Object[] j=new Object[]{new Object(),new Object(),new Object()};
+    int[] k=new int[]{veryLongVariableName,anotherVeryLongVariableName,yetAnotherVeryLongVariableName, yetAnotherVeryLongVariableName};
+    int[][] l=new int[][]{
+            {1,2,3,4,5},{6,7,8,9,10},{11,12,13,14,15},{16,17,18,19,20},{21,22,23,24,25}};
+    int[] m=new int[size*2+offset];
+    int[] n=new int[getSize()];
+    String[][] o=new String[][]{{"a","b"},{"c","d"}};
+    int[] p={1,2,3};
+    int[][] q={{1,2},{3,4}};
+    int[] r={};
+    int[] s=new int[]{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20};
+}
+---
+void example() {
+    int[] a = new int[10];
+    int[] b = new int[] {1, 2, 3};
+    int[] c = new int[] {};
+    int[][] d = new int[5][10];
+    int[][] e = new int[5][];
+    int[][] f = new int[][] {{1, 2}, {3, 4}, {5, 6}};
+    int[][][] g = new int[2][3][4];
+    int[][][] h = new int[2][][];
+    String[] i = new String[] {"hello", "world"};
+    Object[] j = new Object[] {new Object(), new Object(), new Object()};
+    int[] k = new int[] {
+        veryLongVariableName,
+        anotherVeryLongVariableName,
+        yetAnotherVeryLongVariableName,
+        yetAnotherVeryLongVariableName,
+    };
+    int[][] l = new int[][] {
+        {1, 2, 3, 4, 5},
+        {6, 7, 8, 9, 10},
+        {11, 12, 13, 14, 15},
+        {16, 17, 18, 19, 20},
+        {21, 22, 23, 24, 25},
+    };
+    int[] m = new int[size * 2 + offset];
+    int[] n = new int[getSize()];
+    String[][] o = new String[][] {{"a", "b"}, {"c", "d"}};
+    int[] p = {1, 2, 3};
+    int[][] q = {{1, 2}, {3, 4}};
+    int[] r = {};
+    int[] s = new int[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
+}

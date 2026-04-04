@@ -1,0 +1,19 @@
+class Example {
+    Example() {
+        var a = (int)b;
+        var a = (int)b;
+        var a = (int) ((String) a);
+
+        var obj = (Serializable & Comparable) something;
+    }
+}
+---
+class Example {
+    Example() {
+        var a = (int) b;
+        var a = (int) b;
+        var a = (int) ((String) a);
+
+        var obj = (Serializable & Comparable) something;
+    }
+}

@@ -1,0 +1,49 @@
+void example() {
+    Function<String,Integer> a=String::length;
+    Function<String,String> b=String::new;
+    Function<String,Integer> c=String::hashCode;
+    Supplier<List<String>> d=ArrayList::new;
+    Supplier<Object> e=Object::new;
+    Function<Integer,String> f=Integer::toString;
+    UnaryOperator<String> g=this::process;
+    UnaryOperator<String> h=super::process;
+    Function<String,Integer> i=String::<Integer>compareTo;
+    Supplier<List<String>> j=ArrayList<String>::new;
+    Function<Outer,String> k=Outer.Inner::toString;
+    Supplier<Outer.Inner> l=Outer.Inner::new;
+    BiFunction<int[],Integer,Integer> m=int[]::clone;
+    Function<String[],Integer> n=String[]::length;
+    Supplier<String[]> o=String[]::new;
+    Consumer<String> p=System.out::println;
+    Function<String,String> q=Foo.Bar.Baz::process;
+    Supplier<Foo.Bar.Baz> r=Foo.Bar.Baz::new;
+    list.stream().map(String::toLowerCase).forEach(System.out::println);
+    list.stream().map(Foo::new).collect(Collectors.toList());
+    Function<String,String> s=this::  process;
+    Function<String,String> t=  String  ::  valueOf;
+}
+---
+void example() {
+    Function<String, Integer> a = String::length;
+    Function<String, String> b = String::new;
+    Function<String, Integer> c = String::hashCode;
+    Supplier<List<String>> d = ArrayList::new;
+    Supplier<Object> e = Object::new;
+    Function<Integer, String> f = Integer::toString;
+    UnaryOperator<String> g = this::process;
+    UnaryOperator<String> h = super::process;
+    Function<String, Integer> i = String::<Integer> compareTo;
+    Supplier<List<String>> j = ArrayList<String>::new;
+    Function<Outer, String> k = Outer.Inner::toString;
+    Supplier<Outer.Inner> l = Outer.Inner::new;
+    BiFunction<int[], Integer, Integer> m = int[]::clone;
+    Function<String[], Integer> n = String[]::length;
+    Supplier<String[]> o = String[]::new;
+    Consumer<String> p = System.out::println;
+    Function<String, String> q = Foo.Bar.Baz::process;
+    Supplier<Foo.Bar.Baz> r = Foo.Bar.Baz::new;
+    list.stream().map(String::toLowerCase).forEach(System.out::println);
+    list.stream().map(Foo::new).collect(Collectors.toList());
+    Function<String, String> s = this::process;
+    Function<String, String> t = String::valueOf;
+}

@@ -30,6 +30,10 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(CompilationUnit node) {
+        for (var problem : node.getProblems()) {
+            throw new RuntimeException("AST has problems: " + problem.getMessage());
+        }
+
         this.compilationUnit = node;
         var parts = new ArrayList<Doc>();
 
@@ -128,6 +132,16 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
+    public boolean visit(AnonymousClassDeclaration node) {
+        var parts = new ArrayList<Doc>();
+
+        visitBodyDeclarations(parts, node, AnonymousClassDeclaration.BODY_DECLARATIONS_PROPERTY, true);
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
     public boolean visit(RecordDeclaration node) {
         var parts = new ArrayList<Doc>();
 
@@ -172,7 +186,7 @@ public class AstToDoc extends ASTVisitor {
 
     private void visitBodyDeclarations(
             List<Doc> parts,
-            AbstractTypeDeclaration node,
+            ASTNode node,
             ChildListPropertyDescriptor property,
             boolean withBraces
     ) {
@@ -182,13 +196,15 @@ public class AstToDoc extends ASTVisitor {
         int nodeStart = node.getStartPosition();
         int nodeEnd = nodeStart + node.getLength();
         int openBrace = nodeStart;
-        while (openBrace < nodeEnd && source != null && source.charAt(openBrace) != '{') openBrace++;
+        while (openBrace < nodeEnd && source != null && source.charAt(openBrace) != '{') {
+            openBrace++;
+        }
 
         // Collect line comments that appear at the body level (not inside a member's range)
         var bodyComments = collectLineCommentsInRange(openBrace + 1, nodeEnd - 1);
         bodyComments.removeIf(lc -> body.stream().anyMatch(decl ->
-                lc.getStartPosition() >= decl.getStartPosition() &&
-                lc.getStartPosition() < decl.getStartPosition() + decl.getLength()));
+                                                                   lc.getStartPosition() >= decl.getStartPosition() &&
+                                                                           lc.getStartPosition() < decl.getStartPosition() + decl.getLength()));
 
         // Build merged sorted list of body members and line comments
         var items = new ArrayList<ASTNode>(body);
@@ -341,10 +357,10 @@ public class AstToDoc extends ASTVisitor {
             parts.add(group(concat(
                     text("("),
                     indent(concat(
-                            line(),
+                            line(""),
                             join(concat(text(","), line()), paramDocs)
                     )),
-                    line(),
+                    line(""),
                     text(")")
             )));
         }
@@ -595,6 +611,27 @@ public class AstToDoc extends ASTVisitor {
         return false;
     }
 
+    @Override
+    public boolean visit(AssertStatement node) {
+        var parts = new ArrayList<Doc>();
+        parts.add(text("assert "));
+
+        var expression = getProperty(node, AssertStatement.EXPRESSION_PROPERTY);
+        expression.accept(this);
+        parts.add(result);
+
+        var message = getProperty(node, AssertStatement.MESSAGE_PROPERTY);
+        if (message != null) {
+            parts.add(text(" : "));
+            message.accept(this);
+            parts.add(result);
+        }
+
+        parts.add(text(";"));
+        result = concat(parts);
+        return false;
+    }
+
     // expressions
 
     @Override
@@ -736,6 +773,169 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
+    public boolean visit(ClassInstanceCreation node) {
+        var parts = new ArrayList<Doc>();
+
+        var expression = getProperty(node, ClassInstanceCreation.EXPRESSION_PROPERTY);
+        if (expression != null) {
+            expression.accept(this);
+            parts.add(result);
+            parts.add(text("."));
+        }
+
+        parts.add(text("new "));
+
+        var typeArguments = getProperty(node, ClassInstanceCreation.TYPE_ARGUMENTS_PROPERTY);
+        if (!typeArguments.isEmpty()) {
+            parts.add(text("<"));
+            parts.add(join(concat(text(","), line()), typeArguments.stream().map(t -> {
+                t.accept(this);
+                return result;
+            }).toList()));
+            parts.add(text(">"));
+            parts.add(space());
+        }
+
+        var type = getProperty(node, ClassInstanceCreation.TYPE_PROPERTY);
+        type.accept(this);
+        parts.add(result);
+
+        var arguments = getProperty(node, ClassInstanceCreation.ARGUMENTS_PROPERTY);
+        if (arguments.isEmpty()) {
+            parts.add(text("()"));
+        } else {
+            var argDocs = new ArrayList<Doc>();
+            for (var arg : arguments) {
+                arg.accept(this);
+                argDocs.add(result);
+            }
+            parts.add(group(concat(
+                    text("("),
+                    indent(concat(
+                            line(""),
+                            join(concat(text(","), line()), argDocs)
+                    )),
+                    line(""),
+                    text(")")
+            )));
+        }
+
+        var anonymousClass = getProperty(node, ClassInstanceCreation.ANONYMOUS_CLASS_DECLARATION_PROPERTY);
+        if (anonymousClass != null) {
+            parts.add(space());
+
+            anonymousClass.accept(this);
+            parts.add(result);
+        }
+
+        var partsDoc = concat(parts);
+        result = conditionalGroup(List.of(partsDoc, partsDoc));
+        return false;
+    }
+
+    @Override
+    public boolean visit(CreationReference node) {
+        var parts = new ArrayList<Doc>();
+
+        var expression = getProperty(node, CreationReference.TYPE_PROPERTY);
+        expression.accept(this);
+        parts.add(result);
+
+        parts.add(text("::"));
+
+        visitTypeArguments(parts, node, CreationReference.TYPE_ARGUMENTS_PROPERTY);
+
+        parts.add(text("new"));
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(SuperMethodReference node) {
+        var parts = new ArrayList<Doc>();
+
+        var qualifier = getProperty(node, SuperMethodReference.QUALIFIER_PROPERTY);
+        if (qualifier != null) {
+            qualifier.accept(this);
+            parts.add(result);
+        }
+
+        parts.add(text("super::"));
+
+        var typeArguments = getProperty(node, SuperMethodReference.TYPE_ARGUMENTS_PROPERTY);
+        if (!typeArguments.isEmpty()) {
+            parts.add(text("<"));
+            parts.add(join(concat(text(","), line()), typeArguments.stream().map(t -> {
+                t.accept(this);
+                return result;
+            }).toList()));
+            parts.add(text(">"));
+            parts.add(space());
+        }
+
+        var name = getProperty(node, SuperMethodReference.NAME_PROPERTY);
+        name.accept(this);
+        parts.add(result);
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(ExpressionMethodReference node) {
+        var parts = new ArrayList<Doc>();
+
+        var expression = getProperty(node, ExpressionMethodReference.EXPRESSION_PROPERTY);
+        expression.accept(this);
+        parts.add(result);
+
+        parts.add(text("::"));
+
+        visitTypeArguments(parts, node, ExpressionMethodReference.TYPE_ARGUMENTS_PROPERTY);
+
+        var name = getProperty(node, ExpressionMethodReference.NAME_PROPERTY);
+        name.accept(this);
+        parts.add(result);
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(TypeMethodReference node) {
+        var parts = new ArrayList<Doc>();
+
+        var type = getProperty(node, TypeMethodReference.TYPE_PROPERTY);
+        type.accept(this);
+        parts.add(result);
+
+        parts.add(text("::"));
+
+        visitTypeArguments(parts, node, TypeMethodReference.TYPE_ARGUMENTS_PROPERTY);
+
+        var name = getProperty(node, TypeMethodReference.NAME_PROPERTY);
+        name.accept(this);
+        parts.add(result);
+
+        result = concat(parts);
+        return false;
+    }
+
+    private void visitTypeArguments(List<Doc> parts, ASTNode node, ChildListPropertyDescriptor property) {
+        var typeArguments = getProperty(node, property);
+        if (typeArguments.isEmpty()) return;
+
+        parts.add(text("<"));
+        parts.add(join(concat(text(","), line()), typeArguments.stream().map(t -> {
+            t.accept(this);
+            return result;
+        }).toList()));
+        parts.add(text(">"));
+        parts.add(space());
+    }
+
+    @Override
     public boolean visit(LambdaExpression node) {
         var parts = new ArrayList<Doc>();
 
@@ -768,6 +968,82 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
+    public boolean visit(ArrayCreation node) {
+        var parts = new ArrayList<Doc>();
+
+        var initializer = getProperty(node, ArrayCreation.INITIALIZER_PROPERTY);
+
+        var type = getProperty(node, ArrayCreation.TYPE_PROPERTY);
+        // We need to handle the type manually because dimensions with
+        // sizes go between the element type and the empty bracket pairs.
+        // e.g. new int[5][] — element type is int, one sized dim, one unsized dim.
+        var elementType = getProperty((ArrayType) type, ArrayType.ELEMENT_TYPE_PROPERTY);
+        elementType.accept(this);
+        parts.add(text("new "));
+        parts.add(result);
+
+        var dimensions = getProperty(node, ArrayCreation.DIMENSIONS_PROPERTY);
+        for (var dimension : dimensions) {
+            parts.add(text("["));
+            dimension.accept(this);
+            parts.add(result);
+            parts.add(text("]"));
+        }
+
+        // Add remaining empty [] pairs for unsized dimensions
+        var allDims = getProperty((ArrayType) type, ArrayType.DIMENSIONS_PROPERTY);
+        for (int i = dimensions.size(); i < allDims.size(); i++) {
+            parts.add(text("[]"));
+        }
+
+        if (initializer != null) {
+            parts.add(text(" "));
+            initializer.accept(this);
+            parts.add(result);
+        }
+
+        var partsDoc = concat(parts);
+        result = conditionalGroup(List.of(partsDoc, partsDoc));
+        return false;
+    }
+
+    @Override
+    public boolean visit(ArrayInitializer node) {
+        var expressions = getProperty(node, ArrayInitializer.EXPRESSIONS_PROPERTY);
+
+        if (expressions.isEmpty()) {
+            result = text("{}");
+            return false;
+        }
+
+        var elemDocs = new ArrayList<Doc>();
+        for (var expr : expressions) {
+            expr.accept(this);
+            elemDocs.add(result);
+        }
+
+        var flat = concat(
+                text("{"),
+                join(concat(text(","), space()), elemDocs),
+                text("}")
+        );
+
+        var breaking = concat(
+                text("{"),
+                indent(concat(
+                        hardLine(),
+                        join(concat(text(","), hardLine()), elemDocs),
+                        text(",")
+                )),
+                hardLine(),
+                text("}")
+        );
+
+        result = conditionalGroup(List.of(flat, breaking));
+        return false;
+    }
+
+    @Override
     public boolean visit(ArrayAccess node) {
         var array = getProperty(node, ArrayAccess.ARRAY_PROPERTY);
         array.accept(this);
@@ -781,6 +1057,33 @@ public class AstToDoc extends ASTVisitor {
         var breaking = concat(arrayDoc, text("["), indent(concat(new Doc.Line(""), indexDoc)), new Doc.Line(""),
                               text("]"));
         result = conditionalGroup(List.of(flat, breaking));
+        return false;
+    }
+
+    @Override
+    public boolean visit(CastExpression node) {
+        var parts = new ArrayList<Doc>();
+
+        parts.add(text("("));
+
+        var type = getProperty(node, CastExpression.TYPE_PROPERTY);
+        type.accept(this);
+        parts.add(result);
+
+        parts.add(text(")"));
+        parts.add(space());
+
+        var expression = getProperty(node, CastExpression.EXPRESSION_PROPERTY);
+        expression.accept(this);
+        parts.add(result);
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(ThisExpression node) {
+        result = text("this");
         return false;
     }
 
@@ -804,6 +1107,12 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(StringLiteral node) {
+        result = text(node.getEscapedValue());
+        return false;
+    }
+
+    @Override
+    public boolean visit(TextBlock node) {
         result = text(node.getEscapedValue());
         return false;
     }
@@ -872,6 +1181,66 @@ public class AstToDoc extends ASTVisitor {
         return false;
     }
 
+    @Override
+    public boolean visit(ArrayType node) {
+        var elementType = getProperty(node, ArrayType.ELEMENT_TYPE_PROPERTY);
+        elementType.accept(this);
+        var parts = new ArrayList<Doc>();
+        parts.add(result);
+
+        var dimensionsList = getProperty(node, ArrayType.DIMENSIONS_PROPERTY);
+        for (var dim : dimensionsList) {
+            parts.add(text("[]"));
+        }
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(Dimension node) {
+        // TODO: ANNOTATIONS_PROPERTY
+
+        result = text("[]");
+        return false;
+    }
+
+    @Override
+    public boolean visit(IntersectionType node) {
+        var parts = new ArrayList<Doc>();
+
+        var types = getProperty(node, IntersectionType.TYPES_PROPERTY);
+        for (int i = 0; i < types.size(); i++) {
+            var type = types.get(i);
+            type.accept(this);
+            parts.add(result);
+
+            if (i < types.size() - 1) {
+                parts.add(text(" & "));
+            }
+        }
+
+        result = concat(parts);
+        return false;
+    }
+
+    // annotations
+
+    @Override
+    public boolean visit(MarkerAnnotation node) {
+        var parts = new ArrayList<Doc>();
+        parts.add(text("@"));
+
+        var typeName = getProperty(node, MarkerAnnotation.TYPE_NAME_PROPERTY);
+        typeName.accept(this);
+        parts.add(result);
+
+        parts.add(hardLine());
+
+        result = group(concat(parts));
+        return false;
+    }
+
     // --- the rest :)
 
     @Override
@@ -881,31 +1250,6 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(AnnotationTypeMemberDeclaration node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(AnonymousClassDeclaration node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(ArrayCreation node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(ArrayInitializer node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(ArrayType node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(AssertStatement node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
@@ -920,32 +1264,12 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
-    public boolean visit(CastExpression node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
     public boolean visit(CatchClause node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
     @Override
-    public boolean visit(ClassInstanceCreation node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
     public boolean visit(ConditionalExpression node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(CreationReference node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(Dimension node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
@@ -966,11 +1290,6 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(EnumDeclaration node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(ExpressionMethodReference node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
@@ -1000,19 +1319,9 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
-    public boolean visit(IntersectionType node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
     public boolean visit(LineComment node) {
         // Line comments are handled via CompilationUnit.getCommentList(), not via visitor dispatch
         return false;
-    }
-
-    @Override
-    public boolean visit(MarkerAnnotation node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
     @Override
@@ -1081,11 +1390,6 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
-    public boolean visit(SuperMethodReference node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
     public boolean visit(SwitchCase node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
@@ -1102,31 +1406,9 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(SynchronizedStatement node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
+        // todo EXPRESSION_PROPERTY
+        // todo BODY_PROPERTY
 
-    @Override
-    public boolean visit(TagElement node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(TagProperty node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(TextBlock node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(TextElement node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(ThisExpression node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
@@ -1147,11 +1429,6 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(TypeLiteral node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(TypeMethodReference node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
@@ -1214,6 +1491,21 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(MethodRefParameter node) {
+        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
+    }
+
+    @Override
+    public boolean visit(TagElement node) {
+        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
+    }
+
+    @Override
+    public boolean visit(TagProperty node) {
+        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
+    }
+
+    @Override
+    public boolean visit(TextElement node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
@@ -1286,7 +1578,7 @@ public class AstToDoc extends ASTVisitor {
                 second.getStartPosition());
     }
 
-    private int blankLinesAfterOpenBrace(AbstractTypeDeclaration node, ASTNode firstBodyDecl) {
+    private int blankLinesAfterOpenBrace(ASTNode node, ASTNode firstBodyDecl) {
         if (source == null) return 1;
         int firstBodyStart = firstBodyDecl.getStartPosition();
         int pos = firstBodyStart - 1;
@@ -1296,7 +1588,7 @@ public class AstToDoc extends ASTVisitor {
         return blankLinesBetweenPositions(pos + 1, firstBodyStart);
     }
 
-    private int blankLinesBeforeCloseBrace(AbstractTypeDeclaration node, ASTNode lastBodyDecl) {
+    private int blankLinesBeforeCloseBrace(ASTNode node, ASTNode lastBodyDecl) {
         if (source == null) return 1;
         int lastBodyEnd = lastBodyDecl.getStartPosition() + lastBodyDecl.getLength();
         int closeBrace = node.getStartPosition() + node.getLength() - 1;

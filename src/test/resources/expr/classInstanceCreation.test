@@ -1,0 +1,70 @@
+// Badly formatted
+void example() {
+    Object a=new Object();
+    Object b=new Object(   );
+    StringBuilder c=new    StringBuilder(   "hello"   );
+    Map<String,List<Integer>> d=new HashMap<String,List<Integer>>();
+    Map<String,Integer> e=new HashMap<>();
+    List<String> f=new ArrayList<>(   Arrays.asList("a","b","c")   );
+    Outer.Inner g=outer.new Inner();
+    Outer.Inner h=outer.new Inner(   "arg1","arg2"   );
+    Outer.Inner i=getOuter().new Inner();
+    Runnable j=new Runnable(){@Override public void run(){System.out.println("hello");}};
+    Runnable k=new Runnable(){@Override public void run(){System.out.println("hello");System.out.println("world");}};
+    List<String> l=new ArrayList<String>(){   {add("a");add("b");add("c");}   };
+    Comparator<String> m=new Comparator<String>(){@Override public int compare(String a,String b){return a.compareTo(b);}};
+    Outer.Inner n=outer.new Inner(){void doStuff(){System.out.println("stuff");}};
+    Object o=new Object(veryLongArgumentName,anotherVeryLongArgumentName,yetAnotherVeryLongArgumentName);
+
+    var a = new <String, String> Object();
+}
+---
+void example() {
+    Object a = new Object();
+    Object b = new Object();
+    StringBuilder c = new StringBuilder("hello");
+    Map<String, List<Integer>> d = new HashMap<String, List<Integer>>();
+    Map<String, Integer> e = new HashMap<>();
+    List<String> f = new ArrayList<>(Arrays.asList("a", "b", "c"));
+    Outer.Inner g = outer.new Inner();
+    Outer.Inner h = outer.new Inner("arg1", "arg2");
+    Outer.Inner i = getOuter().new Inner();
+    Runnable j = new Runnable() {
+        @Override
+        public void run() {
+            System.out.println("hello");
+        }
+    };
+    Runnable k = new Runnable() {
+        @Override
+        public void run() {
+            System.out.println("hello");
+            System.out.println("world");
+        }
+    };
+    List<String> l = new ArrayList<String>() {
+        {
+            add("a");
+            add("b");
+            add("c");
+        }
+    };
+    Comparator<String> m = new Comparator<String>() {
+        @Override
+        public int compare(String a, String b) {
+            return a.compareTo(b);
+        }
+    };
+    Outer.Inner n = outer.new Inner() {
+        void doStuff() {
+            System.out.println("stuff");
+        }
+    };
+    Object o = new Object(
+        veryLongArgumentName,
+        anotherVeryLongArgumentName,
+        yetAnotherVeryLongArgumentName
+    );
+
+    var a = new <String, String> Object();
+}

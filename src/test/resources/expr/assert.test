@@ -1,0 +1,17 @@
+class Example {
+    Example() {
+        assert 1;
+        assert 1 == 2;
+        assert 1 : "two";
+        assert 1 == 2: "two";
+    }
+}
+---
+class Example {
+    Example() {
+        assert 1;
+        assert 1 == 2;
+        assert 1 : "two";
+        assert 1 == 2 : "two";
+    }
+}

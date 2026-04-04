@@ -1,0 +1,19 @@
+void example() {
+        process.packetListener().setPlayListener(
+            ClientPlayerBlockPlacementPacket.class,
+            ClientBlockPlacementListener::handleBlockPlacementPacket);
+
+        process.block().registerHandler(CheckpointPlateBlock.INSTANCE.getKey(), () -> CheckpointPlateBlock.INSTANCE);
+}
+---
+void example() {
+    process.packetListener().setPlayListener(
+        ClientPlayerBlockPlacementPacket.class,
+        ClientBlockPlacementListener::handleBlockPlacementPacket
+    );
+
+    process.block().registerHandler(
+        CheckpointPlateBlock.INSTANCE.getKey(),
+        () -> CheckpointPlateBlock.INSTANCE
+    );
+}

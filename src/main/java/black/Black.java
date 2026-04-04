@@ -28,8 +28,10 @@ public class Black {
             }
 
             try {
+                long start = System.nanoTime();
                 formatFile(path);
-                System.out.println("Formatted: " + path);
+                double duration = (System.nanoTime() - start) / 1_000_000.0;
+                System.out.println("Formatted: " + path.getFileName().toString() + " in " + duration + "ms");
             } catch (Exception e) {
                 System.err.println("Failed: " + path + " - " + e.getMessage());
                 failures++;

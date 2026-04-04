@@ -1,0 +1,21 @@
+class Example {
+    private void handleForcePlayMap(@NotNull Player player, @NotNull CommandContext context) {
+        // body
+    }
+    private void handleForcePlayMap(@NotNull Player player, @NotNull CommandContext context, @NotNull CommandContext context) {
+        // body
+    }
+}
+---
+class Example {
+    private void handleForcePlayMap(@NotNull Player player, @NotNull CommandContext context) {
+        // body
+    }
+    private void handleForcePlayMap(
+        @NotNull Player player,
+        @NotNull CommandContext context,
+        @NotNull CommandContext context
+    ) {
+        // body
+    }
+}

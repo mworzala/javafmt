@@ -83,8 +83,7 @@ class Test {
 
     // Annotations in local variables
     void example() {
-        @Nullable
-        String x = null;
+        @Nullable String x = null;
         List<@NonNull String> y = new ArrayList<>();
     }
 }

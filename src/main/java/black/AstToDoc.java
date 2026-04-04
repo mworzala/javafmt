@@ -641,11 +641,31 @@ public class AstToDoc extends ASTVisitor {
         var modifiers = getProperty(node, property);
         if (modifiers.isEmpty()) return;
 
-        for (var modifier : modifiers) {
+        boolean inline = node instanceof SingleVariableDeclaration
+                || node instanceof VariableDeclarationExpression
+                || node instanceof VariableDeclarationStatement;
+
+        boolean seenKeyword = false;
+        for (int i = 0; i < modifiers.size(); i++) {
+            var modifier = modifiers.get(i);
+            if (modifier instanceof Modifier) {
+                seenKeyword = true;
+            }
             modifier.accept(this);
-            if (modifier instanceof Annotation) {
+
+            if (modifier instanceof Annotation && !inline) {
+                // Annotation after a keyword modifier (e.g. private static @Nullable)
+                // is a type-use annotation — keep on same line as type
+                if (seenKeyword) {
+                    doc.add(result);
+                    doc.add(space());
+                } else {
+                    doc.add(result);
+                    doc.add(hardLine());
+                }
+            } else if (modifier instanceof Annotation) {
                 doc.add(result);
-                doc.add(hardLine());
+                doc.add(space());
             } else {
                 doc.add(result);
             }
@@ -1626,11 +1646,7 @@ public class AstToDoc extends ASTVisitor {
         if (expression != null) {
             expression.accept(this);
             parts.add(result);
-            if (expression instanceof MethodInvocation) {
-                parts.add(indent(concat(new Doc.Line(""), text("."))));
-            } else {
-                parts.add(text("."));
-            }
+            parts.add(text("."));
         }
 
         visitTypeArguments(parts, node, MethodInvocation.TYPE_ARGUMENTS_PROPERTY);
@@ -1661,12 +1677,10 @@ public class AstToDoc extends ASTVisitor {
             rootDoc = result;
             startIndex = 0;
         } else {
-            // No expression — innermost itself is the root (e.g., getList())
             rootDoc = formatMethodCallNoDot(innermost);
             startIndex = 1;
         }
 
-        // Build segment docs (each is .methodName(args))
         var segDocs = new ArrayList<Doc>();
         for (int i = startIndex; i < chain.size(); i++) {
             segDocs.add(formatMethodCallWithDot(chain.get(i)));
@@ -1678,23 +1692,56 @@ public class AstToDoc extends ASTVisitor {
         flatParts.addAll(segDocs);
         var flatAlt = concat(flatParts);
 
-        // Alt 2: first segment stays with root, rest break with indent
-        var brokenParts = new ArrayList<Doc>();
-        brokenParts.add(rootDoc);
-        if (!segDocs.isEmpty()) {
-            brokenParts.add(segDocs.getFirst());
+        // Alt 3: everything breaks, including first segment
+        var fullBreakParts = new ArrayList<Doc>();
+        fullBreakParts.add(rootDoc);
+        var indentAllParts = new ArrayList<Doc>();
+        for (var segDoc : segDocs) {
+            indentAllParts.add(line(""));
+            indentAllParts.add(segDoc);
         }
-        if (segDocs.size() > 1) {
-            var indentParts = new ArrayList<Doc>();
-            for (int i = 1; i < segDocs.size(); i++) {
-                indentParts.add(line(""));
-                indentParts.add(segDocs.get(i));
-            }
-            brokenParts.add(indent(concat(indentParts)));
-        }
-        var brokenAlt = concat(brokenParts);
+        fullBreakParts.add(indent(concat(indentAllParts)));
+        var fullBreakAlt = concat(fullBreakParts);
 
-        result = conditionalGroup(List.of(flatAlt, brokenAlt));
+        // Check if the first call in the chain has "simple" arguments
+        // (0 or 1 args). If so, offer a partial break alt where the
+        // first segment stays with the root.
+        var firstCall = chain.get(startIndex);
+        var firstArgs = getProperty(firstCall, MethodInvocation.ARGUMENTS_PROPERTY);
+        boolean rootIsName = rootExpr instanceof SimpleName
+                || rootExpr instanceof QualifiedName;
+        boolean firstSegmentSimple = firstArgs.size() <= 1
+                || rootIsName
+                || rootExpr == null;
+
+        if (firstSegmentSimple && segDocs.size() > 1) {
+            var partialBreakParts = new ArrayList<Doc>();
+            partialBreakParts.add(rootDoc);
+            partialBreakParts.add(segDocs.getFirst());
+            var indentRestParts = new ArrayList<Doc>();
+            for (int i = 1; i < segDocs.size(); i++) {
+                indentRestParts.add(line(""));
+                indentRestParts.add(segDocs.get(i));
+            }
+            partialBreakParts.add(indent(concat(indentRestParts)));
+            var partialBreakAlt = concat(partialBreakParts);
+
+            if (rootIsName) {
+                // Name roots ALWAYS keep first segment glued — never full break
+                result = conditionalGroup(List.of(flatAlt, partialBreakAlt));
+            } else {
+                result = conditionalGroup(List.of(flatAlt, partialBreakAlt, fullBreakAlt));
+            }
+        } else if (segDocs.size() == 1 && rootIsName) {
+            // Single segment after a name root — just flat or keep together
+            var partialBreakParts = new ArrayList<Doc>();
+            partialBreakParts.add(rootDoc);
+            partialBreakParts.add(segDocs.getFirst());
+            var partialBreakAlt = concat(partialBreakParts);
+            result = conditionalGroup(List.of(flatAlt, partialBreakAlt));
+        } else {
+            result = conditionalGroup(List.of(flatAlt, fullBreakAlt));
+        }
     }
 
     private void collectMethodChain(MethodInvocation node, List<MethodInvocation> chain) {

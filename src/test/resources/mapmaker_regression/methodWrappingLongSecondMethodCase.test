@@ -1,0 +1,19 @@
+void example() {
+    eventNode(ParkourState.AnyPlaying.class)
+        .addListener(PlayerMoveEvent.class, event -> handlePlayerOrVehicleMove(event.getPlayer(), event.getNewPosition()))
+        .addListener(PlayerMoveVehicleEvent.class, event -> handlePlayerOrVehicleMove(event.getPlayer(), event.getNewPosition()))
+        .addListener(PlayerTickEvent.class, this::handlePlayerTick);
+}
+---
+void example() {
+    eventNode(ParkourState.AnyPlaying.class)
+        .addListener(
+            PlayerMoveEvent.class,
+            event -> handlePlayerOrVehicleMove(event.getPlayer(), event.getNewPosition())
+        )
+        .addListener(
+            PlayerMoveVehicleEvent.class,
+            event -> handlePlayerOrVehicleMove(event.getPlayer(), event.getNewPosition())
+        )
+        .addListener(PlayerTickEvent.class, this::handlePlayerTick);
+}

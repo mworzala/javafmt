@@ -1,0 +1,7 @@
+class Test {
+    Argument<@Nullable MapData> mapArg;
+}
+---
+class Test {
+    Argument<@Nullable MapData> mapArg;
+}

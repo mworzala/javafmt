@@ -1,0 +1,90 @@
+class Test {
+    // Type argument annotations
+    List<@Nullable String> a;
+    Map<@Nullable String,@NonNull Integer> b;
+    List<@Nullable List<@NonNull String>> c;
+
+    // Primitive type annotations
+    @Positive int d;
+
+    // Array type annotations with dimension annotations
+    String @Nullable [] e;
+    int @Nullable [] @NonNull [] f;
+
+    // Wildcard annotations
+    List<@Nullable ?> g;
+    List<@Nullable ? extends @NonNull Number> h;
+    List<@Nullable ? super @NonNull Integer> i;
+
+    // Parameterized type annotations
+    @Nullable List<String> j;
+
+    // Type parameter annotations
+    <@NonNull T> void generic(T value) {}
+    <@NonNull T extends @Nullable Comparable<T>> void bounded(T value) {}
+
+    // Varargs annotations
+    void varargs(String @Nullable ... args) {}
+
+    // Combined
+    @Nullable Map<@NonNull String, @Nullable List<@NonNull Integer>> complex;
+
+    // Annotations in method return types
+    @Nullable String getStuff() {
+        return null;
+    }
+
+    // Annotations in local variables
+    void example() {
+        @Nullable String x = null;
+        List<@NonNull String> y = new ArrayList<>();
+    }
+}
+---
+class Test {
+    // Type argument annotations
+    List<@Nullable String> a;
+    Map<@Nullable String, @NonNull Integer> b;
+    List<@Nullable List<@NonNull String>> c;
+
+    // Primitive type annotations
+    @Positive
+    int d;
+
+    // Array type annotations with dimension annotations
+    String[] e;
+    int[][] f;
+
+    // Wildcard annotations
+    List<@Nullable ?> g;
+    List<@Nullable ? extends @NonNull Number> h;
+    List<@Nullable ? super @NonNull Integer> i;
+
+    // Parameterized type annotations
+    @Nullable
+    List<String> j;
+
+    // Type parameter annotations
+    <@NonNull T> void generic(T value) {}
+    <@NonNull T extends @Nullable Comparable<T>> void bounded(T value) {}
+
+    // Varargs annotations
+    void varargs(String@Nullable ... args) {}
+
+    // Combined
+    @Nullable
+    Map<@NonNull String, @Nullable List<@NonNull Integer>> complex;
+
+    // Annotations in method return types
+    @Nullable
+    String getStuff() {
+        return null;
+    }
+
+    // Annotations in local variables
+    void example() {
+        @Nullable
+        String x = null;
+        List<@NonNull String> y = new ArrayList<>();
+    }
+}

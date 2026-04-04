@@ -474,6 +474,15 @@ public class AstToDoc extends ASTVisitor {
         if (withBraces) parts.add(text("}"));
     }
 
+    private void visitAnnotations(List<Doc> parts, ASTNode node, ChildListPropertyDescriptor property) {
+        var annotations = getProperty(node, property);
+        for (var annotation : annotations) {
+            annotation.accept(this);
+            parts.add(result);
+            parts.add(space());
+        }
+    }
+
     // type members
 
     @Override
@@ -486,8 +495,10 @@ public class AstToDoc extends ASTVisitor {
         type.accept(this);
         parts.add(result);
 
-        // todo ChildListPropertyDescriptor VARARGS_ANNOTATIONS_PROPERTY
-        // todo SimplePropertyDescriptor VARARGS_PROPERTY
+        if (node.isVarargs()) {
+            visitAnnotations(parts, node, SingleVariableDeclaration.VARARGS_ANNOTATIONS_PROPERTY);
+            parts.add(text("..."));
+        }
 
         parts.add(space());
         parts.add(text(node.getName().getIdentifier()));
@@ -650,6 +661,8 @@ public class AstToDoc extends ASTVisitor {
     @Override
     public boolean visit(TypeParameter node) {
         var parts = new ArrayList<Doc>();
+
+        visitAnnotations(parts, node, TypeParameter.MODIFIERS_PROPERTY);
 
         // todo MODIFIERS_PROPERTY (annotations on type params)
 
@@ -2192,13 +2205,25 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(PrimitiveType node) {
-        result = text(node.getPrimitiveTypeCode().toString());
+        var parts = new ArrayList<Doc>();
+
+        visitAnnotations(parts, node, PrimitiveType.ANNOTATIONS_PROPERTY);
+
+        parts.add(text(node.getPrimitiveTypeCode().toString()));
+
+        result = concat(parts);
         return false;
     }
 
     @Override
     public boolean visit(SimpleType node) {
-        result = text(node.getName().getFullyQualifiedName());
+        var parts = new ArrayList<Doc>();
+
+        visitAnnotations(parts, node, SimpleType.ANNOTATIONS_PROPERTY);
+
+        parts.add(text(node.getName().getFullyQualifiedName()));
+
+        result = concat(parts);
         return false;
     }
 
@@ -2212,7 +2237,7 @@ public class AstToDoc extends ASTVisitor {
 
         parts.add(text("."));
 
-        // todo ANNOTATIONS_PROPERTY
+        visitAnnotations(parts, node, QualifiedType.ANNOTATIONS_PROPERTY);
 
         var name = getProperty(node, QualifiedType.NAME_PROPERTY);
         name.accept(this);
@@ -2232,7 +2257,7 @@ public class AstToDoc extends ASTVisitor {
 
         parts.add(text("."));
 
-        // todo ANNOTATIONS_PROPERTY
+        visitAnnotations(parts, node, NameQualifiedType.ANNOTATIONS_PROPERTY);
 
         var name = getProperty(node, NameQualifiedType.NAME_PROPERTY);
         name.accept(this);
@@ -2245,6 +2270,8 @@ public class AstToDoc extends ASTVisitor {
     @Override
     public boolean visit(WildcardType node) {
         var parts = new ArrayList<Doc>();
+
+        visitAnnotations(parts, node, WildcardType.ANNOTATIONS_PROPERTY);
 
         parts.add(text("?"));
 
@@ -2303,9 +2330,13 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(Dimension node) {
-        // TODO: ANNOTATIONS_PROPERTY
+        var parts = new ArrayList<Doc>();
 
-        result = text("[]");
+        visitAnnotations(parts, node, Dimension.ANNOTATIONS_PROPERTY);
+
+        parts.add(text("[]"));
+
+        result = concat(parts);
         return false;
     }
 

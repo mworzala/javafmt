@@ -1,0 +1,17 @@
+class Example {
+
+    /// Computes the result.
+    ///
+    /// @return the result
+    int compute() {}
+
+}
+---
+class Example {
+
+    /// Computes the result.
+    ///
+    /// @return the result
+    int compute() {}
+
+}

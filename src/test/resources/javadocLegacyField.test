@@ -1,0 +1,13 @@
+class Example {
+
+    /** The name. */
+    String name;
+
+}
+---
+class Example {
+
+    /** The name. */
+    String name;
+
+}

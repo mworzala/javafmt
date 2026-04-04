@@ -64,7 +64,7 @@ public class AstToDoc extends ASTVisitor {
     public boolean visit(TypeDeclaration node) {
         var parts = new ArrayList<Doc>();
 
-        // todo JAVADOC_PROPERTY
+        visitJavadoc(parts, node);
 
         visitModifiers(parts, node, TypeDeclaration.MODIFIERS2_PROPERTY);
 
@@ -118,9 +118,9 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(FieldDeclaration node) {
-        // todo JAVADOC_PROPERTY
-
         var parts = new ArrayList<Doc>();
+
+        visitJavadoc(parts, node);
 
         visitModifiers(parts, node, FieldDeclaration.MODIFIERS2_PROPERTY);
 
@@ -146,7 +146,7 @@ public class AstToDoc extends ASTVisitor {
     public boolean visit(MethodDeclaration node) {
         var parts = new ArrayList<Doc>();
 
-        // todo JAVADOC_PROPERTY
+        visitJavadoc(parts, node);
 
         visitModifiers(parts, node, MethodDeclaration.MODIFIERS2_PROPERTY);
 
@@ -228,6 +228,63 @@ public class AstToDoc extends ASTVisitor {
         int lastBodyEnd = lastBodyDecl.getStartPosition() + lastBodyDecl.getLength();
         int closeBrace = node.getStartPosition() + node.getLength() - 1;
         return blankLinesBetweenPositions(lastBodyEnd, closeBrace);
+    }
+
+    private void visitJavadoc(List<Doc> parts, BodyDeclaration node) {
+        if (source == null) return;
+
+        // Check for legacy /** ... */ javadoc via the AST
+        var javadoc = node.getJavadoc();
+        if (javadoc != null) {
+            int startPos = javadoc.getStartPosition();
+            var text = source.substring(startPos, startPos + javadoc.getLength());
+            // Compute the column of /** to strip that indentation from subsequent lines
+            int col = 0;
+            for (int i = startPos - 1; i >= 0 && source.charAt(i) != '\n'; i--) col++;
+            appendCommentLines(parts, text, col);
+            return;
+        }
+
+        // Check for markdown /// javadoc (not recognized by Eclipse JDT as Javadoc)
+        int declStart = node.getStartPosition();
+        // Walk backwards past whitespace to find preceding lines
+        int pos = declStart - 1;
+        while (pos >= 0 && source.charAt(pos) == ' ') pos--;
+        if (pos >= 0 && source.charAt(pos) == '\n') pos--;
+
+        // Collect /// lines going backwards
+        var mdLines = new ArrayList<String>();
+        while (pos >= 0) {
+            // Find start of this line
+            int lineEnd = pos;
+            int lineStart = pos;
+            while (lineStart > 0 && source.charAt(lineStart - 1) != '\n') lineStart--;
+            var line = source.substring(lineStart, lineEnd + 1);
+            var trimmed = line.stripLeading();
+            if (trimmed.startsWith("///")) {
+                mdLines.add(0, trimmed);
+                // Move to previous line
+                pos = lineStart - 1;
+                if (pos >= 0 && source.charAt(pos) == '\n') pos--;
+            } else {
+                break;
+            }
+        }
+
+        if (!mdLines.isEmpty()) {
+            appendCommentLines(parts, String.join("\n", mdLines), 0);
+        }
+    }
+
+    private void appendCommentLines(List<Doc> parts, String text, int indentToStrip) {
+        var lines = text.split("\n");
+        for (var line : lines) {
+            // Strip up to indentToStrip leading spaces
+            int i = 0;
+            while (i < indentToStrip && i < line.length() && line.charAt(i) == ' ') i++;
+            parts.add(text(line.substring(i).stripTrailing()));
+            parts.add(hardLine());
+        }
     }
 
     private void visitModifiers(List<Doc> doc, ASTNode node, ChildListPropertyDescriptor property) {

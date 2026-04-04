@@ -1,0 +1,12 @@
+void example() {
+    player.sendMessage(Component.translatable("command.play.map_not_found2", Component.text(context.getRaw(mapArg))));
+}
+---
+void example() {
+    player.sendMessage(
+        Component.translatable(
+            "command.play.map_not_found2",
+            Component.text(context.getRaw(mapArg))
+        )
+    );
+}

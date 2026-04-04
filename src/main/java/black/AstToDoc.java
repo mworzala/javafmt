@@ -16,6 +16,8 @@ public class AstToDoc extends ASTVisitor {
     private Doc result;
     private CompilationUnit compilationUnit;
 
+    private boolean lastResultGluesToEquals;
+
     public AstToDoc(String source) {
         this.source = source;
     }
@@ -1060,13 +1062,12 @@ public class AstToDoc extends ASTVisitor {
         }
         init.accept(this);
         var initDoc = result;
-        if (initDoc instanceof Doc.ConditionalGroup) {
-            // Wrap the whole "name = initDoc" in a group. When it doesn't fit flat,
-            // non-flat mode propagates to the ConditionalGroup at the current column,
-            // where the flat alt no longer fits and the breaking alt is chosen.
+        var glue = lastResultGluesToEquals;
+        lastResultGluesToEquals = false;
+
+        if (glue) {
             result = group(concat(name, text(" = "), initDoc));
         } else {
-            // Keep "= init" on same line; if line is too long, break before initializer
             result = concat(
                     name,
                     group(concat(text(" ="), indent(concat(line(), initDoc))))
@@ -1457,6 +1458,7 @@ public class AstToDoc extends ASTVisitor {
 
         result = concat(parts);
         result = conditionalGroup(List.of(result, result));
+        lastResultGluesToEquals = true;
         return false;
     }
 
@@ -1711,14 +1713,44 @@ public class AstToDoc extends ASTVisitor {
         if (arguments.isEmpty()) {
             parts.add(text("()"));
         } else {
-            parts.add(text("("));
             var argDocs = new ArrayList<Doc>();
             for (var arg : arguments) {
                 arg.accept(this);
                 argDocs.add(result);
             }
-            parts.add(join(concat(text(","), space()), argDocs));
-            parts.add(text(")"));
+
+            // If the last argument is a block-like structure (lambda with block,
+            // anonymous class), don't wrap it in a breaking group — let it stay
+            // inline with the opening paren.
+            var lastArgDoc = argDocs.getLast();
+            boolean lastArgIsBlock = lastArgDoc instanceof Doc.ConditionalGroup;
+            if (lastArgIsBlock && argDocs.size() == 1) {
+                parts.add(text("("));
+                parts.add(argDocs.getFirst());
+                parts.add(text(")"));
+            } else if (lastArgIsBlock) {
+                parts.add(group(concat(
+                        text("("),
+                        indent(concat(
+                                line(""),
+                                join(concat(text(","), line()), argDocs.subList(0, argDocs.size() - 1)),
+                                text(","),
+                                line()
+                        )),
+                        argDocs.getLast(),
+                        text(")")
+                )));
+            } else {
+                parts.add(group(concat(
+                        text("("),
+                        indent(concat(
+                                line(""),
+                                join(concat(text(","), line()), argDocs)
+                        )),
+                        line(""),
+                        text(")")
+                )));
+            }
         }
     }
 
@@ -1822,7 +1854,10 @@ public class AstToDoc extends ASTVisitor {
         }
 
         var partsDoc = concat(parts);
-        result = conditionalGroup(List.of(partsDoc, partsDoc));
+        result = anonymousClass != null
+                ? conditionalGroup(List.of(partsDoc, partsDoc))
+                : partsDoc;
+        lastResultGluesToEquals = true;
         return false;
     }
 
@@ -1953,11 +1988,10 @@ public class AstToDoc extends ASTVisitor {
         parts.add(result);
 
         var partsDoc = concat(parts);
-        if (body instanceof Block) {
-            result = conditionalGroup(List.of(partsDoc, partsDoc));
-        } else {
-            result = partsDoc;
-        }
+        result = body instanceof Block
+                ? conditionalGroup(List.of(partsDoc, partsDoc))
+                : partsDoc;
+        lastResultGluesToEquals = true;
         return false;
     }
 
@@ -1996,8 +2030,8 @@ public class AstToDoc extends ASTVisitor {
             parts.add(result);
         }
 
-        var partsDoc = concat(parts);
-        result = conditionalGroup(List.of(partsDoc, partsDoc));
+        result = concat(parts);
+        lastResultGluesToEquals = true;
         return false;
     }
 
@@ -2051,6 +2085,7 @@ public class AstToDoc extends ASTVisitor {
         var breaking = concat(arrayDoc, text("["), indent(concat(new Doc.Line(""), indexDoc)), new Doc.Line(""),
                               text("]"));
         result = conditionalGroup(List.of(flat, breaking));
+        lastResultGluesToEquals = true;
         return false;
     }
 

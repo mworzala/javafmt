@@ -1,0 +1,15 @@
+void example() {
+    bridge.joinMap(player, new ServerBridge.JoinConfig(map.id(), ServerBridge.JoinMapState.PLAYING, "staff_play_map", isolateOverride));
+}
+---
+void example() {
+    bridge.joinMap(
+        player,
+        new ServerBridge.JoinConfig(
+            map.id(),
+            ServerBridge.JoinMapState.PLAYING,
+            "staff_play_map",
+            isolateOverride
+        )
+    );
+}

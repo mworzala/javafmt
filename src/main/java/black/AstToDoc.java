@@ -3,8 +3,6 @@ package black;
 import org.eclipse.jdt.core.dom.*;
 import org.jetbrains.annotations.UnknownNullability;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -138,11 +136,17 @@ public class AstToDoc extends ASTVisitor {
 
         parts.add(space());
 
-        // todo SUPERCLASS_PROPERTY
-        // todo SUPER_INTERFACES_PROPERTY
-        // todo SUPERCLASS_TYPE_PROPERTY
-        // todo SUPER_INTERFACE_TYPES_PROPERTY
-        // todo PERMITS_TYPES_PROPERTY
+        var superclass = getProperty(node, TypeDeclaration.SUPERCLASS_TYPE_PROPERTY);
+        if (superclass != null) {
+            parts.add(text("extends "));
+            superclass.accept(this);
+            parts.add(result);
+            parts.add(space());
+        }
+
+        visitSuperInterfaces(parts, node, TypeDeclaration.SUPER_INTERFACE_TYPES_PROPERTY);
+
+        visitPermits(parts, node, TypeDeclaration.PERMITS_TYPES_PROPERTY);
 
         visitBodyDeclarations(parts, node, TypeDeclaration.BODY_DECLARATIONS_PROPERTY, true);
 
@@ -189,7 +193,7 @@ public class AstToDoc extends ASTVisitor {
 
         visitTypeArguments(parts, node, RecordDeclaration.TYPE_PARAMETERS_PROPERTY);
 
-        // todo SUPER_INTERFACE_TYPES_PROPERTY
+        visitSuperInterfaces(parts, node, RecordDeclaration.SUPER_INTERFACE_TYPES_PROPERTY);
 
         var components = getProperty(node, RecordDeclaration.RECORD_COMPONENTS_PROPERTY);
         if (components.isEmpty()) {
@@ -232,7 +236,7 @@ public class AstToDoc extends ASTVisitor {
         parts.add(text(node.getName().getIdentifier()));
         parts.add(space());
 
-        // todo SUPER_INTERFACE_TYPES_PROPERTY
+        visitSuperInterfaces(parts, node, EnumDeclaration.SUPER_INTERFACE_TYPES_PROPERTY);
 
         var constants = getProperty(node, EnumDeclaration.ENUM_CONSTANTS_PROPERTY);
         var body = getProperty(node, EnumDeclaration.BODY_DECLARATIONS_PROPERTY);
@@ -374,6 +378,34 @@ public class AstToDoc extends ASTVisitor {
 
         result = concat(parts);
         return false;
+    }
+
+    private void visitSuperInterfaces(List<Doc> parts, ASTNode node, ChildListPropertyDescriptor property) {
+        var interfaces = getProperty(node, property);
+        if (interfaces.isEmpty()) return;
+
+        parts.add(text("implements "));
+        var ifaceDocs = new ArrayList<Doc>();
+        for (var iface : interfaces) {
+            iface.accept(this);
+            ifaceDocs.add(result);
+        }
+        parts.add(join(concat(text(","), space()), ifaceDocs));
+        parts.add(space());
+    }
+
+    private void visitPermits(List<Doc> parts, ASTNode node, ChildListPropertyDescriptor property) {
+        var permits = getProperty(node, property);
+        if (permits.isEmpty()) return;
+
+        parts.add(text("permits "));
+        var permitDocs = new ArrayList<Doc>();
+        for (var permit : permits) {
+            permit.accept(this);
+            permitDocs.add(result);
+        }
+        parts.add(join(concat(text(","), space()), permitDocs));
+        parts.add(space());
     }
 
     private void visitBodyDeclarations(
@@ -1599,8 +1631,8 @@ public class AstToDoc extends ASTVisitor {
     /**
      * Format a method chain of 3+ calls with "break all or none" semantics.
      * Uses conditionalGroup with two alternatives:
-     *   Alt 1 (flat): root.s1.s2.s3
-     *   Alt 2 (broken): root.s1\n    .s2\n    .s3
+     * Alt 1 (flat): root.s1.s2.s3
+     * Alt 2 (broken): root.s1\n    .s2\n    .s3
      * First segment stays with root; remaining segments break together.
      */
     private void visitMethodChain(List<MethodInvocation> chain) {

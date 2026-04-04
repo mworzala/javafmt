@@ -1,0 +1,64 @@
+class Simple{}
+class ExtendsOne extends Parent{}
+class ImplementsOne implements Runnable{}
+class ImplementsMultiple implements Runnable,Serializable,Comparable<ImplementsMultiple>{}
+class Both extends Parent implements Runnable,Serializable{}
+class Generic<T> extends AbstractList<T> implements List<T>,Serializable{}
+class Deep extends AbstractMap<String,List<Integer>> implements Map<String,List<Integer>>,Serializable{}
+interface ExtendsInterface extends Runnable{}
+interface ExtendsMultiple extends Runnable,Serializable,Comparable<ExtendsMultiple>{}
+interface GenericInterface<T> extends List<T>,Comparable<T>{}
+sealed class SealedClass permits ChildA,ChildB,ChildC{}
+final class ChildA extends SealedClass{}
+final class ChildB extends SealedClass{}
+final class ChildC extends SealedClass{}
+sealed interface SealedInterface permits ImplA,ImplB{}
+non-sealed class ImplA implements SealedInterface{}
+non-sealed class ImplB implements SealedInterface{}
+enum WithInterface implements Comparable<WithInterface>{A,B,C}
+record WithImpl(int x,int y) implements Serializable,Comparable<WithImpl>{}
+class Complex<K extends Comparable<K>,V> extends AbstractMap<K,V> implements Map<K,V>,Serializable,Cloneable{}
+---
+class Simple {}
+
+class ExtendsOne extends Parent {}
+
+class ImplementsOne implements Runnable {}
+
+class ImplementsMultiple implements Runnable, Serializable, Comparable<ImplementsMultiple> {}
+
+class Both extends Parent implements Runnable, Serializable {}
+
+class Generic<T> extends AbstractList<T> implements List<T>, Serializable {}
+
+class Deep extends AbstractMap<String, List<Integer>> implements Map<String, List<Integer>>, Serializable {}
+
+interface ExtendsInterface implements Runnable {}
+
+interface ExtendsMultiple implements Runnable, Serializable, Comparable<ExtendsMultiple> {}
+
+interface GenericInterface<T> implements List<T>, Comparable<T> {}
+
+sealed class SealedClass permits ChildA, ChildB, ChildC {}
+
+final class ChildA extends SealedClass {}
+
+final class ChildB extends SealedClass {}
+
+final class ChildC extends SealedClass {}
+
+sealed interface SealedInterface permits ImplA, ImplB {}
+
+non-sealed class ImplA implements SealedInterface {}
+
+non-sealed class ImplB implements SealedInterface {}
+
+enum WithInterface implements Comparable<WithInterface> {
+    A,
+    B,
+    C
+}
+
+record WithImplimplements Serializable, Comparable<WithImpl> (int x, int y) {}
+
+class Complex<K extends Comparable<K>, V> extends AbstractMap<K, V> implements Map<K, V>, Serializable, Cloneable {}

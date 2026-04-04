@@ -81,7 +81,7 @@ enum WithArgs {
     }
 }
 
-enum WithInterface {
+enum WithInterface implements Comparable<WithInterface> {
     FIRST,
     SECOND,
     THIRD

@@ -30,7 +30,7 @@ class Inner {
     }
 }
 ---
-class Child {
+class Child extends Parent {
     int x = super.x;
     int y = super.field;
 
@@ -53,7 +53,7 @@ class Child {
 }
 
 class Inner {
-    class Child {
+    class Child extends Parent {
         int x = Outer.super.x;
 
         Child() {

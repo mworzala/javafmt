@@ -1,0 +1,16 @@
+class Example {
+void
+ foo( ) {
+
+}void
+ bar( ) {
+
+}
+
+}
+---
+class Example {
+    void foo() {}
+    void bar() {}
+
+}

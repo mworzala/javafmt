@@ -1,0 +1,12 @@
+package my.name;
+public          class
+Example
+
+{
+
+
+}
+---
+package my.name;
+
+public class Example {}

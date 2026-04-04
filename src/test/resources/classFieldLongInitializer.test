@@ -1,0 +1,8 @@
+class Example {
+String reallyLongVariableName = "a string literal that pushes this field declaration past the line length limit";
+}
+---
+class Example {
+    String reallyLongVariableName =
+        "a string literal that pushes this field declaration past the line length limit";
+}

@@ -1,0 +1,20 @@
+class Example {
+private int a = 1;
+void foo() {
+
+
+}
+
+
+
+private int b = "";
+
+}
+---
+class Example {
+    private int a = 1;
+    void foo() {}
+
+    private int b = "";
+
+}

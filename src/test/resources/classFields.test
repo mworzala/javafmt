@@ -1,0 +1,17 @@
+class Example {
+private
+int a = 1;
+int b;
+
+
+final          int c;
+
+}
+---
+class Example {
+    private int a = 1;
+    int b;
+
+    final int c;
+
+}

@@ -1,0 +1,38 @@
+class ThrowsExample {
+    void none(){}
+    void one()throws IOException{}
+    void two()throws IOException,SQLException{}
+    void three()throws IOException,SQLException,ClassNotFoundException{}
+    void withParams(int a,int b)throws IOException{}
+    void withBody()throws IOException{System.out.println("hello");}
+    abstract void abstractMethod()throws IOException,SQLException;
+    void longThrows()throws VeryLongExceptionNameOne,VeryLongExceptionNameTwo,VeryLongExceptionNameThree,VeryLongExceptionNameFour{}
+    <T> T generic(T value)throws IOException,SQLException{return value;}
+    void multi()throws IOException,SQLException,ClassNotFoundException,InterruptedException,ExecutionException{}
+}
+---
+class ThrowsExample {
+    void none() {}
+    void one() throws IOException {}
+    void two() throws IOException, SQLException {}
+    void three() throws IOException, SQLException, ClassNotFoundException {}
+    void withParams(int a, int b) throws IOException {}
+    void withBody() throws IOException {
+        System.out.println("hello");
+    }
+    abstract void abstractMethod() throws IOException, SQLException
+    void longThrows() throws
+        VeryLongExceptionNameOne,
+        VeryLongExceptionNameTwo,
+        VeryLongExceptionNameThree,
+        VeryLongExceptionNameFour {}
+    <T> T generic(T value) throws IOException, SQLException {
+        return value;
+    }
+    void multi() throws
+        IOException,
+        SQLException,
+        ClassNotFoundException,
+        InterruptedException,
+        ExecutionException {}
+}

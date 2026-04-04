@@ -564,8 +564,23 @@ public class AstToDoc extends ASTVisitor {
 
         // todo RECEIVER_TYPE_PROPERTY
         // todo RECEIVER_QUALIFIER_PROPERTY
-        // todo THROWN_EXCEPTIONS_PROPERTY
-        // todo THROWN_EXCEPTION_TYPES_PROPERTY
+
+        var thrownTypes = getProperty(node, MethodDeclaration.THROWN_EXCEPTION_TYPES_PROPERTY);
+        if (!thrownTypes.isEmpty()) {
+            var throwDocs = new ArrayList<Doc>();
+            for (var thrown : thrownTypes) {
+                thrown.accept(this);
+                throwDocs.add(result);
+            }
+            parts.add(group(concat(
+                    text("throws"),
+                    indent(concat(
+                            line(),
+                            join(concat(text(","), line()), throwDocs)
+                    ))
+            )));
+            parts.add(space());
+        }
 
         var body = getProperty(node, MethodDeclaration.BODY_PROPERTY);
         if (body != null) {

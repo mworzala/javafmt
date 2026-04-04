@@ -1,0 +1,23 @@
+void main() {
+    int x=5;
+    int y=    ++x;
+    int z=x++    ;
+    System.out.println(   --y+z--    );
+    boolean a=    !true;
+    int b=    -    x;
+    int c=    ~b;
+
+    int chained = 1 + 2 + 3 + 4;
+}
+---
+void main() {
+    int x = 5;
+    int y = ++x;
+    int z = x++;
+    System.out.println(--y + z--);
+    boolean a = !true;
+    int b = -x;
+    int c = ~b;
+
+    int chained = 1 + 2 + 3 + 4;
+}

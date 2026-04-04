@@ -1,0 +1,13 @@
+class Example {
+    void foo() {
+        label:
+        foo();
+    }
+}
+---
+class Example {
+    void foo() {
+        label:
+        foo();
+    }
+}

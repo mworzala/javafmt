@@ -1,0 +1,33 @@
+void example() {
+    Runnable a=()->42;
+    Function<Integer,Integer> b=(   x   )->x+1;
+    Function<Integer,Integer> c=(x)->{
+        return x+1;
+    };
+    BiFunction<Integer,Integer,Integer> d=(   x,y   )->x+y;
+    BiFunction<Integer,Integer,Integer> e=(x,y)->{
+        int z=x+y;
+        return z;
+    };
+    list.forEach((x)->System.out.println(x));
+    list.stream().map((x)->x+1).filter((x)->x>5);
+    Function<Integer,Integer> f=(int x)->x+1;
+    Consumer<String> g=(final String s)->System.out.println(s);
+}
+---
+void example() {
+    Runnable a = () -> 42;
+    Function<Integer, Integer> b = x -> x + 1;
+    Function<Integer, Integer> c = x -> {
+        return x + 1;
+    };
+    BiFunction<Integer, Integer, Integer> d = (x, y) -> x + y;
+    BiFunction<Integer, Integer, Integer> e = (x, y) -> {
+        int z = x + y;
+        return z;
+    };
+    list.forEach(x -> System.out.println(x));
+    list.stream().map(x -> x + 1).filter(x -> x > 5);
+    Function<Integer, Integer> f = (int x) -> x + 1;
+    Consumer<String> g = (final String s) -> System.out.println(s);
+}

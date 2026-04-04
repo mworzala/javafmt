@@ -84,7 +84,22 @@ public class AstToDoc extends ASTVisitor {
         // todo TYPE_PARAMETERS_PROPERTY
         // todo PERMITS_TYPES_PROPERTY
 
-        visitBodyDeclarations(parts, node, TypeDeclaration.BODY_DECLARATIONS_PROPERTY);
+        visitBodyDeclarations(parts, node, TypeDeclaration.BODY_DECLARATIONS_PROPERTY, true);
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(ImplicitTypeDeclaration node) {
+        var parts = new ArrayList<Doc>();
+
+        // TODO: how are any of the following present on an implicit class?
+        // todo MODIFIERS2_PROPERTY
+        // todo JAVADOC_PROPERTY
+        // todo NAME_PROPERTY
+
+        visitBodyDeclarations(parts, node, ImplicitTypeDeclaration.BODY_DECLARATIONS_PROPERTY, false);
 
         result = concat(parts);
         return false;
@@ -127,19 +142,25 @@ public class AstToDoc extends ASTVisitor {
 
         parts.add(space());
 
-        visitBodyDeclarations(parts, node, RecordDeclaration.BODY_DECLARATIONS_PROPERTY);
+        visitBodyDeclarations(parts, node, RecordDeclaration.BODY_DECLARATIONS_PROPERTY, true);
 
         result = concat(parts);
         return false;
     }
 
     private void visitBodyDeclarations(
-            List<Doc> parts, AbstractTypeDeclaration node, ChildListPropertyDescriptor property) {
+            List<Doc> parts,
+            AbstractTypeDeclaration node,
+            ChildListPropertyDescriptor property,
+            boolean withBraces
+    ) {
         var body = getProperty(node, property);
         if (body.isEmpty()) {
-            parts.add(text("{}"));
+            if (withBraces) {
+                parts.add(text("{}"));
+            }
         } else {
-            parts.add(text("{"));
+            if (withBraces) parts.add(text("{"));
 
             var bodyParts = new ArrayList<Doc>();
             bodyParts.add(hardLine());
@@ -156,13 +177,14 @@ public class AstToDoc extends ASTVisitor {
                 body.get(i).accept(this);
                 bodyParts.add(result);
             }
-            parts.add(indent(concat(bodyParts)));
+            var bodyDoc = concat(bodyParts);
+            parts.add(withBraces ? indent(bodyDoc) : bodyDoc);
 
             parts.add(hardLine());
             if (blankLinesBeforeCloseBrace(node, body.getLast()) > 0) {
                 parts.add(hardLine());
             }
-            parts.add(text("}"));
+            if (withBraces) parts.add(text("}"));
         }
     }
 
@@ -345,6 +367,25 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
+    public boolean visit(LabeledStatement node) {
+        var parts = new ArrayList<Doc>();
+
+        var label = getProperty(node, LabeledStatement.LABEL_PROPERTY);
+        label.accept(this);
+        parts.add(result);
+
+        parts.add(text(":"));
+        parts.add(hardLine());
+
+        var body = getProperty(node, LabeledStatement.BODY_PROPERTY);
+        body.accept(this);
+        parts.add(result);
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
     public boolean visit(VariableDeclarationStatement node) {
         var parts = new ArrayList<Doc>();
 
@@ -481,6 +522,15 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
+    public boolean visit(ContinueStatement node) {
+        var label = node.getLabel();
+        result = label != null
+                ? concat(text("break"), space(), text(label.getIdentifier()), text(";"))
+                : text("break;");
+        return false;
+    }
+
+    @Override
     public boolean visit(ExpressionStatement node) {
         var expr = getProperty(node, ExpressionStatement.EXPRESSION_PROPERTY);
         expr.accept(this);
@@ -521,6 +571,64 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
+    public boolean visit(PrefixExpression node) {
+        var parts = new ArrayList<Doc>();
+
+        parts.add(text(node.getOperator().toString()));
+
+        var operand = getProperty(node, PrefixExpression.OPERAND_PROPERTY);
+        operand.accept(this);
+        parts.add(result);
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(InfixExpression node) {
+        var parts = new ArrayList<Doc>();
+
+        var left = getProperty(node, InfixExpression.LEFT_OPERAND_PROPERTY);
+        left.accept(this);
+        parts.add(result);
+
+        parts.add(space());
+        var operator = text(node.getOperator().toString());
+        parts.add(operator);
+        parts.add(space());
+
+        var right = getProperty(node, InfixExpression.RIGHT_OPERAND_PROPERTY);
+        right.accept(this);
+        parts.add(result);
+
+        var extendedOperands = getProperty(node, InfixExpression.EXTENDED_OPERANDS_PROPERTY);
+        for (var operand : extendedOperands) {
+            parts.add(space());
+            parts.add(operator);
+            parts.add(space());
+            operand.accept(this);
+            parts.add(result);
+        }
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
+    public boolean visit(PostfixExpression node) {
+        var parts = new ArrayList<Doc>();
+
+        var operand = getProperty(node, PostfixExpression.OPERAND_PROPERTY);
+        operand.accept(this);
+        parts.add(result);
+
+        parts.add(text(node.getOperator().toString()));
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
     public boolean visit(InstanceofExpression node) {
         var parts = new ArrayList<Doc>();
 
@@ -546,7 +654,7 @@ public class AstToDoc extends ASTVisitor {
         if (expression != null) {
             expression.accept(this);
             parts.add(result);
-            parts.add(indent(concat(line(), text("."))));
+            parts.add(indent(concat(new Doc.Line(""), text("."))));
         }
 
         // todo TYPE_ARGUMENTS_PROPERTY
@@ -567,7 +675,39 @@ public class AstToDoc extends ASTVisitor {
             parts.add(text(")"));
         }
 
-        result = concat(parts);
+        result = group(concat(parts));
+        return false;
+    }
+
+    @Override
+    public boolean visit(LambdaExpression node) {
+        var parts = new ArrayList<Doc>();
+
+        var paramsDoc = new ArrayList<Doc>();
+        var parameters = getProperty(node, LambdaExpression.PARAMETERS_PROPERTY);
+        for (var param : parameters) {
+            param.accept(this);
+            paramsDoc.add(result);
+        }
+        boolean skipParens = parameters.size() == 1 && parameters.getFirst() instanceof VariableDeclarationFragment;
+        parts.add(group(concat(
+                skipParens ? paramsDoc.getFirst() : concat(text("("), indent(concat(
+                        line(""),
+                        join(concat(text(","), line()), paramsDoc)
+                )), line(""), text(")")),
+                text(" -> ")
+        )));
+
+        var body = getProperty(node, LambdaExpression.BODY_PROPERTY);
+        body.accept(this);
+        parts.add(result);
+
+        var partsDoc = concat(parts);
+        if (body instanceof Block) {
+            result = conditionalGroup(List.of(partsDoc, partsDoc));
+        } else {
+            result = partsDoc;
+        }
         return false;
     }
 
@@ -619,6 +759,24 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
+    public boolean visit(QualifiedName node) {
+        var parts = new ArrayList<Doc>();
+
+        var qualifier = getProperty(node, QualifiedName.QUALIFIER_PROPERTY);
+        qualifier.accept(this);
+        parts.add(result);
+
+        parts.add(text("."));
+
+        var name = getProperty(node, QualifiedName.NAME_PROPERTY);
+        name.accept(this);
+        parts.add(result);
+
+        result = concat(parts);
+        return false;
+    }
+
+    @Override
     public boolean visit(NumberLiteral node) {
         result = text(node.getToken());
         return false;
@@ -633,6 +791,28 @@ public class AstToDoc extends ASTVisitor {
     @Override
     public boolean visit(SimpleType node) {
         result = text(node.getName().getFullyQualifiedName());
+        return false;
+    }
+
+    @Override
+    public boolean visit(ParameterizedType node) {
+        var parts = new ArrayList<Doc>();
+
+        var type = getProperty(node, ParameterizedType.TYPE_PROPERTY);
+        type.accept(this);
+        parts.add(result);
+
+        parts.add(text("<"));
+        var typeArgDocs = new ArrayList<Doc>();
+        var typeArgs = getProperty(node, ParameterizedType.TYPE_ARGUMENTS_PROPERTY);
+        for (var typeArg : typeArgs) {
+            typeArg.accept(this);
+            typeArgDocs.add(result);
+        }
+        parts.add(join(concat(text(","), space()), typeArgDocs));
+        parts.add(text(">"));
+
+        result = concat(parts);
         return false;
     }
 
@@ -704,11 +884,6 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
-    public boolean visit(ContinueStatement node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
     public boolean visit(CreationReference node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
@@ -769,37 +944,7 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
-    public boolean visit(InfixExpression node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
     public boolean visit(IntersectionType node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(Javadoc node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(JavaDocRegion node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(JavaDocTextElement node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(LabeledStatement node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(LambdaExpression node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
@@ -814,22 +959,7 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
-    public boolean visit(MemberRef node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
     public boolean visit(MemberValuePair node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(MethodRef node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(MethodRefParameter node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
@@ -849,27 +979,7 @@ public class AstToDoc extends ASTVisitor {
     }
 
     @Override
-    public boolean visit(ParameterizedType node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
     public boolean visit(PatternInstanceofExpression node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(PostfixExpression node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(PrefixExpression node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(QualifiedName node) {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
@@ -1018,9 +1128,36 @@ public class AstToDoc extends ASTVisitor {
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
+    // javadocs
+
     @Override
-    public boolean visit(ImplicitTypeDeclaration implicitTypeDeclaration) {
-        return super.visit(implicitTypeDeclaration);
+    public boolean visit(Javadoc node) {
+        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
+    }
+
+    @Override
+    public boolean visit(JavaDocRegion node) {
+        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
+    }
+
+    @Override
+    public boolean visit(JavaDocTextElement node) {
+        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
+    }
+
+    @Override
+    public boolean visit(MemberRef node) {
+        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
+    }
+
+    @Override
+    public boolean visit(MethodRef node) {
+        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
+    }
+
+    @Override
+    public boolean visit(MethodRefParameter node) {
+        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
     // module-info nodes

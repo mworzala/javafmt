@@ -1,0 +1,31 @@
+class Example {
+// abc
+private int a = 1;
+
+
+
+// def
+
+
+
+void foo() {
+//abc
+int i = 0;
+
+//def
+}
+
+// aaaaa
+
+private int b = "";
+
+}
+//      blah
+---
+class Example {
+    private int a = 1;
+    void foo() {}
+
+    private int b = "";
+
+}

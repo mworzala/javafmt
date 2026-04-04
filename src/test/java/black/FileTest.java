@@ -3,10 +3,8 @@ package black;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
-import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,30 +12,30 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class FileTest {
 
     static Stream<Path> testFiles() throws IOException {
         var roots = FileTest.class.getClassLoader().getResources("");
-        return java.util.Collections.list(roots).stream()
-                .map(url -> {
-                    try {
-                        return Path.of(url.toURI());
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                })
-                .filter(Files::isDirectory)
-                .flatMap(root -> {
-                    try {
-                        return Files.walk(root);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                })
-                .filter(p -> p.toString().endsWith(".test"));
+        return java.util.Collections.list(roots)
+            .stream()
+            .map(url -> {
+                try {
+                    return Path.of(url.toURI());
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            })
+            .filter(Files::isDirectory)
+            .flatMap(root -> {
+                try {
+                    return Files.walk(root);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            })
+            .filter(p -> p.toString().endsWith(".test"));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -64,8 +62,8 @@ public class FileTest {
         var actual = printer.print(a2d.result());
 
         actual = Arrays.stream(actual.split("\n"))
-                .map(String::stripTrailing)
-                .collect(Collectors.joining("\n"));
+            .map(String::stripTrailing)
+            .collect(Collectors.joining("\n"));
 
         assertEquals(expected.strip(), actual.strip());
     }

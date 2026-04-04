@@ -4,7 +4,6 @@ import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.CompilationUnit;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -58,12 +57,12 @@ public class Black {
 
         var problems = ast.getProblems();
         if (problems.length > 0) {
-            var errors = Arrays.stream(problems)
-                    .filter(p -> p.isError())
-                    .toList();
+            var errors = Arrays.stream(problems).filter(p -> p.isError()).toList();
             if (!errors.isEmpty()) {
-                throw new RuntimeException("Syntax error: " + errors.getFirst().getMessage()
-                                                   + " (line " + errors.getFirst().getSourceLineNumber() + ")");
+                throw new RuntimeException(
+                    "Syntax error: " + errors.getFirst().getMessage() + " (line " + errors.getFirst()
+                        .getSourceLineNumber() + ")"
+                );
             }
         }
 
@@ -74,8 +73,8 @@ public class Black {
         var formatted = printer.print(a2d.result());
 
         formatted = Arrays.stream(formatted.split("\n"))
-                .map(String::stripTrailing)
-                .collect(Collectors.joining("\n"));
+            .map(String::stripTrailing)
+            .collect(Collectors.joining("\n"));
 
         if (!formatted.endsWith("\n")) {
             formatted += "\n";

@@ -16,8 +16,8 @@ jobs:
         with:
           distribution: 'graalvm'
           java-version: '25'
-
       - uses: gradle/actions/setup-gradle@v6
+
       - run: ./gradlew build
       - run: ./gradlew test
       - run: ./gradlew :black-cli:run --args='check .'

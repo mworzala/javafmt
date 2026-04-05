@@ -18,10 +18,6 @@ dependencies {
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
-tasks.named<Jar>("jar") {
-    from(rootProject.sourceSets.main.map { it.output })
-}
-
 gradlePlugin {
     plugins {
         create("black") {

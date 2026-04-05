@@ -13,6 +13,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.List;
 
+// TODO: how can we support partial caching on source files? We should only reformat changed files.
+@CacheableTask
 public abstract class BlackFormat extends DefaultTask {
 
     @InputFiles

@@ -1,5 +1,5 @@
 
-@NotNullByDefault
+@NullMarked
 package black.gradle;
 
-import org.jetbrains.annotations.NotNullByDefault;
+import org.jspecify.annotations.NullMarked;

@@ -1,0 +1,39 @@
+class Example {
+    /* Class-level block comment */
+    int x = 1;
+
+    /**
+     * This is a javadoc-style block comment
+     * that spans multiple lines
+     */
+    void foo() {
+        /* single line block comment */
+        int a = 1;
+        int b = 2; /* trailing block comment */
+        /*
+         * Multi-line block comment
+         * inside a method body
+         */
+        System.out.println(a + b);
+    }
+}
+---
+class Example {
+    /* Class-level block comment */
+    int x = 1;
+
+    /**
+     * This is a javadoc-style block comment
+     * that spans multiple lines
+     */
+    void foo() {
+        /* single line block comment */
+        int a = 1;
+        int b = 2; /* trailing block comment */
+        /*
+         * Multi-line block comment
+         * inside a method body
+         */
+        System.out.println(a + b);
+    }
+}

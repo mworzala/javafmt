@@ -1,0 +1,23 @@
+void example() {
+    switch (x) {
+        case 1:
+            // colon style comment
+            break;
+        case 2 -> {
+            // arrow style comment
+            System.out.println(2);
+        }
+    }
+}
+---
+void example() {
+    switch (x) {
+        case 1:
+            // colon style comment
+            break;
+        case 2 -> {
+            // arrow style comment
+            System.out.println(2);
+        }
+    }
+}

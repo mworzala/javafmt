@@ -1,0 +1,23 @@
+class Example {
+    int x = 1; // field comment
+
+    void foo() {
+        int a = 1; // local var comment
+        System.out.println(a); // statement comment
+        if (true) { // if comment
+            a++; // increment comment
+        }
+    }
+}
+---
+class Example {
+    int x = 1; // field comment
+
+    void foo() {
+        int a = 1; // local var comment
+        System.out.println(a); // statement comment
+        if (true) { // if comment
+            a++; // increment comment
+        }
+    }
+}

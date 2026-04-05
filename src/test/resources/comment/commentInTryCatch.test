@@ -1,0 +1,25 @@
+void example() {
+    try {
+        // comment in try
+        int a = 1;
+    } catch (Exception e) {
+        // comment in catch
+        int b = 2;
+    } finally {
+        // comment in finally
+        int c = 3;
+    }
+}
+---
+void example() {
+    try {
+        // comment in try
+        int a = 1;
+    } catch (Exception e) {
+        // comment in catch
+        int b = 2;
+    } finally {
+        // comment in finally
+        int c = 3;
+    }
+}

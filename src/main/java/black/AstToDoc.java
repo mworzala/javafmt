@@ -69,18 +69,18 @@ public class AstToDoc extends ASTVisitor {
             int nextBoundary = (i + 1 < types.size())
                     ? types.get(i + 1).getStartPosition()
                     : (source != null ? source.length() : afterTypeEnd);
-            var trailingComments = collectLineCommentsInRange(afterTypeEnd, nextBoundary);
+            var trailingComments = collectCommentsInRange(afterTypeEnd, nextBoundary);
 
             if (trailingComments.isEmpty()) {
                 parts.add(hardLine());
                 parts.add(hardLine());
             } else {
                 ASTNode prev = types.get(i);
-                for (var lc : trailingComments) {
+                for (var c : trailingComments) {
                     parts.add(hardLine());
-                    if (blankLinesBetween(prev, lc) > 0) parts.add(hardLine());
-                    parts.add(renderLineComment(lc));
-                    prev = lc;
+                    if (blankLinesBetween(prev, c) > 0) parts.add(hardLine());
+                    parts.add(renderComment(c));
+                    prev = c;
                 }
                 parts.add(hardLine());
             }
@@ -426,13 +426,13 @@ public class AstToDoc extends ASTVisitor {
             openBrace++;
         }
 
-        // Collect line comments that appear at the body level (not inside a member's range)
-        var bodyComments = collectLineCommentsInRange(openBrace + 1, nodeEnd - 1);
-        bodyComments.removeIf(lc -> body.stream().anyMatch(decl ->
-                                                                   lc.getStartPosition() >= decl.getStartPosition() &&
-                                                                           lc.getStartPosition() < decl.getStartPosition() + decl.getLength()));
+        // Collect comments that appear at the body level (not inside a member's range)
+        var bodyComments = collectCommentsInRange(openBrace + 1, nodeEnd - 1);
+        bodyComments.removeIf(c -> body.stream().anyMatch(decl ->
+                c.getStartPosition() >= decl.getStartPosition() &&
+                        c.getStartPosition() < decl.getStartPosition() + decl.getLength()));
 
-        // Build merged sorted list of body members and line comments
+        // Build merged sorted list of body members and comments
         var items = new ArrayList<ASTNode>(body);
         items.addAll(bodyComments);
         items.sort(Comparator.comparingInt(ASTNode::getStartPosition));
@@ -450,15 +450,23 @@ public class AstToDoc extends ASTVisitor {
             bodyParts.add(hardLine());
         }
         for (int i = 0; i < items.size(); i++) {
+            var item = items.get(i);
+
+            // Check if this comment is trailing on the same line as the previous item
+            if (item instanceof Comment comment && i > 0 && isTrailingComment(items.get(i - 1), comment)) {
+                var prevDoc = bodyParts.removeLast();
+                bodyParts.add(concat(prevDoc, text(" "), renderComment(comment)));
+                continue;
+            }
+
             if (i > 0) {
                 bodyParts.add(hardLine());
                 if (blankLinesBetween(items.get(i - 1), items.get(i)) > 0) {
                     bodyParts.add(hardLine());
                 }
             }
-            var item = items.get(i);
-            if (item instanceof LineComment lc) {
-                bodyParts.add(renderLineComment(lc));
+            if (item instanceof Comment comment) {
+                bodyParts.add(renderComment(comment));
             } else {
                 item.accept(this);
                 bodyParts.add(result);
@@ -710,11 +718,17 @@ public class AstToDoc extends ASTVisitor {
         var stmts = new ArrayList<>(getProperty(node, Block.STATEMENTS_PROPERTY));
         stmts.removeIf(stmt -> stmt instanceof EmptyStatement);
 
-        // Build merged sorted list of statements and line comments
-        var items = new ArrayList<ASTNode>(stmts);
-        items.addAll(collectLineCommentsInRange(
+        // Collect comments in this block's range, filtering out those inside child statements
+        var blockComments = collectCommentsInRange(
                 node.getStartPosition(),
-                node.getStartPosition() + node.getLength()));
+                node.getStartPosition() + node.getLength());
+        blockComments.removeIf(c -> stmts.stream().anyMatch(stmt ->
+                c.getStartPosition() >= stmt.getStartPosition() &&
+                        c.getStartPosition() < stmt.getStartPosition() + stmt.getLength()));
+
+        // Build merged sorted list of statements and comments
+        var items = new ArrayList<ASTNode>(stmts);
+        items.addAll(blockComments);
         items.sort(Comparator.comparingInt(ASTNode::getStartPosition));
 
         if (items.isEmpty()) {
@@ -722,22 +736,42 @@ public class AstToDoc extends ASTVisitor {
             return false;
         }
 
+        // Check if the first item is a comment on the same line as the opening brace
+        Doc openBraceTrailing = null;
+        int startIdx = 0;
+        if (items.getFirst() instanceof Comment firstComment && isOnSameLineAsOpenBrace(node, firstComment)) {
+            openBraceTrailing = renderComment(firstComment);
+            startIdx = 1;
+        }
+
         var parts = new ArrayList<Doc>();
-        for (int i = 0; i < items.size(); i++) {
-            if (i > 0 && blankLinesBetween(items.get(i - 1), items.get(i)) > 0) {
+        for (int i = startIdx; i < items.size(); i++) {
+            var item = items.get(i);
+
+            // Check if this comment is trailing on the same line as the previous item
+            if (item instanceof Comment comment && i > startIdx && isTrailingComment(items.get(i - 1), comment)) {
+                // Append as trailing comment to the previous line
+                var prevDoc = parts.removeLast();
+                parts.add(concat(prevDoc, text(" "), renderComment(comment)));
+                continue;
+            }
+
+            if (i > startIdx && blankLinesBetween(items.get(i - 1), items.get(i)) > 0) {
                 parts.add(hardLine());
             }
             parts.add(hardLine());
-            var item = items.get(i);
-            if (item instanceof LineComment lc) {
-                parts.add(renderLineComment(lc));
+            if (item instanceof Comment comment) {
+                parts.add(renderComment(comment));
             } else {
                 item.accept(this);
                 parts.add(result);
             }
         }
 
-        result = concat(text("{"),
+        var openBrace = openBraceTrailing != null
+                ? concat(text("{"), text(" "), openBraceTrailing)
+                : text("{");
+        result = concat(openBrace,
                         indent(concat(parts)),
                         hardLine(),
                         text("}"));
@@ -906,21 +940,48 @@ public class AstToDoc extends ASTVisitor {
 
         parts.add(text(") {"));
 
-        var stmtParts = new ArrayList<Doc>();
         var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
-        for (int i = 0; i < statements.size(); i++) {
-            var statement = statements.get(i);
-            statement.accept(this);
 
-            if (i > 0 && statements.get(i - 1) instanceof SwitchCase sc && sc.isSwitchLabeledRule()) {
-                result = concat(space(), result);
-            } else {
-                result = concat(hardLine(), result);
-                if (!(statement instanceof SwitchCase))
-                    result = indent(result);
+        // Collect comments inside the switch body, filtering out those inside child statements
+        var switchComments = collectCommentsInRange(
+                node.getStartPosition(),
+                node.getStartPosition() + node.getLength());
+        switchComments.removeIf(c -> statements.stream().anyMatch(stmt ->
+                c.getStartPosition() >= stmt.getStartPosition() &&
+                        c.getStartPosition() < stmt.getStartPosition() + stmt.getLength()));
+
+        var items = new ArrayList<ASTNode>(statements);
+        items.addAll(switchComments);
+        items.sort(Comparator.comparingInt(ASTNode::getStartPosition));
+
+        var stmtParts = new ArrayList<Doc>();
+        for (int i = 0; i < items.size(); i++) {
+            var item = items.get(i);
+
+            // Check if this comment is trailing on the same line as the previous item
+            if (item instanceof Comment comment && i > 0 && isTrailingComment(items.get(i - 1), comment)) {
+                var prevDoc = stmtParts.removeLast();
+                stmtParts.add(concat(prevDoc, text(" "), renderComment(comment)));
+                continue;
             }
 
-            stmtParts.add(result);
+            // Find the previous non-comment item for layout decisions
+            ASTNode prevItem = i > 0 ? items.get(i - 1) : null;
+
+            if (item instanceof Comment comment) {
+                // Comments follow same indentation rules as non-SwitchCase statements
+                stmtParts.add(indent(concat(hardLine(), renderComment(comment))));
+            } else {
+                item.accept(this);
+                if (prevItem instanceof SwitchCase sc && sc.isSwitchLabeledRule()) {
+                    result = concat(space(), result);
+                } else {
+                    result = concat(hardLine(), result);
+                    if (!(item instanceof SwitchCase))
+                        result = indent(result);
+                }
+                stmtParts.add(result);
+            }
         }
 
         parts.add(indent(concat(stmtParts)));
@@ -2617,7 +2678,8 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(BlockComment node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
+        // Block comments are handled via CompilationUnit.getCommentList(), not via visitor dispatch
+        return false;
     }
 
     @Override
@@ -2717,9 +2779,9 @@ public class AstToDoc extends ASTVisitor {
         }
     }
 
-    private List<LineComment> collectLineCommentsInRange(int from, int to) {
+    private List<Comment> collectCommentsInRange(int from, int to) {
         if (source == null || compilationUnit == null) return List.of();
-        var collected = new ArrayList<LineComment>();
+        var collected = new ArrayList<Comment>();
         for (ASTNode obj : (List<ASTNode>) compilationUnit.getCommentList()) {
             if (obj instanceof LineComment lc) {
                 int start = lc.getStartPosition();
@@ -2729,6 +2791,11 @@ public class AstToDoc extends ASTVisitor {
                         collected.add(lc);
                     }
                 }
+            } else if (obj instanceof BlockComment bc) {
+                int start = bc.getStartPosition();
+                if (start >= from && start < to) {
+                    collected.add(bc);
+                }
             }
         }
         return collected;
@@ -2736,6 +2803,45 @@ public class AstToDoc extends ASTVisitor {
 
     private Doc renderLineComment(LineComment lc) {
         return text(source.substring(lc.getStartPosition(), lc.getStartPosition() + lc.getLength()).stripTrailing());
+    }
+
+    private Doc renderBlockComment(BlockComment bc) {
+        int startPos = bc.getStartPosition();
+        var text = source.substring(startPos, startPos + bc.getLength());
+        // Compute column of /* to strip that indentation from subsequent lines
+        int col = 0;
+        for (int i = startPos - 1; i >= 0 && source.charAt(i) != '\n'; i--) col++;
+        var parts = new ArrayList<Doc>();
+        appendCommentLines(parts, text, col);
+        // appendCommentLines adds a trailing hardLine after the last line; remove it
+        if (!parts.isEmpty()) parts.removeLast();
+        return concat(parts);
+    }
+
+    private Doc renderComment(Comment comment) {
+        if (comment instanceof LineComment lc) return renderLineComment(lc);
+        if (comment instanceof BlockComment bc) return renderBlockComment(bc);
+        throw new IllegalArgumentException("Unexpected comment type: " + comment.getClass());
+    }
+
+    private boolean isOnSameLineAsOpenBrace(Block block, Comment comment) {
+        if (source == null) return false;
+        int bracePos = block.getStartPosition();
+        int commentStart = comment.getStartPosition();
+        for (int i = bracePos + 1; i < commentStart; i++) {
+            if (source.charAt(i) == '\n') return false;
+        }
+        return true;
+    }
+
+    private boolean isTrailingComment(ASTNode prev, Comment comment) {
+        if (source == null) return false;
+        int prevEnd = prev.getStartPosition() + prev.getLength();
+        int commentStart = comment.getStartPosition();
+        for (int i = prevEnd; i < commentStart; i++) {
+            if (source.charAt(i) == '\n') return false;
+        }
+        return true;
     }
 
     private void appendCommentLines(List<Doc> parts, String text, int indentToStrip) {

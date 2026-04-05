@@ -1,0 +1,27 @@
+class Example {
+    // line comment
+    /* block comment */
+    int x = 1;
+
+    /* block before method */
+    // line before method
+    void foo() {
+        // line inside method
+        /* block inside method */
+        int a = 1;
+    }
+}
+---
+class Example {
+    // line comment
+    /* block comment */
+    int x = 1;
+
+    /* block before method */
+    // line before method
+    void foo() {
+        // line inside method
+        /* block inside method */
+        int a = 1;
+    }
+}

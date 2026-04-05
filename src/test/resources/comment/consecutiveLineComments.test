@@ -1,0 +1,13 @@
+class Example {
+    // first comment
+    // second comment
+    // third comment
+    int x = 1;
+}
+---
+class Example {
+    // first comment
+    // second comment
+    // third comment
+    int x = 1;
+}

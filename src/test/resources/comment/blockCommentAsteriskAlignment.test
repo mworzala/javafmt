@@ -1,0 +1,17 @@
+class Example {
+    /*
+     * Line one
+     * Line two
+     * Line three
+     */
+    int x = 1;
+}
+---
+class Example {
+    /*
+     * Line one
+     * Line two
+     * Line three
+     */
+    int x = 1;
+}

@@ -1,0 +1,9 @@
+class Example {
+    /* */
+    int x = 1;
+}
+---
+class Example {
+    /* */
+    int x = 1;
+}

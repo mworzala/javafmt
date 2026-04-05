@@ -1,0 +1,13 @@
+class Example {
+    int x = 1;
+}
+
+// line comment after class
+/* block comment after class */
+---
+class Example {
+    int x = 1;
+}
+
+// line comment after class
+/* block comment after class */

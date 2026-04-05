@@ -1,0 +1,29 @@
+<idea-plugin>
+    <id>black</id>
+    <name>Black for Java</name>
+
+    <depends>com.intellij.modules.java</depends>
+    <description>
+        <![CDATA[
+      TODO: fill me in with a description of the plugin
+    ]]>
+    </description>
+    <change-notes>
+        <![CDATA[
+      <ul>
+        <li><b>2.0.0</b> Renamed from register_actions and converted to Gradle project.</li>
+        <li><b>1.1</b> Refactor to give users feedback when selecting menu items.</li>
+        <li><b>1.0</b> Release 2018.3 and earlier.</li>
+      </ul>
+    ]]>
+    </change-notes>
+
+    <!-- Text to display as company information on Settings | Plugin page -->
+    <vendor url="https://plugins.jetbrains.com">IntelliJ Platform SDK</vendor>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <notificationGroup id="Black Formatter" displayType="BALLOON" />
+        <formattingService implementation="black.idea.BlackFormattingService" />
+    </extensions>
+
+</idea-plugin>

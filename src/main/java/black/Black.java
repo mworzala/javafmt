@@ -43,9 +43,13 @@ public class Black {
         }
     }
 
-    private static void formatFile(Path path) throws IOException {
+    public static void formatFile(Path path) throws IOException {
         var source = Files.readString(path);
+        var formatted = formatSource(source);
+        Files.writeString(path, formatted);
+    }
 
+    public static String formatSource(String source) {
         var parser = ASTParser.newParser(AST.getJLSLatest());
         parser.setSource(source.toCharArray());
         parser.setKind(ASTParser.K_COMPILATION_UNIT);
@@ -62,8 +66,8 @@ public class Black {
             var errors = Arrays.stream(problems).filter(p -> p.isError()).toList();
             if (!errors.isEmpty()) {
                 throw new RuntimeException(
-                    "Syntax error: " + errors.getFirst().getMessage() + " (line " + errors.getFirst()
-                        .getSourceLineNumber() + ")"
+                        "Syntax error: " + errors.getFirst().getMessage() + " (line " + errors.getFirst()
+                                .getSourceLineNumber() + ")"
                 );
             }
         }
@@ -75,13 +79,12 @@ public class Black {
         var formatted = printer.print(a2d.result());
 
         formatted = Arrays.stream(formatted.split("\n"))
-            .map(String::stripTrailing)
-            .collect(Collectors.joining("\n"));
+                .map(String::stripTrailing)
+                .collect(Collectors.joining("\n"));
 
         if (!formatted.endsWith("\n")) {
             formatted += "\n";
         }
-
-        Files.writeString(path, formatted);
+        return formatted;
     }
 }

@@ -1,7 +1,6 @@
 package black.cli;
 
 import org.jspecify.annotations.Nullable;
-
 import java.util.*;
 
 /// A simple, Go-flag-style command-line flag parser.
@@ -174,14 +173,18 @@ final class Flags {
         System.err.println("Usage of " + programName + ":");
         for (FlagEntry<?> e : registered.values()) {
             String def = e.defaultVal == null ? "" : " (default: " + e.defaultVal + ")";
-            String label = e.shortName != null
-                    ? "--" + e.name + ", -" + e.shortName
-                    : "--" + e.name;
+            String label = e.shortName != null ? "--" + e.name + ", -" + e.shortName : "--" + e.name;
             System.err.printf("  %-24s %s%s%n", label, e.usage, def);
         }
     }
 
-    private <T> Value<T> register(String name, String shortName, T defaultVal, String usage, Parser<T> parser) {
+    private <T> Value<T> register(
+        String name,
+        String shortName,
+        T defaultVal,
+        String usage,
+        Parser<T> parser
+    ) {
         if (registered.containsKey(name)) {
             throw new IllegalArgumentException("flag already defined: " + name);
         }
@@ -202,12 +205,18 @@ final class Flags {
     }
 
     @FunctionalInterface
-    interface Parser<T> { T parse(String s); }
+    interface Parser<T> {
+        T parse(String s);
+    }
 
     public static class Value<T> {
         T val;
-        Value(T val) { this.val = val; }
-        public T get() { return val; }
+        Value(T val) {
+            this.val = val;
+        }
+        public T get() {
+            return val;
+        }
     }
 
     private static class FlagEntry<T> extends Value<T> {
@@ -232,7 +241,9 @@ final class Flags {
             try {
                 this.val = parser.parse(raw);
             } catch (Exception e) {
-                System.err.println("invalid value \"" + raw + "\" for flag -" + name + ": " + e.getMessage());
+                System.err.println(
+                    "invalid value \"" + raw + "\" for flag -" + name + ": " + e.getMessage()
+                );
                 System.exit(1);
             }
         }

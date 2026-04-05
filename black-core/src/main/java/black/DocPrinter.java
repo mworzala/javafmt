@@ -7,6 +7,7 @@ public final class DocPrinter {
     private final int maxWidth;
     private final StringBuilder out = new StringBuilder();
     private int currentLineWidth = 0;
+    private int pendingIndent = -1; // -1 means no pending newline
 
     // Stack frames: (indent level, breaking mode, doc to process)
     private record Frame(int indent, boolean flat, Doc doc) {}
@@ -24,6 +25,7 @@ public final class DocPrinter {
             switch (frame.doc()) {
 
                 case Doc.Text t -> {
+                    flushPendingIndent();
                     out.append(t.value());
                     currentLineWidth += t.value().length();
                 }
@@ -42,6 +44,8 @@ public final class DocPrinter {
 
                 case Doc.Line line -> {
                     if (frame.flat()) {
+                        flushPendingIndent();
+
                         // Group didn't break — emit the flat alternative (usually a space).
                         out.append(line.flat());
                         currentLineWidth += line.flat().length();
@@ -83,9 +87,21 @@ public final class DocPrinter {
     }
 
     private void emitNewline(int indent) {
-        out.append('\n');
-        out.append(" ".repeat(indent));
-        currentLineWidth = indent;
+        // If there's already a pending indent (back-to-back newlines),
+        // flush it as a bare newline first.
+        if (pendingIndent >= 0) {
+            out.append('\n');
+        }
+        pendingIndent = indent;
+    }
+
+    private void flushPendingIndent() {
+        if (pendingIndent >= 0) {
+            out.append('\n');
+            out.append(" ".repeat(pendingIndent));
+            currentLineWidth = pendingIndent;
+            pendingIndent = -1;
+        }
     }
 
     /**
@@ -93,7 +109,7 @@ public final class DocPrinter {
      * This is a quick pessimistic check — if we hit a HardLine, it doesn't fit.
      */
     private boolean fits(int indent, Doc doc) {
-        int remaining = maxWidth - currentLineWidth;
+        int remaining = maxWidth - (pendingIndent >= 0 ? pendingIndent : currentLineWidth);
         Deque<Doc> work = new ArrayDeque<>();
         work.push(doc);
 

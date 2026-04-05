@@ -1,7 +1,6 @@
 package black.cli;
 
 import black.Black;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -27,12 +26,17 @@ public class Main {
             --help, -h            show this help message and exit
             """.stripIndent();
 
-    private static final BiPredicate<Path, BasicFileAttributes> JAVA_FILE_MATCHER = (path, attrs) ->
-            attrs.isRegularFile() && path.toString().endsWith(".java");
+    private static final BiPredicate<Path, BasicFileAttributes> JAVA_FILE_MATCHER = (
+        path,
+        attrs
+    ) -> attrs.isRegularFile() && path.toString().endsWith(".java");
 
-    private enum Mode { FORMAT, CHECK }
+    private enum Mode {
+        FORMAT,
+        CHECK
+    }
 
-    static void main(String[] args) throws InterruptedException {
+    static void main(String[] args) {
         var flags = new Flags("black", USAGE);
         var threads = flags.intFlag("threads", "t", 1, "number of threads to use");
         flags.parse(args);

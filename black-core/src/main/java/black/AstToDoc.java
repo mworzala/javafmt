@@ -61,6 +61,34 @@ public class AstToDoc extends ASTVisitor {
 
         var types = getProperty(node, CompilationUnit.TYPES_PROPERTY);
         for (int i = 0; i < types.size(); i++) {
+            // Collect comments before this type (after previous type, imports, package, or start of file)
+            int beforeTypeStart;
+            if (i > 0) {
+                beforeTypeStart = types.get(i - 1).getStartPosition() + types.get(i - 1).getLength();
+            } else if (!imports.isEmpty()) {
+                var lastImport = imports.getLast();
+                beforeTypeStart = lastImport.getStartPosition() + lastImport.getLength();
+            } else if (package_ != null) {
+                beforeTypeStart = package_.getStartPosition() + package_.getLength();
+            } else {
+                beforeTypeStart = 0;
+            }
+            var leadingComments = collectCommentsInRange(beforeTypeStart, types.get(i).getStartPosition());
+            if (!leadingComments.isEmpty()) {
+                ASTNode prev = null;
+                for (var c : leadingComments) {
+                    if (prev != null && blankLinesBetween(prev, c) > 0) {
+                        parts.add(hardLine());
+                    }
+                    parts.add(renderComment(c));
+                    parts.add(hardLine());
+                    prev = c;
+                }
+                if (blankLinesBetween(leadingComments.getLast(), types.get(i)) > 0) {
+                    parts.add(hardLine());
+                }
+            }
+
             types.get(i).accept(this);
             parts.add(result);
 
@@ -116,7 +144,20 @@ public class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(PackageDeclaration node) {
-        result = text("package " + node.getName().getFullyQualifiedName() + ";");
+        var parts = new ArrayList<Doc>();
+
+        visitJavadoc(parts, node, PackageDeclaration.JAVADOC_PROPERTY);
+
+        visitAnnotations(parts, node, PackageDeclaration.ANNOTATIONS_PROPERTY, true);
+
+        parts.add(text("package "));
+
+        var name = getProperty(node, PackageDeclaration.NAME_PROPERTY);
+        name.accept(this);
+        parts.add(result);
+
+        parts.add(text(";"));
+        result = concat(parts);
         return false;
     }
 
@@ -124,7 +165,7 @@ public class AstToDoc extends ASTVisitor {
     public boolean visit(TypeDeclaration node) {
         var parts = new ArrayList<Doc>();
 
-        visitJavadoc(parts, node);
+        visitJavadoc(parts, node, TypeDeclaration.JAVADOC_PROPERTY);
 
         visitModifiers(parts, node, TypeDeclaration.MODIFIERS2_PROPERTY);
 
@@ -185,7 +226,7 @@ public class AstToDoc extends ASTVisitor {
     public boolean visit(RecordDeclaration node) {
         var parts = new ArrayList<Doc>();
 
-        visitJavadoc(parts, node);
+        visitJavadoc(parts, node, RecordDeclaration.JAVADOC_PROPERTY);
 
         visitModifiers(parts, node, RecordDeclaration.MODIFIERS2_PROPERTY);
 
@@ -229,7 +270,7 @@ public class AstToDoc extends ASTVisitor {
     public boolean visit(EnumDeclaration node) {
         var parts = new ArrayList<Doc>();
 
-        visitJavadoc(parts, node);
+        visitJavadoc(parts, node, EnumDeclaration.JAVADOC_PROPERTY);
 
         visitModifiers(parts, node, EnumDeclaration.MODIFIERS2_PROPERTY);
 
@@ -299,7 +340,7 @@ public class AstToDoc extends ASTVisitor {
     public boolean visit(EnumConstantDeclaration node) {
         var parts = new ArrayList<Doc>();
 
-        visitJavadoc(parts, node);
+        visitJavadoc(parts, node, EnumConstantDeclaration.JAVADOC_PROPERTY);
 
         visitModifiers(parts, node, EnumConstantDeclaration.MODIFIERS2_PROPERTY);
 
@@ -338,7 +379,7 @@ public class AstToDoc extends ASTVisitor {
     public boolean visit(AnnotationTypeDeclaration node) {
         var parts = new ArrayList<Doc>();
 
-        visitJavadoc(parts, node);
+        visitJavadoc(parts, node, AnnotationTypeDeclaration.JAVADOC_PROPERTY);
 
         visitModifiers(parts, node, AnnotationTypeDeclaration.MODIFIERS2_PROPERTY);
 
@@ -357,7 +398,7 @@ public class AstToDoc extends ASTVisitor {
     public boolean visit(AnnotationTypeMemberDeclaration node) {
         var parts = new ArrayList<Doc>();
 
-        visitJavadoc(parts, node);
+        visitJavadoc(parts, node, AnnotationTypeMemberDeclaration.JAVADOC_PROPERTY);
 
         visitModifiers(parts, node, AnnotationTypeMemberDeclaration.MODIFIERS2_PROPERTY);
 
@@ -424,16 +465,23 @@ public class AstToDoc extends ASTVisitor {
         // Find open/close brace positions to scope comment collection
         int nodeStart = node.getStartPosition();
         int nodeEnd = nodeStart + node.getLength();
-        int openBrace = nodeStart;
-        while (openBrace < nodeEnd && source != null && source.charAt(openBrace) != '{') {
-            openBrace++;
+
+        int commentRangeStart;
+        if (withBraces) {
+            int openBrace = nodeStart;
+            while (openBrace < nodeEnd && source != null && source.charAt(openBrace) != '{') {
+                openBrace++;
+            }
+            commentRangeStart = openBrace + 1;
+        } else {
+            commentRangeStart = nodeStart;
         }
 
         // Collect comments that appear at the body level (not inside a member's range)
-        var bodyComments = collectCommentsInRange(openBrace + 1, nodeEnd - 1);
+        var bodyComments = collectCommentsInRange(commentRangeStart, nodeEnd - (withBraces ? 1 : 0));
         bodyComments.removeIf(c -> body.stream().anyMatch(decl ->
-                c.getStartPosition() >= decl.getStartPosition() &&
-                        c.getStartPosition() < decl.getStartPosition() + decl.getLength()));
+                                                                  c.getStartPosition() >= decl.getStartPosition() &&
+                                                                          c.getStartPosition() < decl.getStartPosition() + decl.getLength()));
 
         // Build merged sorted list of body members and comments
         var items = new ArrayList<ASTNode>(body);
@@ -448,9 +496,11 @@ public class AstToDoc extends ASTVisitor {
         if (withBraces) parts.add(text("{"));
 
         var bodyParts = new ArrayList<Doc>();
-        bodyParts.add(hardLine());
-        if (blankLinesAfterOpenBrace(node, items.getFirst()) > 0) {
+        if (withBraces) {
             bodyParts.add(hardLine());
+            if (blankLinesAfterOpenBrace(node, items.getFirst()) > 0) {
+                bodyParts.add(hardLine());
+            }
         }
         for (int i = 0; i < items.size(); i++) {
             var item = items.get(i);
@@ -478,19 +528,21 @@ public class AstToDoc extends ASTVisitor {
         var bodyDoc = concat(bodyParts);
         parts.add(withBraces ? indent(bodyDoc) : bodyDoc);
 
-        parts.add(hardLine());
-        if (blankLinesBeforeCloseBrace(node, items.getLast()) > 0) {
+        if (withBraces) {
             parts.add(hardLine());
+            if (blankLinesBeforeCloseBrace(node, items.getLast()) > 0) {
+                parts.add(hardLine());
+            }
+            parts.add(text("}"));
         }
-        if (withBraces) parts.add(text("}"));
     }
 
-    private void visitAnnotations(List<Doc> parts, ASTNode node, ChildListPropertyDescriptor property) {
+    private void visitAnnotations(List<Doc> parts, ASTNode node, ChildListPropertyDescriptor property, boolean forceNewline) {
         var annotations = getProperty(node, property);
         for (var annotation : annotations) {
             annotation.accept(this);
             parts.add(result);
-            parts.add(space());
+            parts.add(forceNewline ? hardLine() : space());
         }
     }
 
@@ -507,7 +559,7 @@ public class AstToDoc extends ASTVisitor {
         parts.add(result);
 
         if (node.isVarargs()) {
-            visitAnnotations(parts, node, SingleVariableDeclaration.VARARGS_ANNOTATIONS_PROPERTY);
+            visitAnnotations(parts, node, SingleVariableDeclaration.VARARGS_ANNOTATIONS_PROPERTY, false);
             parts.add(text("..."));
         }
 
@@ -528,7 +580,7 @@ public class AstToDoc extends ASTVisitor {
     public boolean visit(Initializer node) {
         var parts = new ArrayList<Doc>();
 
-        visitJavadoc(parts, node);
+        visitJavadoc(parts, node, Initializer.JAVADOC_PROPERTY);
 
         visitModifiers(parts, node, Initializer.MODIFIERS2_PROPERTY);
 
@@ -547,7 +599,7 @@ public class AstToDoc extends ASTVisitor {
     public boolean visit(FieldDeclaration node) {
         var parts = new ArrayList<Doc>();
 
-        visitJavadoc(parts, node);
+        visitJavadoc(parts, node, FieldDeclaration.JAVADOC_PROPERTY);
 
         visitModifiers(parts, node, FieldDeclaration.MODIFIERS2_PROPERTY);
 
@@ -573,7 +625,7 @@ public class AstToDoc extends ASTVisitor {
     public boolean visit(MethodDeclaration node) {
         var parts = new ArrayList<Doc>();
 
-        visitJavadoc(parts, node);
+        visitJavadoc(parts, node, MethodDeclaration.JAVADOC_PROPERTY);
 
         visitModifiers(parts, node, MethodDeclaration.MODIFIERS2_PROPERTY);
 
@@ -696,7 +748,7 @@ public class AstToDoc extends ASTVisitor {
     public boolean visit(TypeParameter node) {
         var parts = new ArrayList<Doc>();
 
-        visitAnnotations(parts, node, TypeParameter.MODIFIERS_PROPERTY);
+        visitAnnotations(parts, node, TypeParameter.MODIFIERS_PROPERTY, false);
 
         // todo MODIFIERS_PROPERTY (annotations on type params)
 
@@ -2359,7 +2411,7 @@ public class AstToDoc extends ASTVisitor {
     public boolean visit(PrimitiveType node) {
         var parts = new ArrayList<Doc>();
 
-        visitAnnotations(parts, node, PrimitiveType.ANNOTATIONS_PROPERTY);
+        visitAnnotations(parts, node, PrimitiveType.ANNOTATIONS_PROPERTY, false);
 
         parts.add(text(node.getPrimitiveTypeCode().toString()));
 
@@ -2371,7 +2423,7 @@ public class AstToDoc extends ASTVisitor {
     public boolean visit(SimpleType node) {
         var parts = new ArrayList<Doc>();
 
-        visitAnnotations(parts, node, SimpleType.ANNOTATIONS_PROPERTY);
+        visitAnnotations(parts, node, SimpleType.ANNOTATIONS_PROPERTY, false);
 
         parts.add(text(node.getName().getFullyQualifiedName()));
 
@@ -2389,7 +2441,7 @@ public class AstToDoc extends ASTVisitor {
 
         parts.add(text("."));
 
-        visitAnnotations(parts, node, QualifiedType.ANNOTATIONS_PROPERTY);
+        visitAnnotations(parts, node, QualifiedType.ANNOTATIONS_PROPERTY, false);
 
         var name = getProperty(node, QualifiedType.NAME_PROPERTY);
         name.accept(this);
@@ -2409,7 +2461,7 @@ public class AstToDoc extends ASTVisitor {
 
         parts.add(text("."));
 
-        visitAnnotations(parts, node, NameQualifiedType.ANNOTATIONS_PROPERTY);
+        visitAnnotations(parts, node, NameQualifiedType.ANNOTATIONS_PROPERTY, false);
 
         var name = getProperty(node, NameQualifiedType.NAME_PROPERTY);
         name.accept(this);
@@ -2423,7 +2475,7 @@ public class AstToDoc extends ASTVisitor {
     public boolean visit(WildcardType node) {
         var parts = new ArrayList<Doc>();
 
-        visitAnnotations(parts, node, WildcardType.ANNOTATIONS_PROPERTY);
+        visitAnnotations(parts, node, WildcardType.ANNOTATIONS_PROPERTY, false);
 
         parts.add(text("?"));
 
@@ -2484,7 +2536,7 @@ public class AstToDoc extends ASTVisitor {
     public boolean visit(Dimension node) {
         var parts = new ArrayList<Doc>();
 
-        visitAnnotations(parts, node, Dimension.ANNOTATIONS_PROPERTY);
+        visitAnnotations(parts, node, Dimension.ANNOTATIONS_PROPERTY, false);
 
         parts.add(text("[]"));
 
@@ -2773,11 +2825,9 @@ public class AstToDoc extends ASTVisitor {
         return blankLinesBetweenPositions(lastBodyEnd, closeBrace);
     }
 
-    private void visitJavadoc(List<Doc> parts, BodyDeclaration node) {
-        if (source == null) return;
-
+    private void visitJavadoc(List<Doc> parts, ASTNode node, ChildPropertyDescriptor property) {
         // Check for legacy /** ... */ javadoc via the AST
-        var javadoc = node.getJavadoc();
+        var javadoc = getProperty(node, property);
         if (javadoc != null) {
             int startPos = javadoc.getStartPosition();
             var text = source.substring(startPos, startPos + javadoc.getLength());

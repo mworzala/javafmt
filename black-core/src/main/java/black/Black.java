@@ -78,9 +78,7 @@ public class Black {
         var printer = new DocPrinter(100);
         var formatted = printer.print(a2d.result());
 
-        formatted = Arrays.stream(formatted.split("\n"))
-                .map(String::stripTrailing)
-                .collect(Collectors.joining("\n"));
+        formatted = formatted.stripTrailing();
 
         if (!formatted.endsWith("\n")) {
             formatted += "\n";

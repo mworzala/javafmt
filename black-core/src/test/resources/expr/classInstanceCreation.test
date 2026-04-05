@@ -1,4 +1,3 @@
-// Badly formatted
 void example() {
     Object a=new Object();
     Object b=new Object(   );

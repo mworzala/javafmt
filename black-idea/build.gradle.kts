@@ -11,7 +11,7 @@ repositories {
 }
 
 dependencies {
-    implementation(rootProject)
+    implementation(project(":black-core"))
 
     intellijPlatform {
         intellijIdea("2026.1")

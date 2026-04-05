@@ -1,4 +1,6 @@
 rootProject.name = "black"
 
-include("gradle-plugin")
-include("idea-plugin")
+include("black-cli")
+include("black-core")
+include("black-gradle")
+include("black-idea")

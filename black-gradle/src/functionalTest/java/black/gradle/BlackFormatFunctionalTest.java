@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class BlackFormatFunctionalTest {
     @TempDir
@@ -53,7 +52,7 @@ public class BlackFormatFunctionalTest {
         BuildResult result = GradleRunner.create()
                 .withProjectDir(projectDir)
                 .withPluginClasspath()
-                .withArguments("formatJava")
+                .withArguments("formatJava", "--stacktrace")
                 .build();
 
         assertEquals(TaskOutcome.SUCCESS, result.task(":formatJava").getOutcome());

@@ -25,7 +25,6 @@ public final class BlackProjectSettings implements PersistentStateComponent<Blac
 
     private State myState = new State();
 
-
     @Override
     public State getState() { return myState; }
 

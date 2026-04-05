@@ -1,7 +1,7 @@
 package black;
 
 import org.eclipse.jdt.core.dom.*;
-import org.jetbrains.annotations.UnknownNullability;
+import org.jspecify.annotations.NullUnmarked;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -2733,7 +2733,7 @@ public class AstToDoc extends ASTVisitor {
 
     // Helpers
 
-    private static @UnknownNullability ASTNode getProperty(ASTNode node, ChildPropertyDescriptor property) {
+    private static @NullUnmarked ASTNode getProperty(ASTNode node, ChildPropertyDescriptor property) {
         return (ASTNode) node.getStructuralProperty(property);
     }
 

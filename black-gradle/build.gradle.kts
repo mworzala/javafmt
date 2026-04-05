@@ -13,11 +13,7 @@ repositories {
 dependencies {
     implementation("org.jetbrains:annotations:26.1.0")
 
-    // Just compileOnly since we include the jar output of the root project
-    // into this one. We also need to include the root project dependencies
-    // so they are still downloaded by gradle.
-    compileOnly(rootProject)
-    implementation("org.eclipse.jdt:org.eclipse.jdt.core:3.45.0")
+    implementation(project(":black-core"))
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.0")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.0")

@@ -1,6 +1,6 @@
 package black;
 
-public sealed interface Doc {
+sealed interface Doc {
 
     /** Literal text (no newlines allowed inside). */
     record Text(String value) implements Doc {}

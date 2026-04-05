@@ -1,5 +1,5 @@
 plugins {
-    id("org.jetbrains.intellij.platform") version "2.13.1"
+    alias(libs.plugins.intellij.platform)
 }
 
 repositories {

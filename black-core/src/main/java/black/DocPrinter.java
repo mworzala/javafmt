@@ -3,7 +3,7 @@ package black;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-public final class DocPrinter {
+final class DocPrinter {
     private final int maxWidth;
     private final StringBuilder out = new StringBuilder();
     private int currentLineWidth = 0;

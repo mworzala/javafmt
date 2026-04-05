@@ -10,13 +10,12 @@ repositories {
 }
 
 dependencies {
-    api("org.jspecify:jspecify:1.0.0")
+    api(libs.jspecify)
+    implementation(libs.jdt)
 
-    implementation("org.eclipse.jdt:org.eclipse.jdt.core:3.45.0")
-
-    testImplementation(platform("org.junit:junit-bom:6.0.0"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 tasks.test {

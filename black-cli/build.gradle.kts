@@ -1,6 +1,6 @@
 plugins {
     application
-    id("org.graalvm.buildtools.native") version "0.11.1"
+    alias(libs.plugins.graalvm.native)
 }
 
 repositories {
@@ -9,11 +9,11 @@ repositories {
 
 dependencies {
     implementation(project(":black-core"))
-    implementation("io.github.java-diff-utils:java-diff-utils:4.15")
-}
+    implementation(libs.diffutils)
 
-application {
-    mainClass = "black.cli.Main"
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 java {
@@ -21,6 +21,14 @@ java {
         languageVersion = JavaLanguageVersion.of(25)
         nativeImageCapable = true
     }
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
+
+application {
+    mainClass = "black.cli.Main"
 }
 
 graalvmNative {

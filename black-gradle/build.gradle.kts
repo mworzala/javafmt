@@ -11,13 +11,11 @@ repositories {
 }
 
 dependencies {
-    implementation("org.jetbrains:annotations:26.1.0")
-
     implementation(project(":black-core"))
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.0")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.0")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 tasks.named<Jar>("jar") {
@@ -62,6 +60,5 @@ tasks.named<Task>("check") {
 }
 
 tasks.named<Test>("test") {
-    // Use JUnit Jupiter for unit tests.
     useJUnitPlatform()
 }

@@ -10,7 +10,7 @@ import java.util.List;
 import static black.Doc.*;
 
 @SuppressWarnings("unchecked")
-public class AstToDoc extends ASTVisitor {
+final class AstToDoc extends ASTVisitor {
 
     private final String source;
     private Doc result;

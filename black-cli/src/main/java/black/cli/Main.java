@@ -1,6 +1,7 @@
 package black.cli;
 
 import black.Black;
+import black.Formatter;
 import com.github.difflib.DiffUtils;
 import com.github.difflib.UnifiedDiffUtils;
 import java.io.IOException;
@@ -42,6 +43,7 @@ public class Main {
     private static final AtomicInteger changedCount = new AtomicInteger();
     private static final List<Diff> diffs = new ArrayList<>(); // only present with diff flag.
 
+    private static Formatter formatter;
     private static Mode mode = Mode.CHECK;
 
     static void main(String[] args) {
@@ -77,6 +79,8 @@ public class Main {
             System.err.println("black: no files listed");
             System.exit(1);
         }
+
+        formatter = new Formatter(25, false); // TODO accept enable preview and release
 
         try (var executor = Executors.newFixedThreadPool(threads.get())) {
             files.forEach(file -> executor.submit(() -> processFile(file)));
@@ -117,7 +121,16 @@ public class Main {
         var printPath = cwd.relativize(path);
         try {
             var source = Files.readString(path);
-            var formatted = Black.formatSource(source);
+            var formatted = switch (formatter.format(source)) {
+                case Formatter.Success(var text) -> text;
+                case Formatter.SyntaxError(var errors) -> {
+                    //todo
+                    throw new RuntimeException("syntax errors");
+                }
+                case Formatter.Failure(var error) -> {
+                    throw new RuntimeException("formatting failed: ", error);
+                }
+            };
 
             var changed = !formatted.equals(source);
             if (changed) changedCount.incrementAndGet();

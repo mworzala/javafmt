@@ -1,0 +1,22 @@
+[versions]
+jspecify = "1.0.0"
+jdt = "3.45.0"
+diffutils = "4.15"
+
+junit = "6.0.0"
+
+intellij-platform = "2.13.1"
+graalvm-native = "0.11.1"
+
+[libraries]
+jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
+jdt = { module = "org.eclipse.jdt:org.eclipse.jdt.core", version.ref = "jdt" }
+diffutils = { module = "io.github.java-diff-utils:java-diff-utils", version.ref = "diffutils" }
+
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+
+[plugins]
+intellij-platform = { id = "org.jetbrains.intellij.platform", version.ref = "intellij-platform" }
+graalvm-native = { id = "org.graalvm.buildtools.native", version.ref = "graalvm-native" }

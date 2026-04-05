@@ -1,0 +1,10 @@
+void example() {
+    boolean shouldSave = !(nextState instanceof Finished) && (nextState == null || nextState instanceof Spectating || saveState.getRealPlaytime() > 10_000 || saveState.isCompleted());
+}
+---
+void example() {
+    boolean shouldSave = !(nextState instanceof Finished)
+        && (nextState == null || nextState instanceof Spectating
+            || saveState.getRealPlaytime() > 10_000
+            || saveState.isCompleted());
+}

@@ -1,0 +1,7 @@
+interface A extends B {
+    void abc();
+}
+---
+interface A extends B {
+    void abc();
+}

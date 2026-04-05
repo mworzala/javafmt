@@ -1,0 +1,10 @@
+void example() {
+    int resetHeight = OpUtils.or(playState.get(Attachments.ACTUAL_RESET_HEIGHT), this::defaultResetHeight);
+}
+---
+void example() {
+    int resetHeight = OpUtils.or(
+        playState.get(Attachments.ACTUAL_RESET_HEIGHT),
+        this::defaultResetHeight
+    );
+}

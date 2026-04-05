@@ -20,7 +20,7 @@ class ThrowsExample {
     void withBody() throws IOException {
         System.out.println("hello");
     }
-    abstract void abstractMethod() throws IOException, SQLException
+    abstract void abstractMethod() throws IOException, SQLException;
     void longThrows() throws
         VeryLongExceptionNameOne,
         VeryLongExceptionNameTwo,

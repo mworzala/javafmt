@@ -1,0 +1,10 @@
+void example() {
+    player.setTag(BEST_SAVESTATE, server().mapService().getBestSaveState(map().id(), player.getUuid().toString()));
+}
+---
+void example() {
+    player.setTag(
+        BEST_SAVESTATE,
+        server().mapService().getBestSaveState(map().id(), player.getUuid().toString())
+    );
+}

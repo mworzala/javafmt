@@ -195,8 +195,6 @@ public class AstToDoc extends ASTVisitor {
 
         visitTypeArguments(parts, node, RecordDeclaration.TYPE_PARAMETERS_PROPERTY);
 
-        visitSuperInterfaces(parts, node, RecordDeclaration.SUPER_INTERFACE_TYPES_PROPERTY);
-
         var components = getProperty(node, RecordDeclaration.RECORD_COMPONENTS_PROPERTY);
         if (components.isEmpty()) {
             parts.add(text("()"));
@@ -218,6 +216,8 @@ public class AstToDoc extends ASTVisitor {
         }
 
         parts.add(space());
+
+        visitSuperInterfaces(parts, node, RecordDeclaration.SUPER_INTERFACE_TYPES_PROPERTY);
 
         visitBodyDeclarations(parts, node, RecordDeclaration.BODY_DECLARATIONS_PROPERTY, true);
 
@@ -386,7 +386,10 @@ public class AstToDoc extends ASTVisitor {
         var interfaces = getProperty(node, property);
         if (interfaces.isEmpty()) return;
 
-        parts.add(text("implements "));
+        var keyword = node instanceof TypeDeclaration td && td.isInterface()
+                ? "extends" : "implements";
+        parts.add(text(keyword));
+        parts.add(space());
         var ifaceDocs = new ArrayList<Doc>();
         for (var iface : interfaces) {
             iface.accept(this);
@@ -613,13 +616,13 @@ public class AstToDoc extends ASTVisitor {
                     text(")")
             )));
         }
-        parts.add(space());
 
         // todo RECEIVER_TYPE_PROPERTY
         // todo RECEIVER_QUALIFIER_PROPERTY
 
         var thrownTypes = getProperty(node, MethodDeclaration.THROWN_EXCEPTION_TYPES_PROPERTY);
         if (!thrownTypes.isEmpty()) {
+            parts.add(space());
             var throwDocs = new ArrayList<Doc>();
             for (var thrown : thrownTypes) {
                 thrown.accept(this);
@@ -632,13 +635,16 @@ public class AstToDoc extends ASTVisitor {
                             join(concat(text(","), line()), throwDocs)
                     ))
             )));
-            parts.add(space());
         }
 
         var body = getProperty(node, MethodDeclaration.BODY_PROPERTY);
         if (body != null) {
+            parts.add(space());
+
             body.accept(this);
             parts.add(result);
+        } else {
+            parts.add(text(";"));
         }
 
         result = concat(parts);
@@ -1587,25 +1593,56 @@ public class AstToDoc extends ASTVisitor {
         left.accept(this);
         parts.add(result);
 
-        parts.add(space());
-        var operator = text(node.getOperator().toString());
-        parts.add(operator);
-        parts.add(space());
+        var op = node.getOperator();
+        var operator = op.toString();
 
         var right = getProperty(node, InfixExpression.RIGHT_OPERAND_PROPERTY);
         right.accept(this);
-        parts.add(result);
+        var rightDoc = result;
 
         var extendedOperands = getProperty(node, InfixExpression.EXTENDED_OPERANDS_PROPERTY);
-        for (var operand : extendedOperands) {
-            parts.add(space());
-            parts.add(operator);
-            parts.add(space());
-            operand.accept(this);
-            parts.add(result);
+
+        // Only wrap for logical/bitwise/comparison operators, not arithmetic
+        boolean shouldWrap = op == InfixExpression.Operator.CONDITIONAL_AND
+                || op == InfixExpression.Operator.CONDITIONAL_OR
+                || op == InfixExpression.Operator.AND
+                || op == InfixExpression.Operator.OR
+                || op == InfixExpression.Operator.XOR;
+
+        if (!shouldWrap) {
+            // Arithmetic, comparison, shift — keep flat
+            parts.add(text(" " + operator + " "));
+            parts.add(rightDoc);
+            for (var operand : extendedOperands) {
+                parts.add(text(" " + operator + " "));
+                operand.accept(this);
+                parts.add(result);
+            }
+            result = concat(parts);
+            return false;
         }
 
-        result = concat(parts);
+        if (extendedOperands.isEmpty()) {
+            parts.add(indent(concat(
+                    line(),
+                    text(operator + " "),
+                    rightDoc
+            )));
+        } else {
+            var operandDocs = new ArrayList<Doc>();
+            operandDocs.add(rightDoc);
+            for (var operand : extendedOperands) {
+                operand.accept(this);
+                operandDocs.add(result);
+            }
+            parts.add(indent(concat(
+                    line(),
+                    text(operator + " "),
+                    join(concat(line(), text(operator + " ")), operandDocs)
+            )));
+        }
+
+        result = group(concat(parts));
         return false;
     }
 
@@ -1714,9 +1751,14 @@ public class AstToDoc extends ASTVisitor {
 
         parts.add(text(node.getName().getIdentifier()));
 
-        formatArguments(parts, getProperty(node, MethodInvocation.ARGUMENTS_PROPERTY));
+        var arguments = getProperty(node, MethodInvocation.ARGUMENTS_PROPERTY);
+        formatArguments(parts, arguments);
 
         result = group(concat(parts));
+        // Only glue to = when there's a receiver expression or complex args,
+        // so "name = receiver.method(...)" stays together but
+        // "name = simpleCall(a, b, c)" can break after =
+        lastResultGluesToEquals = expression != null;
         return false;
     }
 
@@ -1840,11 +1882,13 @@ public class AstToDoc extends ASTVisitor {
                 argDocs.add(result);
             }
 
-            // If the last argument is a block-like structure (lambda with block,
-            // anonymous class), don't wrap it in a breaking group — let it stay
-            // inline with the opening paren.
-            var lastArgDoc = argDocs.getLast();
-            boolean lastArgIsBlock = lastArgDoc instanceof Doc.ConditionalGroup;
+            var lastArg = arguments.getLast();
+            boolean lastArgIsBlock = (lastArg instanceof LambdaExpression le
+                    && getProperty(le, LambdaExpression.BODY_PROPERTY) instanceof Block)
+                    || lastArg instanceof SwitchExpression
+                    || lastArg instanceof ClassInstanceCreation cic
+                    && getProperty(cic, ClassInstanceCreation.ANONYMOUS_CLASS_DECLARATION_PROPERTY) != null;
+
             if (lastArgIsBlock && argDocs.size() == 1) {
                 parts.add(text("("));
                 parts.add(argDocs.getFirst());

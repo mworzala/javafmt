@@ -1,5 +1,6 @@
 plugins {
     `java-gradle-plugin`
+    `maven-publish`
 }
 
 group = "black"
@@ -11,11 +12,20 @@ repositories {
 
 dependencies {
     implementation("org.jetbrains:annotations:26.1.0")
-    implementation(rootProject)
+
+    // Just compileOnly since we include the jar output of the root project
+    // into this one. We also need to include the root project dependencies
+    // so they are still downloaded by gradle.
+    compileOnly(rootProject)
+    implementation("org.eclipse.jdt:org.eclipse.jdt.core:3.45.0")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.0")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.named<Jar>("jar") {
+    from(rootProject.sourceSets.main.map { it.output })
 }
 
 gradlePlugin {
@@ -23,6 +33,14 @@ gradlePlugin {
         create("black") {
             id = "black"
             implementationClass = "black.gradle.BlackPlugin"
+        }
+    }
+}
+
+publishing {
+    repositories {
+        maven {
+            url = uri("${layout.projectDirectory}/publish")
         }
     }
 }

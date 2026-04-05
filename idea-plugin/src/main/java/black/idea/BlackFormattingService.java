@@ -32,7 +32,8 @@ public class BlackFormattingService extends AsyncDocumentFormattingService {
 
     @Override
     public boolean canFormat(@NotNull PsiFile file) {
-        return file.getLanguage().is(JavaLanguage.INSTANCE);
+        if (!file.getLanguage().is(JavaLanguage.INSTANCE)) return false;
+        return BlackProjectSettings.getInstance(file.getProject()).isEnabled();
     }
 
     @Override
@@ -40,7 +41,13 @@ public class BlackFormattingService extends AsyncDocumentFormattingService {
         return new FormattingTask() {
             @Override
             public void run() {
-                request.onTextReady(Black.formatSource(request.getDocumentText()));
+                var project = request.getContext().getProject();
+                var projectSettings = BlackProjectSettings.getInstance(project);
+                var jarPath = projectSettings.getFormatterJarPath();
+
+                request.onTextReady(
+                        Black.formatSource(request.getDocumentText())
+                );
             }
 
             @Override

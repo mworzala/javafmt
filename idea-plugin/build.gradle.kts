@@ -17,5 +17,6 @@ dependencies {
         intellijIdea("2026.1")
 
         bundledPlugin("com.intellij.java")
+        bundledPlugin("com.intellij.gradle")
     }
 }

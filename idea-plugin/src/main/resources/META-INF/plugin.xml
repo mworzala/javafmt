@@ -2,7 +2,6 @@
     <id>black</id>
     <name>Black for Java</name>
 
-    <depends>com.intellij.modules.java</depends>
     <description>
         <![CDATA[
       TODO: fill me in with a description of the plugin
@@ -21,9 +20,20 @@
     <!-- Text to display as company information on Settings | Plugin page -->
     <vendor url="https://plugins.jetbrains.com">IntelliJ Platform SDK</vendor>
 
+    <depends>com.intellij.modules.java</depends>
+    <depends>com.intellij.gradle</depends>
+
     <extensions defaultExtensionNs="com.intellij">
         <notificationGroup id="Black Formatter" displayType="BALLOON" />
+
         <formattingService implementation="black.idea.BlackFormattingService" />
+
+        <externalProjectDataService implementation="black.idea.BlackDataService" />
+    </extensions>
+
+    <extensions defaultExtensionNs="org.jetbrains.plugins.gradle">
+        <projectResolve
+                implementation="black.idea.BlackProjectResolverExtension" />
     </extensions>
 
 </idea-plugin>

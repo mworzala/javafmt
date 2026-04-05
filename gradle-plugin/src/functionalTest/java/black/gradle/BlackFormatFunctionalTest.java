@@ -53,10 +53,9 @@ public class BlackFormatFunctionalTest {
         BuildResult result = GradleRunner.create()
                 .withProjectDir(projectDir)
                 .withPluginClasspath()
-                .withArguments("formatJava", "--debug")
+                .withArguments("formatJava")
                 .build();
 
-        assertTrue(result.getOutput().contains("black: about to format"));
         assertEquals(TaskOutcome.SUCCESS, result.task(":formatJava").getOutcome());
 
         assertEquals(

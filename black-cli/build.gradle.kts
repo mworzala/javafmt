@@ -9,6 +9,7 @@ repositories {
 
 dependencies {
     implementation(project(":black-core"))
+    implementation("io.github.java-diff-utils:java-diff-utils:4.15")
 }
 
 application {
@@ -23,6 +24,7 @@ java {
 }
 
 graalvmNative {
+    // TODO: some metadata needed here
     binaries.named("main") {
         imageName = "black"
 

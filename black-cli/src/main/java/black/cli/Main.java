@@ -1,15 +1,15 @@
 package black.cli;
 
 import black.Black;
+import com.github.difflib.DiffUtils;
+import com.github.difflib.UnifiedDiffUtils;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiPredicate;
 
 public class Main {
@@ -36,6 +36,14 @@ public class Main {
         CHECK
     }
 
+    record Diff(Path path, List<String> printLines) {}
+
+    private static final Path cwd = Path.of("").toAbsolutePath();
+    private static final AtomicInteger changedCount = new AtomicInteger();
+    private static final List<Diff> diffs = new ArrayList<>(); // only present with diff flag.
+
+    private static Mode mode = Mode.CHECK;
+
     static void main(String[] args) {
         var flags = new Flags("black", USAGE);
         var threads = flags.intFlag("threads", "t", 1, "number of threads to use");
@@ -48,7 +56,7 @@ public class Main {
         }
 
         var command = paths.removeFirst();
-        var mode = switch (command) {
+        mode = switch (command) {
             case "check" -> Mode.CHECK;
             case "format" -> Mode.FORMAT;
             default -> {
@@ -73,6 +81,13 @@ public class Main {
         try (var executor = Executors.newFixedThreadPool(threads.get())) {
             files.forEach(file -> executor.submit(() -> processFile(file)));
         }
+
+        diffs.sort(Comparator.comparing(Diff::path));
+        for (var diff : diffs) {
+            diff.printLines.forEach(System.out::println);
+        }
+
+        if (mode == Mode.CHECK && changedCount.get() > 0) System.exit(1);
     }
 
     private static Collection<Path> resolveFiles(List<String> paths) {
@@ -99,17 +114,32 @@ public class Main {
     }
 
     private static void processFile(Path path) {
+        var printPath = cwd.relativize(path);
         try {
             var source = Files.readString(path);
             var formatted = Black.formatSource(source);
-            if (formatted.equals(source)) {
-                System.out.println(path);
-            } else {
+
+            var changed = !formatted.equals(source);
+            if (changed) changedCount.incrementAndGet();
+
+            if (mode == Mode.FORMAT) {
                 Files.writeString(path, formatted);
+            } else if (mode == Mode.CHECK && changed) {
+                // System.out.println(printPath);
+
+                var sourceLines = source.lines().toList();
+                var formattedLines = formatted.lines().toList();
+                var diff = UnifiedDiffUtils.generateUnifiedDiff(
+                    "a/" + printPath,
+                    "b/" + printPath,
+                    sourceLines,
+                    DiffUtils.diff(sourceLines, formattedLines),
+                    2
+                );
+                diffs.add(new Diff(path, diff));
             }
         } catch (IOException e) {
             System.err.println(path + ": " + e.getMessage());
-            return;
         } catch (Exception e) {
             //noinspection CallToPrintStackTrace
             e.printStackTrace();

@@ -1,0 +1,41 @@
+plugins {
+    application
+    alias(libs.plugins.graalvm.native)
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation(project(":core"))
+    implementation(libs.diffutils)
+
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+        nativeImageCapable = true
+    }
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
+
+application {
+    mainClass = "dev.javafmt.cli.Main"
+}
+
+graalvmNative {
+    // TODO: some metadata needed here
+    binaries.named("main") {
+        imageName = "javafmt"
+
+        buildArgs.add("--future-defaults=all")
+    }
+}

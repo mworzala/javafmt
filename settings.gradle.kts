@@ -1,6 +1,6 @@
-rootProject.name = "black"
+rootProject.name = "javafmt"
 
-include("black-cli")
-include("black-core")
-include("black-gradle")
-include("black-idea")
+include("cli")
+include("core")
+include("plugin-gradle")
+include("plugin-idea")

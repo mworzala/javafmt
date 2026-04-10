@@ -1,9 +1,7 @@
-# black.java
+# javafmt
 
-**black.java** is a highly opinionated, zero-configuration code formatter for Java. You hand it your source, it gives
+javafmt is a highly opinionated, zero-configuration code formatter for Java. You hand it your source, it gives
 you back consistently formatted code. No style options, no debates, no `.editorconfig` archaeology.
-
-Inspired by [Black](https://github.com/psf/black) for Python - _"The Uncompromising Code Formatter"_.
 
 ---
 
@@ -16,7 +14,7 @@ Add the plugin to your build:
 ```kotlin
 // build.gradle.kts
 plugins {
-    id("TBD") version "0.1.0"
+    id("dev.javafmt.gradle") version "0.1.0"
 }
 ```
 

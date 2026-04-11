@@ -1,0 +1,79 @@
+name: Publish Release
+on:
+  release:
+    types: [created]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'graalvm'
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - run: ./gradlew build
+      - run: ./gradlew test
+      - run: ./gradlew :black-cli:run --args='check .'
+
+  publish-core:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'graalvm'
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - run: ./gradlew :core:publishAggregationToCentralPortal
+        env:
+          JAVAFMT_VERSION: ${{ github.event.release.tag_name }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USER }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_KEY_PASSWORD }}
+
+#  publish-gradle-plugin:
+#    runs-on: ubuntu-latest
+#    needs: publish-core
+#    steps:
+#      - uses: actions/checkout@v5
+#        with:
+#          ref: ${{ github.event.release.tag_name }}
+#      - uses: actions/setup-java@v5
+#        with:
+#          distribution: 'graalvm'
+#          java-version: '25'
+#      - uses: gradle/actions/setup-gradle@v6
+#
+#      - run: ./gradlew :plugin-gradle:publishPlugins
+#        env:
+#          JAVAFMT_VERSION: ${{ github.event.release.tag_name }}
+#          GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
+#          GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
+
+#  publish-intellij-plugin:
+#    runs-on: ubuntu-latest
+#    needs: publish-core
+#    steps:
+#      - uses: actions/checkout@v5
+#        with:
+#          ref: ${{ github.event.release.tag_name }}
+#      - uses: actions/setup-java@v5
+#        with:
+#          distribution: 'graalvm'
+#          java-version: '25'
+#      - uses: gradle/actions/setup-gradle@v6
+#
+#      - run: ./gradlew :plugin-idea:publishPlugin
+#        env:
+#          JAVAFMT_VERSION: ${{ github.event.release.tag_name }}
+#          JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}

@@ -3,6 +3,9 @@ plugins {
     alias(libs.plugins.graalvm.native)
 }
 
+group = "dev.javafmt"
+version = System.getenv("JAVAFMT_VERSION") ?: "dev"
+
 repositories {
     mavenCentral()
 }

@@ -16,26 +16,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class FileTest {
 
-    static Stream<Path> testFiles() throws IOException {
-        var roots = FileTest.class.getClassLoader().getResources("");
-        return java.util.Collections.list(roots)
-            .stream()
-            .map(url -> {
-                try {
-                    return Path.of(url.toURI());
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            })
-            .filter(Files::isDirectory)
-            .flatMap(root -> {
-                try {
-                    return Files.walk(root);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            })
-            .filter(p -> p.toString().endsWith(".test"));
+    static Stream<Path> testFiles() throws Exception {
+        var url = FileTest.class.getClassLoader().getResource("testcases");
+        if (url == null) throw new IllegalStateException("testcases/ not found on classpath");
+        var root = Path.of(url.toURI());
+        try (var walk = Files.walk(root)) {
+            return walk.filter(p -> p.toString().endsWith(".test")).toList().stream();
+        }
     }
 
     @ParameterizedTest(name = "{0}")

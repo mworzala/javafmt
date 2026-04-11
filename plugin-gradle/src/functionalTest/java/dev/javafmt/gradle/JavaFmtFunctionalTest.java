@@ -17,24 +17,21 @@ public class JavaFmtFunctionalTest {
     @TempDir
     File projectDir;
 
-    // Helper to get reference to build.gradle in the temp project
     private File getBuildFile() {
         return new File(projectDir, "build.gradle");
     }
 
-    // Helper to get reference to settings.gradle in the temp project
     private File getSettingsFile() {
         return new File(projectDir, "settings.gradle");
     }
 
-    // Create minimal build and settings files before each test
     @BeforeEach
     void setup() throws IOException {
         writeString(getSettingsFile(), "");
         writeString(getBuildFile(), """
                     plugins {
                         id("java")
-                        id("black")
+                        id("dev.javafmt.gradle")
                     }
                 """
         );

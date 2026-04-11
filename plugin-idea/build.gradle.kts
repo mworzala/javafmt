@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "dev.javafmt"
-version = "1.0.0"
+version = System.getenv("JAVAFMT_VERSION") ?: "dev"
 
 repositories {
     mavenCentral()

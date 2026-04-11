@@ -7,16 +7,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.release.tag_name }}
-      - uses: actions/setup-java@v5
-        with:
-          distribution: 'graalvm'
-          java-version: '25'
-      - uses: gradle/actions/setup-gradle@v6
-
-        # IntelliJ is big :-(
+      # IntelliJ is big :-(
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
         with:
@@ -27,6 +18,15 @@ jobs:
           large-packages: true
           docker-images: true
           swap-storage: true
+
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'graalvm'
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
 
       - run: ./gradlew build
       - run: ./gradlew test

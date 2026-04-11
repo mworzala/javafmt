@@ -18,6 +18,18 @@ jobs:
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v6
 
+        # IntelliJ is big :-(
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
       - run: ./gradlew build
       - run: ./gradlew test
       - run: ./gradlew :black-cli:run --args='check .'

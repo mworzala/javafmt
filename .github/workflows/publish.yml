@@ -30,12 +30,24 @@ jobs:
 
       - run: ./gradlew build
       - run: ./gradlew test
-      - run: ./gradlew :black-cli:run --args='check .'
+      - run: ./gradlew :cli:run --args='check .'
 
   publish-core:
     runs-on: ubuntu-latest
     needs: test
     steps:
+      # IntelliJ is big :-(
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.release.tag_name }}

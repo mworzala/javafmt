@@ -1,4 +1,4 @@
 @NullMarked
-package dev.javafmt;
+package dev.javafmt.cli;
 
 import org.jspecify.annotations.NullMarked;

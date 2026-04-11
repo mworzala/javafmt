@@ -1,7 +1,8 @@
-package dev.javafmt;
+package dev.javafmt.cli;
 
 import com.github.difflib.DiffUtils;
 import com.github.difflib.UnifiedDiffUtils;
+import dev.javafmt.Formatter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -41,7 +42,7 @@ public class Main {
     private static final AtomicInteger changedCount = new AtomicInteger();
     private static final List<Diff> diffs = new ArrayList<>(); // only present with diff flag.
 
-    private static Formatter formatter;
+    private static dev.javafmt.Formatter formatter;
     private static Mode mode = Mode.CHECK;
 
     static void main(String[] args) {
@@ -78,7 +79,7 @@ public class Main {
             System.exit(1);
         }
 
-        formatter = new Formatter(25, false); // TODO accept enable preview and release
+        formatter = new dev.javafmt.Formatter(25, false); // TODO accept enable preview and release
 
         try (var executor = Executors.newFixedThreadPool(threads.get())) {
             files.forEach(file -> executor.submit(() -> processFile(file)));
@@ -120,8 +121,8 @@ public class Main {
         try {
             var source = Files.readString(path);
             var formatted = switch (formatter.format(source)) {
-                case Formatter.Success(var text) -> text;
-                case Formatter.SyntaxError(var errors) -> {
+                case dev.javafmt.Formatter.Success(var text) -> text;
+                case dev.javafmt.Formatter.SyntaxError(var errors) -> {
                     //todo
                     throw new RuntimeException("syntax errors");
                 }

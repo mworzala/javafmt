@@ -1,4 +1,4 @@
-package dev.javafmt;
+package dev.javafmt.cli;
 
 import org.jspecify.annotations.Nullable;
 import java.util.*;

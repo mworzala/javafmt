@@ -22,13 +22,6 @@ dependencies {
 
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(21)
-
-    withSourcesJar()
-    withJavadocJar()
-}
-
-tasks.withType<JavaCompile> {
-    options.encoding = "UTF-8"
 }
 
 tasks.test {

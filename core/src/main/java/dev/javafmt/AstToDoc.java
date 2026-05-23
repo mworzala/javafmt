@@ -2950,28 +2950,6 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         }
     }
 
-    private List<Comment> collectCommentsInRange(int from, int to) {
-        if (source == null || compilationUnit == null) return List.of();
-        var collected = new ArrayList<Comment>();
-        for (ASTNode obj : (List<ASTNode>) compilationUnit.getCommentList()) {
-            if (obj instanceof LineComment lc) {
-                int start = lc.getStartPosition();
-                if (start >= from && start < to) {
-                    String text = source.substring(start, start + lc.getLength());
-                    if (!text.startsWith("///")) {
-                        collected.add(lc);
-                    }
-                }
-            } else if (obj instanceof BlockComment bc) {
-                int start = bc.getStartPosition();
-                if (start >= from && start < to) {
-                    collected.add(bc);
-                }
-            }
-        }
-        return collected;
-    }
-
     private Doc renderLineComment(LineComment lc) {
         return text(source.substring(lc.getStartPosition(), lc.getStartPosition() + lc.getLength()).stripTrailing());
     }
@@ -3000,16 +2978,6 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         int bracePos = block.getStartPosition();
         int commentStart = comment.getStartPosition();
         for (int i = bracePos + 1; i < commentStart; i++) {
-            if (source.charAt(i) == '\n') return false;
-        }
-        return true;
-    }
-
-    private boolean isTrailingComment(ASTNode prev, Comment comment) {
-        if (source == null) return false;
-        int prevEnd = prev.getStartPosition() + prev.getLength();
-        int commentStart = comment.getStartPosition();
-        for (int i = prevEnd; i < commentStart; i++) {
             if (source.charAt(i) == '\n') return false;
         }
         return true;

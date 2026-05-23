@@ -789,54 +789,58 @@ final class AstToDoc extends ASTVisitor {
         var stmts = new ArrayList<>(getProperty(node, Block.STATEMENTS_PROPERTY));
         stmts.removeIf(stmt -> stmt instanceof EmptyStatement);
 
-        // Collect comments in this block's range, filtering out those inside child statements
-        var blockComments = collectCommentsInRange(
-                node.getStartPosition(),
-                node.getStartPosition() + node.getLength());
-        blockComments.removeIf(c -> stmts.stream().anyMatch(stmt ->
-                c.getStartPosition() >= stmt.getStartPosition() &&
-                        c.getStartPosition() < stmt.getStartPosition() + stmt.getLength()));
+        var dangling = comments != null ? comments.dangling(node) : List.<Comment>of();
 
-        // Build merged sorted list of statements and comments
-        var items = new ArrayList<ASTNode>(stmts);
-        items.addAll(blockComments);
-        items.sort(Comparator.comparingInt(ASTNode::getStartPosition));
-
-        if (items.isEmpty()) {
+        if (stmts.isEmpty() && dangling.isEmpty()) {
             result = text("{}");
             return false;
         }
 
-        // Check if the first item is a comment on the same line as the opening brace
+        // A leading comment of the first statement that originally sat on the same line
+        // as the opening brace stays glued to the brace ("{ // ...").
         Doc openBraceTrailing = null;
-        int startIdx = 0;
-        if (items.getFirst() instanceof Comment firstComment && isOnSameLineAsOpenBrace(node, firstComment)) {
-            openBraceTrailing = renderComment(firstComment);
-            startIdx = 1;
+        Comment skipFirstLeading = null;
+        if (!stmts.isEmpty() && comments != null) {
+            var firstLeading = comments.leading(stmts.getFirst());
+            if (!firstLeading.isEmpty() && isOnSameLineAsOpenBrace(node, firstLeading.getFirst())) {
+                openBraceTrailing = renderComment(firstLeading.getFirst());
+                skipFirstLeading = firstLeading.getFirst();
+            }
         }
 
         var parts = new ArrayList<Doc>();
-        for (int i = startIdx; i < items.size(); i++) {
-            var item = items.get(i);
-
-            // Check if this comment is trailing on the same line as the previous item
-            if (item instanceof Comment comment && i > startIdx && isTrailingComment(items.get(i - 1), comment)) {
-                // Append as trailing comment to the previous line
-                var prevDoc = parts.removeLast();
-                parts.add(concat(prevDoc, text(" "), renderComment(comment)));
-                continue;
-            }
-
-            if (i > startIdx && blankLinesBetween(items.get(i - 1), items.get(i)) > 0) {
+        ASTNode prevItem = null;
+        for (var stmt : stmts) {
+            var leading = comments != null ? comments.leading(stmt) : List.<Comment>of();
+            for (var lc : leading) {
+                if (lc == skipFirstLeading) continue;
+                if (prevItem != null && blankLinesBetween(prevItem, lc) > 0) parts.add(hardLine());
                 parts.add(hardLine());
+                parts.add(renderComment(lc));
+                prevItem = lc;
             }
+            if (prevItem != null && blankLinesBetween(prevItem, stmt) > 0) parts.add(hardLine());
             parts.add(hardLine());
-            if (item instanceof Comment comment) {
-                parts.add(renderComment(comment));
-            } else {
-                item.accept(this);
-                parts.add(result);
+            stmt.accept(this);
+            parts.add(result);
+            prevItem = stmt;
+
+            var trailing = comments != null ? comments.trailing(stmt) : List.<Comment>of();
+            if (!trailing.isEmpty()) {
+                var prevDoc = parts.removeLast();
+                Doc combined = prevDoc;
+                for (var tc : trailing) {
+                    combined = concat(combined, text(" "), renderComment(tc));
+                    prevItem = tc;
+                }
+                parts.add(combined);
             }
+        }
+        for (var dc : dangling) {
+            if (prevItem != null && blankLinesBetween(prevItem, dc) > 0) parts.add(hardLine());
+            parts.add(hardLine());
+            parts.add(renderComment(dc));
+            prevItem = dc;
         }
 
         var openBrace = openBraceTrailing != null

@@ -640,7 +640,7 @@ parameter declaration) go on their own line:
 
 ```java
 @Deprecated
-@SuppressWarnings("rawtypes")
+    @SuppressWarnings("rawtypes")
 class A {
 
     @Deprecated
@@ -720,9 +720,7 @@ class A {
 ```
 
 **Javadoc content is not reformatted.** javafmt re-indents the lines to the new
-column, but does not reflow paragraphs, normalize `@param` spacing, or sort tags. This
-matches Black's policy for docstrings: leave the prose alone, only adjust the
-surrounding whitespace.
+column, but does not reflow paragraphs, normalize `@param` spacing, or sort tags.
 
 ---
 

@@ -49,9 +49,10 @@ public class FileTest {
         options.put(JavaCore.COMPILER_SOURCE, "25");
         options.put(JavaCore.COMPILER_COMPLIANCE, "25");
         parser.setCompilerOptions(options);
-        var ast = parser.createAST(null);
+        var ast = (org.eclipse.jdt.core.dom.CompilationUnit) parser.createAST(null);
 
-        var a2d = new AstToDoc(source);
+        var commentMap = CommentMap.build(ast, source);
+        var a2d = new AstToDoc(source, commentMap);
         ast.accept(a2d);
 
         var printer = new DocPrinter(100);

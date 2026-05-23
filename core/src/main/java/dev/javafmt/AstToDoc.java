@@ -1005,47 +1005,41 @@ final class AstToDoc extends ASTVisitor {
 
         parts.add(text(") {"));
 
-        var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
-
-        // Collect comments inside the switch body, filtering out those inside child statements
-        var switchComments = collectCommentsInRange(
-                node.getStartPosition(),
-                node.getStartPosition() + node.getLength());
-        switchComments.removeIf(c -> statements.stream().anyMatch(stmt ->
-                c.getStartPosition() >= stmt.getStartPosition() &&
-                        c.getStartPosition() < stmt.getStartPosition() + stmt.getLength()));
-
-        var items = new ArrayList<ASTNode>(statements);
-        items.addAll(switchComments);
-        items.sort(Comparator.comparingInt(ASTNode::getStartPosition));
+var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
         var stmtParts = new ArrayList<Doc>();
-        for (int i = 0; i < items.size(); i++) {
-            var item = items.get(i);
-
-            // Check if this comment is trailing on the same line as the previous item
-            if (item instanceof Comment comment && i > 0 && isTrailingComment(items.get(i - 1), comment)) {
-                var prevDoc = stmtParts.removeLast();
-                stmtParts.add(concat(prevDoc, text(" "), renderComment(comment)));
-                continue;
+        Statement prevStmt = null;
+        for (var stmt : statements) {
+            var leading = comments != null ? comments.leading(stmt) : List.<Comment>of();
+            for (var lc : leading) {
+                stmtParts.add(indent(concat(hardLine(), renderComment(lc))));
             }
 
-            // Find the previous non-comment item for layout decisions
-            ASTNode prevItem = i > 0 ? items.get(i - 1) : null;
-
-            if (item instanceof Comment comment) {
-                // Comments follow same indentation rules as non-SwitchCase statements
-                stmtParts.add(indent(concat(hardLine(), renderComment(comment))));
+            stmt.accept(this);
+            Doc stmtDoc;
+            boolean joinToRule = leading.isEmpty()
+                    && prevStmt instanceof SwitchCase sc && sc.isSwitchLabeledRule();
+            if (joinToRule) {
+                stmtDoc = concat(space(), result);
             } else {
-                item.accept(this);
-                if (prevItem instanceof SwitchCase sc && sc.isSwitchLabeledRule()) {
-                    result = concat(space(), result);
-                } else {
-                    result = concat(hardLine(), result);
-                    if (!(item instanceof SwitchCase))
-                        result = indent(result);
+                stmtDoc = concat(hardLine(), result);
+                if (!(stmt instanceof SwitchCase)) stmtDoc = indent(stmtDoc);
+            }
+
+            if (comments != null) {
+                for (var tc : comments.trailing(stmt)) {
+                    stmtDoc = concat(stmtDoc, text(" "), renderComment(tc));
                 }
-                stmtParts.add(result);
+            }
+
+            stmtParts.add(stmtDoc);
+            prevStmt = (Statement) stmt;
+        }
+
+        // Comments after the last statement (before the closing brace) attach as dangling.
+        if (comments != null) {
+            for (var dc : comments.dangling(node)) {
+                stmtParts.add(indent(concat(hardLine(), renderComment(dc))));
             }
         }
 

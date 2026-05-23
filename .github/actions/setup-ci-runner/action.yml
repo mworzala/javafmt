@@ -14,16 +14,19 @@ runs:
   using: composite
   steps:
     # IntelliJ is big :-(
+    # Removing the preinstalled Android SDK frees ~14GB via a single rm -rf — plenty
+    # for the IDE distribution + Gradle caches. Skip the apt-based `large-packages`
+    # removal which is what dominates the original ~3 min step.
     - name: Free disk space
       uses: jlumbroso/free-disk-space@main
       with:
         tool-cache: false
         android: true
-        dotnet: true
-        haskell: true
-        large-packages: true
-        docker-images: true
-        swap-storage: true
+        dotnet: false
+        haskell: false
+        large-packages: false
+        docker-images: false
+        swap-storage: false
 
     - uses: actions/setup-java@v5
       with:

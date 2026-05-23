@@ -1,0 +1,734 @@
+# The javafmt Code Style
+
+javafmt is an opinionated formatter. There is one style. Every formatting decision is
+made for you. The only knobs are line length and the JLS release you're targeting.
+
+The two invariants every reformat upholds:
+
+1. **AST equivalence.** The reparsed output has the same AST as the input. Reformatting
+   never changes program meaning.
+2. **Idempotence.** `format(format(x)) == format(x)`. A second pass over already-formatted
+   code is always a no-op.
+
+---
+
+## Contents
+
+- [Width and indentation](#width-and-indentation)
+- [Files: package, imports, types](#files-package-imports-types)
+- [Blank lines](#blank-lines)
+- [Type declarations](#type-declarations)
+- [Records](#records)
+- [Enums](#enums)
+- [Methods and fields](#methods-and-fields)
+- [Statements](#statements)
+- [Method invocation arguments](#method-invocation-arguments)
+- [Tuple-style arguments](#tuple-style-arguments)
+- [Method chains](#method-chains)
+- [Binary operators](#binary-operators)
+- [Conditional (ternary) expressions](#conditional-ternary-expressions)
+- [Assignments](#assignments)
+- [Lambdas](#lambdas)
+- [Switch](#switch)
+- [try-with-resources](#try-with-resources)
+- [`throws` clauses](#throws-clauses)
+- [Annotations](#annotations)
+- [Comments](#comments)
+- [Javadoc](#javadoc)
+- [Pattern matching](#pattern-matching)
+- [Array initializers](#array-initializers)
+- [Known limitations and quirks](#known-limitations-and-quirks)
+
+---
+
+## Width and indentation
+
+- **Default line length: 100 columns.** Override on the CLI with `--line-length`.
+- **Indentation: 4 spaces, never tabs.**
+- Continuation indent is also 4 spaces (one level), measured from the parent's indent.
+- Trailing whitespace on a line is always removed.
+- Files end with a single newline.
+
+The line length is a soft target. Where no break is available — a long string literal,
+a long identifier, an arithmetic expression (see [Binary operators](#binary-operators)) —
+the line will exceed it. javafmt never inserts a line break that would change meaning.
+
+---
+
+## Files: package, imports, types
+
+The order is fixed: package declaration, then imports, then types. 
+Exactly one blank line between each block.
+
+```java
+package com.example.foo;
+
+import java.util.List;
+import java.util.Map;
+import static java.lang.Math.PI;
+import a.b.C;
+
+public class Foo {
+
+    private int x;
+    private int y;
+
+    public Foo() {}
+}
+```
+
+**Imports are kept in the order you wrote them.** javafmt does not currently sort or reorganize imports. 
+(This may change in a future version.)
+
+---
+
+## Blank lines
+
+Multiple consecutive blank lines collapse to one. Between two members of a class the
+formatter preserves whether you had a blank line there or not so you keep grouping
+information.
+
+```java
+class A {
+
+    private int x;
+    private int y;
+
+
+    private int z;        // two blank lines above this collapse to one
+}
+```
+
+becomes
+
+```java
+class A {
+
+    private int x;
+    private int y;
+
+    private int z;
+}
+```
+
+---
+
+## Type declarations
+
+`class`, `interface`, `enum`, `record`, and `@interface` all use the same general shape:
+modifiers, keyword, name, type parameters, extends/implements/permits, then the body.
+
+```java
+class A {}
+
+interface I {}
+
+enum E {}
+
+@interface Marker {}
+
+record R() {}
+```
+
+Empty bodies render as `{}` on the same line as the declaration. Members are separated
+by one blank line. Top-level types are separated by one blank line.
+
+---
+
+## Records
+
+Record components are formatted like a parameter list: kept on one line if they fit,
+otherwise broken vertically, one per line, with the closing `)` on its own line.
+
+```java
+public record User(String firstName, String lastName, int age) {}
+```
+
+If the header doesn't fit:
+
+```java
+public record User(
+    String firstName,
+    String lastName,
+    String emailAddress,
+    int age,
+    boolean active,
+    String role
+) {}
+```
+
+---
+
+## Enums
+
+Enum constants are one per line, followed by `;` and then the body (if any). A blank
+line separates the constants from the rest of the body.
+
+```java
+enum Color {
+    RED("ff0000"),
+    GREEN("00ff00"),
+    BLUE("0000ff");
+
+    private final String hex;
+
+    Color(String hex) {
+        this.hex = hex;
+    }
+
+    public String hex() {
+        return hex;
+    }
+}
+```
+
+---
+
+## Methods and fields
+
+Method declarations fit on one line when they can. Parameters break vertically 
+when the header is too wide.
+
+```java
+void shortMethod(int a, int b) {}
+
+void wideMethod(
+    String firstArg,
+    String secondArg,
+    String thirdArg,
+    String fourthArg
+) {
+    // ...
+}
+```
+
+Empty method bodies render as `{}` on the same line as the header:
+
+```java
+void f() {}
+```
+
+Otherwise the body opens on the same line as the header and closes on its own line.
+
+Field declarations follow modifier / type / name / `=` initializer. Multi-fragment
+field declarations (`int a, b, c;`) are kept on one line when short.
+
+---
+
+## Statements
+
+A block always uses newlines for its statements, regardless of how short they are:
+
+```java
+class A {
+    void f() {}        // empty body stays inline
+    void g() {
+        return;        // any body with content opens
+    }
+}
+```
+
+`if`, `while`, `for`, `synchronized`, etc. follow C-style spacing: `keyword (cond)`
+followed by either a brace-block or a single statement.
+
+```java
+if (x > 0) doA();
+else doB();
+
+for (int i = 0; i < arr.length; i++) System.out.println(arr[i]);
+for (var v : arr) System.out.println(v);
+```
+
+When an `if` body uses braces, the `else` follows the closing brace on the same line:
+
+```java
+if (x > 0) {
+    doA();
+} else {
+    doB();
+}
+```
+
+A labeled statement puts the label on its own line:
+
+```java
+outer:
+for (int i = 0; i < 10; i++) { ... }
+```
+
+---
+
+## Method invocation arguments
+
+The first attempt is always flat:
+
+```java
+someMethod(a, b, c);
+```
+
+If the call doesn't fit, arguments break vertically, one per line, with the closing
+`)` on its own line:
+
+```java
+someMethodWithVeryLongName(
+    argumentOne,
+    argumentTwo,
+    argumentThree,
+    argumentFour,
+    argumentFive
+);
+```
+
+**Trailing block-style arguments are special.** When the last argument is a
+block-bodied lambda, a switch expression, or an anonymous-class `new X() { ... }`,
+the closing `)` glues to the closing `}` and the block stays where it is:
+
+```java
+list.forEach(x -> {
+    System.out.println(x);
+    count++;
+});
+
+executor.submit(() -> {
+    doSomething();
+    doSomethingElse();
+});
+```
+
+If there are other arguments before the trailing block, they break vertically and the
+block stays trailing:
+
+```java
+register(
+    "foo",
+    config,
+    () -> {
+        run();
+    }
+);
+```
+
+---
+
+## Tuple-style arguments
+
+If your call has arguments arranged across multiple source lines in a "uniform rows
+plus a smaller trailing row" shape (for example, a matrix or a coordinate list),
+javafmt preserves the row structure rather than collapsing it to one-arg-per-line.
+
+The trigger conditions are all of:
+
+- 3 or more arguments
+- Arguments span 2 or more source lines
+- The first row has 2 or more arguments
+- Every row except the last has the same number of arguments
+- The last row has fewer arguments than the others
+- The call doesn't fit flat on one line
+
+When all of those hold, javafmt emits:
+
+```java
+callMyMatrixOperationLong(
+    rowOneA, rowOneB, rowOneC,
+    rowTwoA, rowTwoB, rowTwoC,
+    rowThreeA, rowThreeB, rowThreeC,
+    trailing
+);
+```
+
+If you write the same call as a single source line (or break the row symmetry),
+javafmt falls back to the standard one-per-line break:
+
+```java
+callMyMatrixOperationLong(
+    rowOneA,
+    rowOneB,
+    rowOneC,
+    rowTwoA,
+    rowTwoB,
+    rowTwoC
+);
+```
+
+This means **you control row width by where you put your line breaks in the source.**
+The formatter will keep your `2×N`, `3×N`, etc. layout intact. If the call already fits
+flat, the rows collapse to a single line regardless of how the source was written.
+
+> Why does this exist? Things like coordinate lists, matrix literals, and
+> `register(NAME, value, NAME, value, ...)` calls become unreadable when broken to one
+> argument per line. Tuple grouping lets you keep them compact without forcing the
+> formatter to guess your intent.
+
+---
+
+## Method chains
+
+A chain of **3 or more** method calls is formatted as a unit. There are three layouts;
+javafmt picks the first one that fits.
+
+**1. Flat:**
+
+```java
+stream.filter(x -> x > 0).map(x -> x * 2).collect(Collectors.toList());
+```
+
+**2. First segment stays with root, rest break:**
+
+```java
+aaaaaaaaaaaaaaaaaaaaaa.bbbbbbbbbbbbbb(predicate)
+    .cccccccccccccccc(transformer)
+    .dddddddddddddd(more);
+```
+
+This layout is used when the root is a simple name or qualified name, or when the
+first call takes at most one argument.
+
+**3. Every segment breaks, including the first:**
+
+```java
+compute(longArg)
+    .bbbbbbbbbbbbb(predicate)
+    .cccccccccccccc(transformer)
+    .dddddddddddddd(more);
+```
+
+This layout is used for chains whose root is a method call or other complex expression.
+
+If the chain has only 1 or 2 calls, it stays flat (no chain treatment is applied).
+
+---
+
+## Binary operators
+
+**Logical and bitwise operators wrap.** `&&`, `||`, `&`, `|`, `^` will break with the
+operator at the start of the continuation line:
+
+```java
+return aLongVariableName > 0 && anotherOneHere > 0 && yetAnotherVariableName > 0
+    && extraExtra;
+```
+
+**Arithmetic, comparison, and shift operators do NOT wrap.** `+`, `-`, `*`, `/`, `%`,
+`<`, `>`, `<=`, `>=`, `==`, `!=`, `<<`, `>>`, `>>>` stay on one line, even if the
+result exceeds the line length:
+
+```java
+return aaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbb + ccccccccccccccccc + dddddddddddddddd + eeeeeeeeeeeeeeeeee;
+```
+
+The reasoning: arithmetic expressions read very differently when broken across lines,
+and the right break point depends on operator precedence in a way that a formatter
+can't reliably guess. Logical chains, by contrast, are almost always read as a list of
+conditions and break cleanly at any `&&` / `||`.
+
+If you want a wide arithmetic expression broken, extract subexpressions to local
+variables.
+
+---
+
+## Conditional (ternary) expressions
+
+A ternary that fits stays flat:
+
+```java
+return condition ? branchA() : branchB();
+```
+
+A ternary that doesn't fit breaks with `?` and `:` at the start of continuation lines,
+both indented:
+
+```java
+return conditionWithLongName
+    ? expensiveComputationOneVeryLong()
+    : alternativeBranchExpression();
+```
+
+---
+
+## Assignments
+
+When the right-hand side of `=` is too wide to fit on the same line as the left-hand
+side, the RHS breaks onto its own indented line:
+
+```java
+int aLocalVariableName =
+    someMethodCallThatReturnsAnInteger(arg1, arg2, arg3, arg4, arg5, arg6);
+```
+
+Some RHS shapes "glue" to the `=` instead of breaking after it — notably method-call
+chains, lambdas, anonymous classes, switch expressions, and array creation. In those
+cases the `=` stays on the same line and only the RHS body breaks:
+
+```java
+var x = new ArrayList<String>() {
+    @Override
+    public boolean add(String s) {
+        return super.add(s.trim());
+    }
+};
+```
+
+---
+
+## Lambdas
+
+Single-expression lambdas stay flat:
+
+```java
+Runnable r = () -> System.out.println("hi");
+var g = (Integer a, Integer b) -> a + b;
+```
+
+Block-bodied lambdas keep their braces and break their body:
+
+```java
+list.forEach(x -> {
+    System.out.println(x);
+    count++;
+});
+```
+
+A single-identifier parameter list drops the parentheses (`x -> ...`); multi-parameter
+or typed parameter lists keep them.
+
+---
+
+## Switch
+
+Both classic switch statements and the newer switch expressions are supported.
+
+```java
+String f(int x) {
+    return switch (x) {
+        case 1 -> "one";
+        case 2, 3 -> "few";
+        case 4 -> {
+            var s = "four";
+            yield s + s;
+        }
+        default -> "many";
+    };
+}
+```
+
+Arrow-style `case` rules keep the body on the same line. Block bodies open inline,
+just like methods. Colon-style cases use a standard indented body.
+
+---
+
+## try-with-resources
+
+Resources go inside `(...)`, separated by `;`. When they fit on one line, they stay
+inline:
+
+```java
+try (var a = open("a"); var b = open("b")) {
+    use(a, b);
+}
+```
+
+When they don't fit, each resource goes on its own line. (The continuation indent here
+is a known rough edge — see [Known limitations and quirks](#known-limitations-and-quirks).)
+
+---
+
+## `throws` clauses
+
+A short `throws` clause stays on the method header:
+
+```java
+void f() throws IOException {}
+```
+
+A `throws` clause that pushes the header over the line length breaks vertically, with
+each exception on its own line:
+
+```java
+void someLongMethodNameForce() throws
+    ExceptionOne,
+    ExceptionTwoLongName,
+    ExceptionThreeAnotherLongName,
+    ExceptionFour {}
+```
+
+---
+
+## Annotations
+
+**Declaration annotations** (annotations applied to a class, method, field, or
+parameter declaration) go on their own line:
+
+```java
+@Deprecated
+@SuppressWarnings("rawtypes")
+class A {
+
+    @Deprecated
+    @SuppressWarnings("unchecked")
+    public List foo() { ... }
+
+    @Deprecated
+    private int x;
+}
+```
+
+**Type-use annotations** (annotations that bind to a type, typically appearing after
+modifiers) stay inline with the type:
+
+```java
+private static @Nullable String compute() { ... }
+
+void g(@Nullable String s) {}
+```
+
+The formatter distinguishes the two cases by where the annotation appears: an
+annotation that comes after a keyword modifier (`private`, `static`, etc.) is treated
+as type-use; one that comes before any keyword modifiers is treated as declarational.
+
+---
+
+## Comments
+
+Comments are preserved verbatim and attached to the nearest AST node. The formatter
+classifies every comment as one of:
+
+- **leading** — appears before a declaration or statement, on its own lines
+- **trailing** — appears on the same line as the end of a declaration or statement
+- **dangling** — comments inside an otherwise empty block, or after the last
+  statement before a closing brace
+
+```java
+class A {
+    // leading
+    int x;
+    int y; // trailing
+
+    /* leading block */
+    int z;
+
+    // before method
+    void f() {
+        // inside
+    }
+
+    // dangling at end of class
+}
+```
+
+Line comments keep their original text (with trailing whitespace stripped). Block
+comments keep their original text and re-indent multi-line `/* ... */` blocks to the
+new column.
+
+---
+
+## Javadoc
+
+Both classic `/** ... */` and Markdown-style `///` Javadoc are preserved.
+
+```java
+class A {
+    /**
+     * Old style javadoc.
+     * @param x the arg
+     */
+    void foo(int x) {}
+
+    /// Markdown style javadoc.
+    /// More detail here.
+    void bar() {}
+}
+```
+
+**Javadoc content is not reformatted.** javafmt re-indents the lines to the new
+column, but does not reflow paragraphs, normalize `@param` spacing, or sort tags. This
+matches Black's policy for docstrings: leave the prose alone, only adjust the
+surrounding whitespace.
+
+---
+
+## Pattern matching
+
+`instanceof` patterns and switch patterns format naturally:
+
+```java
+if (o instanceof String s && s.length() > 5) {
+    System.out.println(s);
+}
+
+return switch (s) {
+    case Circle(var r) -> Math.PI * r * r;
+    case Square(var side) when side > 0 -> side * side;
+    case Square sq -> 0;
+};
+```
+
+Record patterns with many components follow the same break rule as record headers and
+method parameters: flat when they fit, one-per-line when they don't.
+
+---
+
+## Array initializers
+
+Short literals stay inline:
+
+```java
+int[] small = {1, 2, 3};
+int[][] m = {{1, 2}, {3, 4}};
+int[] arr = new int[] {10, 20, 30};
+```
+
+Literals that don't fit break vertically, **with a trailing comma**:
+
+```java
+int[] big =
+    {
+        111111111,
+        222222222,
+        333333333,
+        444444444,
+        555555555,
+        666666666,
+        777777777,
+        888888888,
+        999999999,
+        100000000,
+    };
+```
+
+The trailing comma keeps subsequent edits (adding a row) to a one-line diff.
+
+---
+
+## Known limitations and quirks
+
+These are documented behaviors of the current version. Some are intentional, some are
+rough edges that will improve over time. They are listed here so you know what to
+expect.
+
+- **No import sorting or grouping.** Imports stay in the order you wrote them.
+- **Javadoc prose is not reformatted.** Lines are re-indented but the text inside
+  `/** */` or `///` is untouched.
+- **Arithmetic, comparison, and shift expressions never wrap.** See
+  [Binary operators](#binary-operators).
+- **`if/else` chains without braces stay on a single line.** Source like
+  ```java
+  if (x > 0) doA();
+  else doB();
+  ```
+  becomes
+  ```java
+  if (x > 0) doA(); else doB();
+  ```
+  Add braces if you want them on separate lines.
+- **`for (;;)` is rewritten as `for (; ; )`.** A spacing artifact of the empty
+  initializer/condition/updater triplet.
+- **try-with-resources continuation lines** are not indented under the opening `(`
+  when they break; they sit at the outer indent.
+- **Module declarations (`module-info.java`) are not yet supported.** The formatter
+  will throw on them.
+- **Single-fragment field declarations** with very long RHS expressions may not
+  always pick the most aesthetic break point. Extract to a local if it bothers you.
+
+If you hit something not covered here, the formatter's behavior is the source of
+truth: pipe a sample through `javafmt format -` and see what it does. If the result
+surprises you, please open an issue.

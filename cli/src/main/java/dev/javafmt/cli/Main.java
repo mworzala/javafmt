@@ -4,6 +4,8 @@ import com.github.difflib.DiffUtils;
 import com.github.difflib.UnifiedDiffUtils;
 import dev.javafmt.Formatter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -16,14 +18,24 @@ public class Main {
     private static final String USAGE = """
             javafmt [options] format [files...]
                               check [files...]
-            
-            TODO description
-            note that - can be used as a file name to read from stdin.
-            
+
+            An opinionated Java code formatter. `format` rewrites files in place;
+            `check` prints a unified diff of what would change and exits non-zero
+            when any file would be reformatted. Use `-` as a file name to read
+            from stdin (output goes to stdout).
+
             Available options:
-            --threads <n>, -t<n>  number of threads to use (default: 1)
-            --version, -v         show version and exit
-            --help, -h            show this help message and exit
+            --threads <n>, -t<n>     number of threads to use (default: 1)
+            --release <n>            Java language release (default: 25)
+            --enable-preview         enable Java preview features
+            --line-length <n>        max line width (default: 100)
+            --verbose, -V            print stack traces on internal errors
+            --help, -h               show this help message and exit
+
+            Exit codes:
+              0  success (format completed, or check found no differences)
+              1  check mode: at least one file would be reformatted
+              2  error (bad flags, missing file, syntax error, I/O failure)
             """.stripIndent();
 
     private static final BiPredicate<Path, BasicFileAttributes> JAVA_FILE_MATCHER = (
@@ -38,22 +50,48 @@ public class Main {
 
     record Diff(Path path, List<String> printLines) {}
 
-    private static final Path cwd = Path.of("").toAbsolutePath();
-    private static final AtomicInteger changedCount = new AtomicInteger();
-    private static final List<Diff> diffs = new ArrayList<>(); // only present with diff flag.
+    private final InputStream in;
+    private final PrintStream out;
+    private final PrintStream err;
+    private final Path cwd = Path.of("").toAbsolutePath();
+    private final AtomicInteger changedCount = new AtomicInteger();
+    private final AtomicInteger failed = new AtomicInteger();
+    private final List<Diff> diffs = Collections.synchronizedList(new ArrayList<>());
 
-    private static dev.javafmt.Formatter formatter;
-    private static Mode mode = Mode.CHECK;
+    private Formatter formatter;
+    private Mode mode = Mode.CHECK;
+    private boolean verbose;
 
-    static void main(String[] args) {
-        var flags = new Flags("black", USAGE);
+    private Main(InputStream in, PrintStream out, PrintStream err) {
+        this.in = in;
+        this.out = out;
+        this.err = err;
+    }
+
+    public static void main(String[] args) {
+        System.exit(run(args, System.in, System.out, System.err));
+    }
+
+    static int run(String[] args, InputStream in, PrintStream out, PrintStream err) {
+        return new Main(in, out, err).execute(args);
+    }
+
+    private int execute(String[] args) {
+        var flags = new Flags("javafmt", USAGE, err);
         var threads = flags.intFlag("threads", "t", 1, "number of threads to use");
-        flags.parse(args);
+        var release = flags.intFlag("release", 25, "Java language release");
+        var enablePreview = flags.boolFlag("enable-preview", false, "enable Java preview features");
+        var lineLength = flags.intFlag("line-length", 100, "max line width");
+        var verboseFlag = flags.boolFlag("verbose", "V", false, "print stack traces on internal errors");
+
+        var rc = flags.parse(args);
+        if (rc.isPresent()) return rc.getAsInt();
+        verbose = verboseFlag.get();
 
         var paths = flags.args();
         if (paths.isEmpty()) {
             flags.printUsage();
-            System.exit(1);
+            return 2;
         }
 
         var command = paths.removeFirst();
@@ -61,25 +99,34 @@ public class Main {
             case "check" -> Mode.CHECK;
             case "format" -> Mode.FORMAT;
             default -> {
-                System.err.println("black: unknown command '" + command + "'");
-                System.exit(1);
-                yield Mode.CHECK; // unreachable
+                err.println("javafmt: unknown command '" + command + "'");
+                yield null;
             }
         };
+        if (mode == null) return 2;
 
-        var stdin = !paths.isEmpty() && paths.contains("-");
+        var stdin = paths.contains("-");
         if (stdin && paths.size() > 1) {
-            System.err.println("black: cannot mix stdin and files");
-            System.exit(1);
+            err.println("javafmt: cannot mix stdin and files");
+            return 2;
+        }
+        if (!stdin && paths.isEmpty()) {
+            err.println("javafmt: no files listed");
+            return 2;
         }
 
-        Collection<Path> files = !stdin ? resolveFiles(paths) : List.of();
-        if (!stdin && files.isEmpty()) {
-            System.err.println("black: no files listed");
-            System.exit(1);
+        formatter = new Formatter(release.get(), enablePreview.get(), lineLength.get());
+
+        if (stdin) {
+            return processStdin();
         }
 
-        formatter = new dev.javafmt.Formatter(25, false); // TODO accept enable preview and release
+        var files = resolveFiles(paths);
+        if (failed.get() > 0) return 2;
+        if (files.isEmpty()) {
+            err.println("javafmt: no files listed");
+            return 2;
+        }
 
         try (var executor = Executors.newFixedThreadPool(threads.get())) {
             files.forEach(file -> executor.submit(() -> processFile(file)));
@@ -87,74 +134,130 @@ public class Main {
 
         diffs.sort(Comparator.comparing(Diff::path));
         for (var diff : diffs) {
-            diff.printLines.forEach(System.out::println);
+            diff.printLines.forEach(out::println);
         }
 
-        if (mode == Mode.CHECK && changedCount.get() > 0) System.exit(1);
+        if (failed.get() > 0) return 2;
+        if (mode == Mode.CHECK && changedCount.get() > 0) return 1;
+        return 0;
     }
 
-    private static Collection<Path> resolveFiles(List<String> paths) {
-        Set<Path> resolved = new HashSet<>();
+    private Collection<Path> resolveFiles(List<String> paths) {
+        Set<Path> resolved = new LinkedHashSet<>();
         for (var raw : paths) {
             try {
                 var path = Path.of(raw).toRealPath();
                 if (Files.isRegularFile(path)) {
                     resolved.add(path);
                 } else if (Files.isDirectory(path)) {
-                    var stream = Files.find(path, Integer.MAX_VALUE, JAVA_FILE_MATCHER);
-                    try (stream) {
+                    try (var stream = Files.find(path, Integer.MAX_VALUE, JAVA_FILE_MATCHER)) {
                         stream.forEach(resolved::add);
                     }
                 } else {
-                    System.err.println(raw + ": no such file or directory");
-                    System.exit(1);
+                    err.println(raw + ": no such file or directory");
+                    failed.incrementAndGet();
                 }
-            } catch (Exception e) {
-                System.err.println(raw + ": " + e.getMessage());
+            } catch (IOException e) {
+                err.println(raw + ": " + e.getMessage());
+                failed.incrementAndGet();
             }
         }
         return resolved;
     }
 
-    private static void processFile(Path path) {
+    private int processStdin() {
+        String source;
+        try {
+            source = new String(in.readAllBytes());
+        } catch (IOException e) {
+            err.println("<stdin>: " + e.getMessage());
+            return 2;
+        }
+
+        var result = formatter.format(source);
+        return switch (result) {
+            case Formatter.Success(var formatted) -> {
+                if (mode == Mode.FORMAT) {
+                    out.print(formatted);
+                    yield 0;
+                }
+                if (formatted.equals(source)) yield 0;
+                var diff = UnifiedDiffUtils.generateUnifiedDiff(
+                    "a/<stdin>",
+                    "b/<stdin>",
+                    source.lines().toList(),
+                    DiffUtils.diff(source.lines().toList(), formatted.lines().toList()),
+                    2
+                );
+                diff.forEach(out::println);
+                yield 1;
+            }
+            case Formatter.SyntaxError(var problems) -> {
+                printSyntaxErrors("<stdin>", problems);
+                yield 2;
+            }
+            case Formatter.Failure(var error) -> {
+                printFailure("<stdin>", error);
+                yield 2;
+            }
+        };
+    }
+
+    private void processFile(Path path) {
         var printPath = cwd.relativize(path);
         try {
             var source = Files.readString(path);
-            var formatted = switch (formatter.format(source)) {
-                case dev.javafmt.Formatter.Success(var text) -> text;
-                case dev.javafmt.Formatter.SyntaxError(var errors) -> {
-                    //todo
-                    throw new RuntimeException("syntax errors");
+            switch (formatter.format(source)) {
+                case Formatter.Success(var formatted) -> {
+                    var changed = !formatted.equals(source);
+                    if (!changed) return;
+                    changedCount.incrementAndGet();
+                    if (mode == Mode.FORMAT) {
+                        Files.writeString(path, formatted);
+                    } else {
+                        var sourceLines = source.lines().toList();
+                        var formattedLines = formatted.lines().toList();
+                        var diff = UnifiedDiffUtils.generateUnifiedDiff(
+                            "a/" + printPath,
+                            "b/" + printPath,
+                            sourceLines,
+                            DiffUtils.diff(sourceLines, formattedLines),
+                            2
+                        );
+                        diffs.add(new Diff(path, diff));
+                    }
+                }
+                case Formatter.SyntaxError(var problems) -> {
+                    printSyntaxErrors(printPath.toString(), problems);
+                    failed.incrementAndGet();
                 }
                 case Formatter.Failure(var error) -> {
-                    throw new RuntimeException("formatting failed: ", error);
+                    printFailure(printPath.toString(), error);
+                    failed.incrementAndGet();
                 }
-            };
-
-            var changed = !formatted.equals(source);
-            if (changed) changedCount.incrementAndGet();
-
-            if (mode == Mode.FORMAT) {
-                Files.writeString(path, formatted);
-            } else if (mode == Mode.CHECK && changed) {
-                // System.out.println(printPath);
-
-                var sourceLines = source.lines().toList();
-                var formattedLines = formatted.lines().toList();
-                var diff = UnifiedDiffUtils.generateUnifiedDiff(
-                    "a/" + printPath,
-                    "b/" + printPath,
-                    sourceLines,
-                    DiffUtils.diff(sourceLines, formattedLines),
-                    2
-                );
-                diffs.add(new Diff(path, diff));
             }
         } catch (IOException e) {
-            System.err.println(path + ": " + e.getMessage());
-        } catch (Exception e) {
-            //noinspection CallToPrintStackTrace
-            e.printStackTrace();
+            err.println(printPath + ": " + e.getMessage());
+            failed.incrementAndGet();
+        } catch (RuntimeException e) {
+            printFailure(printPath.toString(), e);
+            failed.incrementAndGet();
         }
+    }
+
+    private void printSyntaxErrors(String displayPath, List<Formatter.Problem> problems) {
+        if (problems.isEmpty()) {
+            err.println(displayPath + ": syntax error");
+            return;
+        }
+        for (var p : problems) {
+            err.println(displayPath + ":" + p.line() + ":" + p.column() + ": syntax error: " + p.message());
+        }
+    }
+
+    private void printFailure(String displayPath, Throwable error) {
+        var msg = error.getMessage();
+        err.println(displayPath + ": error: " + (msg != null ? msg : error.getClass().getSimpleName()));
+        if (verbose) error.printStackTrace(err);
     }
 }

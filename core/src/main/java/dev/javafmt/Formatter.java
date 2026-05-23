@@ -6,6 +6,7 @@ import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /// Reusable and thread-safe formatter.
@@ -14,24 +15,32 @@ public final class Formatter {
 
     public record Success(String formatted) implements Result {}
 
-    public record SyntaxError(List<Object> errors) implements Result {}
+    public record SyntaxError(List<Problem> problems) implements Result {}
 
     public record Failure(Throwable error) implements Result {}
 
+    public record Problem(int line, int column, String message) {}
+
     private final int javaRelease;
     private final boolean enablePreview;
+    private final int lineLength;
 
     public Formatter() {
-        this(AST.getJLSLatest(), false);
+        this(AST.getJLSLatest(), false, 100);
     }
 
     public Formatter(int javaRelease) {
-        this(javaRelease, false);
+        this(javaRelease, false, 100);
     }
 
     public Formatter(int javaRelease, boolean enablePreview) {
+        this(javaRelease, enablePreview, 100);
+    }
+
+    public Formatter(int javaRelease, boolean enablePreview, int lineLength) {
         this.javaRelease = javaRelease;
         this.enablePreview = enablePreview;
+        this.lineLength = lineLength;
     }
 
     public Result format(String source) {
@@ -49,13 +58,15 @@ public final class Formatter {
             parser.setSource(source.toCharArray());
             var cu = (CompilationUnit) parser.createAST(null);
 
-            // In case of compilation errors we stop trying immediately. We would delete problematic source ranges.
             var problems = cu.getProblems();
-            if (problems.length > 0) return formatProblems(problems);
+            if (problems.length > 0) {
+                var errors = collectErrors(source, problems);
+                if (!errors.isEmpty()) return new SyntaxError(errors);
+            }
 
             var a2d = new AstToDoc(source);
             cu.accept(a2d);
-            var printer = new DocPrinter(100);
+            var printer = new DocPrinter(lineLength);
             var formatted = printer.print(a2d.result());
             return new Success(formatted);
         } catch (RuntimeException e) {
@@ -63,15 +74,22 @@ public final class Formatter {
         }
     }
 
-    private Result formatProblems(IProblem[] problems) {
-        //        var errors = Arrays.stream(problems).filter(p -> p.isError()).toList();
-        //        if (!errors.isEmpty()) {
-        //            throw new RuntimeException(
-        //                    "Syntax error: " + errors.getFirst().getMessage() + " (line " + errors.getFirst()
-        //                            .getSourceLineNumber() + ")"
-        //            );
-        //        }
-        return new SyntaxError(List.of());
+    private static List<Problem> collectErrors(String source, IProblem[] problems) {
+        var errors = new ArrayList<Problem>();
+        for (var p : problems) {
+            if (!p.isError()) continue;
+            errors.add(new Problem(p.getSourceLineNumber(), columnOf(source, p.getSourceStart()), p.getMessage()));
+        }
+        return errors;
+    }
+
+    private static int columnOf(String source, int sourceStart) {
+        if (sourceStart < 0) return 1;
+        int start = sourceStart;
+        if (start > source.length()) start = source.length();
+        int lineStart = start;
+        while (lineStart > 0 && source.charAt(lineStart - 1) != '\n') lineStart--;
+        return start - lineStart + 1;
     }
 
 }

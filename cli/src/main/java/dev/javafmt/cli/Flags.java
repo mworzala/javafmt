@@ -1,6 +1,7 @@
 package dev.javafmt.cli;
 
 import org.jspecify.annotations.Nullable;
+import java.io.PrintStream;
 import java.util.*;
 
 /// A simple, Go-flag-style command-line flag parser.
@@ -10,7 +11,8 @@ import java.util.*;
 ///   Flags.Value<Integer> port = flags.intFlag("port", 8080, "port to listen on");
 ///   Flags.Value<String> host = flags.stringFlag("host", "localhost", "host to bind to");
 ///   Flags.Value<Boolean> verbose = flags.boolFlag("verbose", false, "enable verbose logging");
-///   flags.parse(args);
+///   var rc = flags.parse(args);
+///   if (rc.isPresent()) return rc.getAsInt();
 ///
 ///   System.out.println("Listening on " + host.get() + ":" + port.get());
 ///   if (verbose.get()) { ... }
@@ -20,17 +22,23 @@ import java.util.*;
 final class Flags {
     private final String programName;
     private final @Nullable String usage;
+    private final PrintStream err;
     private final Map<String, FlagEntry<?>> registered = new LinkedHashMap<>();
     private final Map<String, FlagEntry<?>> shortcuts = new HashMap<>();
     private final List<String> remaining = new ArrayList<>();
 
     public Flags(String programName) {
-        this(programName, null);
+        this(programName, null, System.err);
     }
 
     public Flags(String programName, @Nullable String usage) {
+        this(programName, usage, System.err);
+    }
+
+    public Flags(String programName, @Nullable String usage, PrintStream err) {
         this.programName = programName;
         this.usage = usage;
+        this.err = err;
     }
 
     public Value<String> stringFlag(String name, String shortName, String defaultVal, String usage) {
@@ -73,7 +81,7 @@ final class Flags {
         return boolFlag(name, null, defaultVal, usage);
     }
 
-    public void parse(String[] args) {
+    public OptionalInt parse(String[] args) {
         int i = 0;
         while (i < args.length) {
             String arg = args[i];
@@ -81,10 +89,10 @@ final class Flags {
             if (arg.equals("--")) {
                 i++;
                 while (i < args.length) remaining.add(args[i++]);
-                return;
+                return OptionalInt.empty();
             }
 
-            if (!arg.startsWith("-")) {
+            if (!arg.startsWith("-") || arg.equals("-")) {
                 remaining.add(arg);
                 i++;
                 continue;
@@ -94,7 +102,6 @@ final class Flags {
             String value = null;
 
             if (arg.startsWith("--")) {
-                // long form: --flag or --flag=value
                 String raw = arg.substring(2);
                 int eq = raw.indexOf('=');
                 if (eq >= 0) {
@@ -104,7 +111,6 @@ final class Flags {
                     name = raw;
                 }
             } else {
-                // short form: -v, -t5, -t=5, -t 5
                 String raw = arg.substring(1);
                 int eq = raw.indexOf('=');
                 if (eq >= 0) {
@@ -113,14 +119,11 @@ final class Flags {
                 } else if (raw.length() == 1) {
                     name = raw;
                 } else {
-                    // could be -t5 (short flag with inline value)
-                    // try single char first, if it's a known short flag, treat rest as value
                     String maybe = raw.substring(0, 1);
                     if (shortcuts.containsKey(maybe)) {
                         name = maybe;
                         value = raw.substring(1);
                     } else {
-                        // treat whole thing as a long-ish name like -verbose
                         name = raw;
                     }
                 }
@@ -128,30 +131,31 @@ final class Flags {
 
             if (name.equals("help") || name.equals("h")) {
                 printUsage();
-                System.exit(0);
+                return OptionalInt.of(0);
             }
 
             FlagEntry<?> entry = lookup(name);
             if (entry == null) {
-                System.err.println("unknown flag: -" + name);
+                err.println("unknown flag: " + arg);
                 printUsage();
-                System.exit(1);
+                return OptionalInt.of(2);
             }
 
             if (entry.isBool && value == null) {
-                entry.setRaw("true");
+                if (!entry.setRaw("true")) return OptionalInt.of(2);
             } else if (value != null) {
-                entry.setRaw(value);
+                if (!entry.setRaw(value)) return OptionalInt.of(2);
             } else {
                 i++;
                 if (i >= args.length) {
-                    System.err.println("flag -" + name + " requires a value");
-                    System.exit(1);
+                    err.println("flag -" + name + " requires a value");
+                    return OptionalInt.of(2);
                 }
-                entry.setRaw(args[i]);
+                if (!entry.setRaw(args[i])) return OptionalInt.of(2);
             }
             i++;
         }
+        return OptionalInt.empty();
     }
 
     private FlagEntry<?> lookup(String name) {
@@ -166,15 +170,15 @@ final class Flags {
 
     public void printUsage() {
         if (usage != null) {
-            System.err.println(usage);
+            err.println(usage);
             return;
         }
 
-        System.err.println("Usage of " + programName + ":");
+        err.println("Usage of " + programName + ":");
         for (FlagEntry<?> e : registered.values()) {
             String def = e.defaultVal == null ? "" : " (default: " + e.defaultVal + ")";
             String label = e.shortName != null ? "--" + e.name + ", -" + e.shortName : "--" + e.name;
-            System.err.printf("  %-24s %s%s%n", label, e.usage, def);
+            err.printf("  %-24s %s%s%n", label, e.usage, def);
         }
     }
 
@@ -188,7 +192,7 @@ final class Flags {
         if (registered.containsKey(name)) {
             throw new IllegalArgumentException("flag already defined: " + name);
         }
-        FlagEntry<T> entry = new FlagEntry<>(name, shortName, defaultVal, usage, parser);
+        FlagEntry<T> entry = new FlagEntry<>(name, shortName, defaultVal, usage, parser, err);
         registered.put(name, entry);
         if (shortName != null) {
             shortcuts.put(shortName, entry);
@@ -225,26 +229,29 @@ final class Flags {
         final T defaultVal;
         final String usage;
         final Parser<T> parser;
+        final PrintStream err;
         final boolean isBool;
 
-        FlagEntry(String name, String shortName, T defaultVal, String usage, Parser<T> parser) {
+        FlagEntry(String name, String shortName, T defaultVal, String usage, Parser<T> parser, PrintStream err) {
             super(defaultVal);
             this.name = name;
             this.shortName = shortName;
             this.defaultVal = defaultVal;
             this.usage = usage;
             this.parser = parser;
+            this.err = err;
             this.isBool = defaultVal instanceof Boolean;
         }
 
-        void setRaw(String raw) {
+        boolean setRaw(String raw) {
             try {
                 this.val = parser.parse(raw);
+                return true;
             } catch (Exception e) {
-                System.err.println(
-                    "invalid value \"" + raw + "\" for flag -" + name + ": " + e.getMessage()
+                err.println(
+                    "invalid value \"" + raw + "\" for flag --" + name + ": " + e.getMessage()
                 );
-                System.exit(1);
+                return false;
             }
         }
     }

@@ -64,8 +64,8 @@ public abstract class FormatJava extends JavaFmtTask {
                     Files.writeString(file.toPath(), formatted);
                 }
             }
-            case Formatter.SyntaxError(var ignored) ->
-                    errors.add(new FormatError(file, relativePath, "syntax error"));
+            case Formatter.SyntaxError(var problems) ->
+                    errors.add(new FormatError(file, relativePath, "syntax error", problems));
             case Formatter.Failure(var t) ->
                     errors.add(new FormatError(file, relativePath, "format failed: " + t.getMessage()));
         }
@@ -90,15 +90,31 @@ public abstract class FormatJava extends JavaFmtTask {
                 ProblemGroup.create("javafmt", "javafmt")
         );
         for (var e : errors) {
-            // TODO(syntax-issue-plumbing): include line/col once core surfaces structured SyntaxIssue.
-            reporter.report(problemId, spec -> spec
-                    .contextualLabel(e.relativePath())
-                    .severity(Severity.ERROR)
-                    .fileLocation(e.file().getAbsolutePath())
-                    .details(e.message()));
+            if (e.problems().isEmpty()) {
+                reporter.report(problemId, spec -> spec
+                        .contextualLabel(e.relativePath())
+                        .severity(Severity.ERROR)
+                        .fileLocation(e.file().getAbsolutePath())
+                        .details(e.message()));
+            } else {
+                for (var p : e.problems()) {
+                    reporter.report(problemId, spec -> spec
+                            .contextualLabel(e.relativePath() + ":" + p.line() + ":" + p.column())
+                            .severity(Severity.ERROR)
+                            .lineInFileLocation(e.file().getAbsolutePath(), p.line(), p.column())
+                            .details("syntax error: " + p.message()));
+                }
+            }
         }
         var msg = errors.stream()
-                .map(e -> "  " + e.relativePath() + ": " + e.message())
+                .flatMap(e -> {
+                    if (e.problems().isEmpty()) {
+                        return java.util.stream.Stream.of("  " + e.relativePath() + ": " + e.message());
+                    }
+                    return e.problems().stream().map(p ->
+                            "  " + e.relativePath() + ":" + p.line() + ":" + p.column()
+                                    + ": syntax error: " + p.message());
+                })
                 .collect(Collectors.joining("\n",
                         "javafmt failed for " + errors.size() + " file(s):\n", ""));
         throw new GradleException(msg);

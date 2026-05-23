@@ -178,8 +178,6 @@ public class JavaFmtConfigurable implements Configurable {
         }
     }
 
-    /// TODO: the Gradle plugin doesn't currently write Implementation-Version to its
-    /// MANIFEST. Once it does, this will return the user's pinned formatter version.
     private static @Nullable String readVersion(@Nullable String jarPath) {
         if (jarPath == null) return null;
         var f = toFile(jarPath);

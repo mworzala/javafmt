@@ -18,8 +18,11 @@ class SyntaxErrorFunctionalTest extends FunctionalTestSupport {
         var result = runner("formatJava").buildAndFail();
 
         assertEquals(TaskOutcome.FAILED, result.task(":formatJava").getOutcome());
-        assertTrue(result.getOutput().contains("Bad.java"),
-                "expected output to mention Bad.java; got:\n" + result.getOutput());
+        var output = result.getOutput();
+        assertTrue(output.contains("Bad.java"),
+                "expected output to mention Bad.java; got:\n" + output);
+        assertTrue(output.matches("(?s).*Bad\\.java:\\d+:\\d+: syntax error: .*"),
+                "expected output to include Bad.java:line:col syntax error; got:\n" + output);
     }
 
     @Test
@@ -30,8 +33,11 @@ class SyntaxErrorFunctionalTest extends FunctionalTestSupport {
         var result = runner("checkFormat").buildAndFail();
 
         assertEquals(TaskOutcome.FAILED, result.task(":checkFormat").getOutcome());
-        assertTrue(result.getOutput().contains("Bad.java"),
-                "expected output to mention Bad.java; got:\n" + result.getOutput());
+        var output = result.getOutput();
+        assertTrue(output.contains("Bad.java"),
+                "expected output to mention Bad.java; got:\n" + output);
+        assertTrue(output.matches("(?s).*Bad\\.java:\\d+:\\d+: syntax error: .*"),
+                "expected output to include Bad.java:line:col syntax error; got:\n" + output);
     }
 
     @Test

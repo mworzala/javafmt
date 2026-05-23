@@ -1,5 +1,12 @@
 package dev.javafmt.gradle.task;
 
-import java.io.File;
+import dev.javafmt.Formatter;
 
-record FormatError(File file, String relativePath, String message) {}
+import java.io.File;
+import java.util.List;
+
+record FormatError(File file, String relativePath, String message, List<Formatter.Problem> problems) {
+    FormatError(File file, String relativePath, String message) {
+        this(file, relativePath, message, List.of());
+    }
+}

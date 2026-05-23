@@ -21,6 +21,15 @@ dependencies {
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
+tasks.jar {
+    manifest {
+        attributes(
+            "Implementation-Title" to "javafmt-gradle",
+            "Implementation-Version" to project.version,
+        )
+    }
+}
+
 gradlePlugin {
     website.set("https://github.com/mworzala/javafmt")
     vcsUrl.set("https://github.com/mworzala/javafmt")

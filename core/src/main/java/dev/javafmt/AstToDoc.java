@@ -16,8 +16,6 @@ final class AstToDoc extends ASTVisitor {
     private Doc result;
     private CompilationUnit compilationUnit;
 
-    private boolean lastResultGluesToEquals;
-
     public AstToDoc(String source, CommentMap comments) {
         this.source = source;
         this.comments = comments;
@@ -1221,17 +1219,7 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         }
         init.accept(this);
         var initDoc = result;
-        var glue = lastResultGluesToEquals;
-        lastResultGluesToEquals = false;
-
-        if (glue) {
-            result = group(concat(name, text(" = "), initDoc));
-        } else {
-            result = concat(
-                    name,
-                    group(concat(text(" ="), indent(concat(line(), initDoc))))
-            );
-        }
+        result = group(concat(name, text(" = "), initDoc));
         return false;
     }
 
@@ -1618,7 +1606,6 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
         result = concat(parts);
         result = conditionalGroup(List.of(result, result));
-        lastResultGluesToEquals = true;
         return false;
     }
 
@@ -1795,10 +1782,6 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         formatArguments(parts, arguments);
 
         result = group(concat(parts));
-        // Only glue to = when there's a receiver expression or complex args,
-        // so "name = receiver.method(...)" stays together but
-        // "name = simpleCall(a, b, c)" can break after =
-        lastResultGluesToEquals = expression != null;
         return false;
     }
 
@@ -2134,7 +2117,6 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         result = anonymousClass != null
                 ? conditionalGroup(List.of(partsDoc, partsDoc))
                 : partsDoc;
-        lastResultGluesToEquals = true;
         return false;
     }
 
@@ -2268,7 +2250,6 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         result = body instanceof Block
                 ? conditionalGroup(List.of(partsDoc, partsDoc))
                 : partsDoc;
-        lastResultGluesToEquals = true;
         return false;
     }
 
@@ -2308,7 +2289,6 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         }
 
         result = concat(parts);
-        lastResultGluesToEquals = true;
         return false;
     }
 
@@ -2362,7 +2342,6 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         var breaking = concat(arrayDoc, text("["), indent(concat(softLine(), indexDoc)), softLine(),
                               text("]"));
         result = conditionalGroup(List.of(flat, breaking));
-        lastResultGluesToEquals = true;
         return false;
     }
 

@@ -438,9 +438,6 @@ return aLongVariableName + somethingElseHere
 Assignment operators (`=`, `+=`, `-=`, etc.) are handled separately — see
 [Assignments](#assignments).
 
-This rule matches the [Google Java Style Guide](https://google.github.io/styleguide/javaguide.html#s4.5.1-line-wrapping-where-to-break):
-"when a line is broken at a non-assignment operator the break comes before the symbol."
-
 ---
 
 ## Conditional (ternary) expressions
@@ -464,17 +461,31 @@ return conditionWithLongName
 
 ## Assignments
 
-When the right-hand side of `=` is too wide to fit on the same line as the left-hand
-side, the RHS breaks onto its own indented line:
+The `=` always stays on the same line as the left-hand side. If the assignment
+doesn't fit flat, the RHS breaks internally — never after the `=`.
+
+Short assignments stay inline:
 
 ```java
-int aLocalVariableName =
-    someMethodCallThatReturnsAnInteger(arg1, arg2, arg3, arg4, arg5, arg6);
+int x = foo(a);
+var y = bar.baz();
 ```
 
-Some RHS shapes "glue" to the `=` instead of breaking after it — notably method-call
-chains, lambdas, anonymous classes, switch expressions, and array creation. In those
-cases the `=` stays on the same line and only the RHS body breaks:
+When the RHS is a method call that doesn't fit, the call's arguments break vertically:
+
+```java
+int aLocalVariableName = someMethodCallThatReturnsAnInteger(
+    arg1,
+    arg2,
+    arg3,
+    arg4,
+    arg5,
+    arg6
+);
+```
+
+When the RHS is a lambda, anonymous class, switch expression, or array creation, the
+block opens on the same line as `=` and its body breaks below:
 
 ```java
 var x = new ArrayList<String>() {
@@ -484,6 +495,16 @@ var x = new ArrayList<String>() {
     }
 };
 ```
+
+When the RHS has no internal break point — a long string literal, a single very long
+identifier — the line stays on one line and exceeds the line length. javafmt will
+never insert a meaning-preserving break that splits the assignment.
+
+```java
+String reallyLongVariableName = "a string literal that pushes this field declaration past the line length limit";
+```
+
+Compound assignments (`+=`, `-=`, etc.) follow the same rule.
 
 ---
 

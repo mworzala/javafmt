@@ -12,6 +12,5 @@ void foo() {
     int y = this.a;
     int y = a.this;
 
-    int aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa =
-        b().aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+    int aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa = b().aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
 }

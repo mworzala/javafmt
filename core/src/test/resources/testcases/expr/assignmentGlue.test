@@ -1,0 +1,54 @@
+class Example {
+    void shortFits() {
+        int x = foo(a);
+        var y = bar.baz();
+        int z = a + b + c;
+    }
+
+    void bareCallGluesAndBreaksInside() {
+        int aLocalVariableName = someMethodCallThatReturnsAnInteger(arg1, arg2, arg3, arg4, arg5, arg6);
+    }
+
+    void receiverCallStaysGlued() {
+        int x = obj.someMethodCallThatReturnsAnInteger(arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+    }
+
+    void chainOnRhs() {
+        var x = streamLongName.filter(predicateFn).map(transformerFn).collect(Collectors.toList());
+    }
+
+    void unbreakableIdentifierStaysOnOneLine() {
+        int x = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+    }
+}
+---
+class Example {
+    void shortFits() {
+        int x = foo(a);
+        var y = bar.baz();
+        int z = a + b + c;
+    }
+
+    void bareCallGluesAndBreaksInside() {
+        int aLocalVariableName = someMethodCallThatReturnsAnInteger(
+            arg1,
+            arg2,
+            arg3,
+            arg4,
+            arg5,
+            arg6
+        );
+    }
+
+    void receiverCallStaysGlued() {
+        int x = obj.someMethodCallThatReturnsAnInteger(arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+    }
+
+    void chainOnRhs() {
+        var x = streamLongName.filter(predicateFn).map(transformerFn).collect(Collectors.toList());
+    }
+
+    void unbreakableIdentifierStaysOnOneLine() {
+        int x = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+    }
+}

@@ -31,10 +31,19 @@ public class FileTest {
         var content = Files.readString(testFile);
         var parts = content.split("---\n", 2);
         var input = parts[0];
-        var expected = parts[1];
+        var expected = parts[1].strip();
 
+        var actual = formatSource(input);
+        assertEquals(expected, actual);
+
+        // Idempotence: formatting the expected output again must be a no-op.
+        var reformatted = formatSource(expected);
+        assertEquals(expected, reformatted, "formatter is not idempotent for " + testFile);
+    }
+
+    private static String formatSource(String source) {
         var parser = ASTParser.newParser(AST.getJLSLatest());
-        parser.setSource(input.toCharArray());
+        parser.setSource(source.toCharArray());
         parser.setKind(ASTParser.K_COMPILATION_UNIT);
         Map<String, String> options = JavaCore.getOptions();
         options.put(JavaCore.COMPILER_SOURCE, "25");
@@ -42,16 +51,15 @@ public class FileTest {
         parser.setCompilerOptions(options);
         var ast = parser.createAST(null);
 
-        var a2d = new AstToDoc(input);
+        var a2d = new AstToDoc(source);
         ast.accept(a2d);
 
         var printer = new DocPrinter(100);
-        var actual = printer.print(a2d.result());
+        var out = printer.print(a2d.result());
 
-        actual = Arrays.stream(actual.split("\n"))
+        return Arrays.stream(out.split("\n"))
             .map(String::stripTrailing)
-            .collect(Collectors.joining("\n"));
-
-        assertEquals(expected.strip(), actual.strip());
+            .collect(Collectors.joining("\n"))
+            .strip();
     }
 }

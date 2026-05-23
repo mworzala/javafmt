@@ -9,7 +9,6 @@ import java.util.List;
 
 import static dev.javafmt.Doc.*;
 
-@SuppressWarnings("unchecked")
 final class AstToDoc extends ASTVisitor {
 
     private final String source;
@@ -859,15 +858,9 @@ final class AstToDoc extends ASTVisitor {
 
         var elseStmt = getProperty(node, IfStatement.ELSE_STATEMENT_PROPERTY);
         if (elseStmt != null) {
-            if (elseStmt instanceof IfStatement) {
-                parts.add(text(" else "));
-                elseStmt.accept(this);
-                parts.add(result);
-            } else {
-                parts.add(text(" else "));
-                elseStmt.accept(this);
-                parts.add(result);
-            }
+            parts.add(text(" else "));
+            elseStmt.accept(this);
+            parts.add(result);
         }
 
         result = concat(parts);
@@ -1503,14 +1496,15 @@ final class AstToDoc extends ASTVisitor {
         var type = getProperty(node, VariableDeclarationExpression.TYPE_PROPERTY);
         type.accept(this);
         parts.add(result);
+        parts.add(space());
 
         var fragments = getProperty(node, VariableDeclarationExpression.FRAGMENTS_PROPERTY);
+        var fragDocs = new ArrayList<Doc>();
         for (var frag : fragments) {
-            parts.add(space());
-
             frag.accept(this);
-            parts.add(result);
+            fragDocs.add(result);
         }
+        parts.add(join(text(", "), fragDocs));
 
         result = concat(parts);
         return false;
@@ -2851,6 +2845,7 @@ final class AstToDoc extends ASTVisitor {
         return (ASTNode) node.getStructuralProperty(property);
     }
 
+    @SuppressWarnings("unchecked")
     private static List<ASTNode> getProperty(ASTNode node, ChildListPropertyDescriptor property) {
         return (List<ASTNode>) node.getStructuralProperty(property);
     }

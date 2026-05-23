@@ -1,0 +1,20 @@
+name: Corpus Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  corpus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-ci-runner
+
+      - run: ./gradlew :core:corpusTest
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: corpus-test-report
+          path: core/build/reports/tests/corpusTest
+          retention-days: 14

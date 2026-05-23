@@ -1,0 +1,6 @@
+# Files in any corpus to skip during :core:corpusTest.
+# One path per line, relative to build/corpus/, '/' separator —
+# i.e. entries start with the corpus name, e.g.
+#   junit-framework/jupiter-tests/src/test/java/.../FooTest.java
+# Use '#' for comments. Add entries with a brief note when triaging known
+# formatter bugs so they can be removed once fixed.

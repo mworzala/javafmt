@@ -32,7 +32,71 @@ java {
 }
 
 tasks.test {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags("corpus")
+    }
+}
+
+val corpusRoot = layout.buildDirectory.dir("corpus")
+
+data class Corpus(val name: String, val repo: String, val tag: String)
+
+// Each entry is cloned into build/corpus/<name>/ and walked by CorpusTest.
+// To add a corpus: append an entry; nothing else needs to change.
+val corpora = listOf(
+    Corpus(
+        name = "junit-framework",
+        repo = "https://github.com/junit-team/junit-framework.git",
+        tag = "r5.14.4"
+    ),
+)
+
+val fetchTasks = corpora.map { corpus ->
+    val taskSuffix = corpus.name
+        .split('-', '_')
+        .joinToString("") { it.replaceFirstChar(Char::uppercase) }
+    tasks.register<Exec>("fetch${taskSuffix}Corpus") {
+        description = "Shallow-clones the ${corpus.name} corpus at ${corpus.tag}."
+        group = "verification"
+        val outDir = corpusRoot.get().dir(corpus.name).asFile
+        outputs.dir(outDir)
+        onlyIf { !outDir.resolve(".git").exists() }
+        doFirst {
+            outDir.parentFile.mkdirs()
+            if (outDir.exists()) outDir.deleteRecursively()
+        }
+        commandLine(
+            "git", "clone",
+            "--depth", "1",
+            "--branch", corpus.tag,
+            corpus.repo,
+            outDir.absolutePath
+        )
+    }
+}
+
+val fetchCorpus by tasks.registering {
+    description = "Fetches every corpus declared in build.gradle.kts."
+    group = "verification"
+    dependsOn(fetchTasks)
+}
+
+val corpusTest by tasks.registering(Test::class) {
+    description = "Runs the corpus AST-equivalence test against every declared corpus."
+    group = "verification"
+    dependsOn(fetchCorpus)
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform {
+        includeTags("corpus")
+    }
+    systemProperty("javafmt.corpus.dir", corpusRoot.get().asFile.absolutePath)
+    // Corpus is large; surface progress and don't fail-fast.
+    maxHeapSize = "1g"
+    testLogging {
+        events("failed")
+        showStandardStreams = false
+    }
 }
 
 mavenPublishing {

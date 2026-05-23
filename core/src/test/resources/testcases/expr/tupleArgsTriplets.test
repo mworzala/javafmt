@@ -1,0 +1,19 @@
+class Example {
+    public static final Codec<BiomeInfo> CODEC = StructCodec.struct(
+        "name", Codec.STRING.optional(""), BiomeInfo::getName,
+        "displayItem", Material.CODEC.optional(Material.GRASS_BLOCK), BiomeInfo::getDisplayItem,
+        "skyColor", Color.CODEC.optional(DEFAULT_SKY_COLOR), BiomeInfo::getSkyColor,
+        "fogColor", Color.CODEC.optional(DEFAULT_FOG_COLOR), BiomeInfo::getFogColor,
+        BiomeInfo::new
+    );
+}
+---
+class Example {
+    public static final Codec<BiomeInfo> CODEC = StructCodec.struct(
+        "name", Codec.STRING.optional(""), BiomeInfo::getName,
+        "displayItem", Material.CODEC.optional(Material.GRASS_BLOCK), BiomeInfo::getDisplayItem,
+        "skyColor", Color.CODEC.optional(DEFAULT_SKY_COLOR), BiomeInfo::getSkyColor,
+        "fogColor", Color.CODEC.optional(DEFAULT_FOG_COLOR), BiomeInfo::getFogColor,
+        BiomeInfo::new
+    );
+}

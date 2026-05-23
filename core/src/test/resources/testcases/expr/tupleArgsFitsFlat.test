@@ -1,0 +1,15 @@
+class Example {
+    void foo() {
+        tuple(
+                a, b,
+                c, d,
+                e
+        );
+    }
+}
+---
+class Example {
+    void foo() {
+        tuple(a, b, c, d, e);
+    }
+}

@@ -1,0 +1,19 @@
+class Example {
+    public static final NetworkBuffer.Type<Action> SERIALIZER = NetworkBufferTemplate.template(
+            NetworkBuffer.UUID, Action::id,
+            NetworkBuffer.FLOAT, Action::x,
+            NetworkBuffer.FLOAT, Action::y,
+            NetworkBuffer.FLOAT, Action::z,
+            Action::new
+    );
+}
+---
+class Example {
+    public static final NetworkBuffer.Type<Action> SERIALIZER = NetworkBufferTemplate.template(
+        NetworkBuffer.UUID, Action::id,
+        NetworkBuffer.FLOAT, Action::x,
+        NetworkBuffer.FLOAT, Action::y,
+        NetworkBuffer.FLOAT, Action::z,
+        Action::new
+    );
+}

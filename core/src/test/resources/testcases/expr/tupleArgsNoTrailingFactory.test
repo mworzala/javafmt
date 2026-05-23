@@ -1,0 +1,22 @@
+class Example {
+    void foo() {
+        someLongMethodName(
+                firstArgument, secondArgument,
+                thirdArgument, fourthArgument,
+                fifthArgument, sixthArgument
+        );
+    }
+}
+---
+class Example {
+    void foo() {
+        someLongMethodName(
+            firstArgument,
+            secondArgument,
+            thirdArgument,
+            fourthArgument,
+            fifthArgument,
+            sixthArgument
+        );
+    }
+}

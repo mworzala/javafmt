@@ -1958,17 +1958,79 @@ final class AstToDoc extends ASTVisitor {
                         text(")")
                 )));
             } else {
-                parts.add(group(concat(
-                        text("("),
-                        indent(concat(
-                                line(""),
-                                join(concat(text(","), line()), argDocs)
-                        )),
-                        line(""),
-                        text(")")
-                )));
+                var tupleSizes = computeTupleGroupSizes(arguments);
+                if (tupleSizes != null) {
+                    parts.add(buildTupleArgs(argDocs, tupleSizes));
+                } else {
+                    parts.add(group(concat(
+                            text("("),
+                            indent(concat(
+                                    line(""),
+                                    join(concat(text(","), line()), argDocs)
+                            )),
+                            line(""),
+                            text(")")
+                    )));
+                }
             }
         }
+    }
+
+    // Detect uniform tuple-per-line + smaller trailing group (e.g. [2,2,2,1]). Returns sizes or null.
+    private List<Integer> computeTupleGroupSizes(List<ASTNode> arguments) {
+        if (compilationUnit == null || arguments.size() < 3) return null;
+        var sizes = new ArrayList<Integer>();
+        int currentLine = compilationUnit.getLineNumber(arguments.getFirst().getStartPosition());
+        int currentCount = 1;
+        for (int i = 1; i < arguments.size(); i++) {
+            int line = compilationUnit.getLineNumber(arguments.get(i).getStartPosition());
+            if (line == currentLine) {
+                currentCount++;
+            } else {
+                sizes.add(currentCount);
+                currentLine = line;
+                currentCount = 1;
+            }
+        }
+        sizes.add(currentCount);
+
+        if (sizes.size() < 2) return null;
+        int n = sizes.getFirst();
+        if (n < 2) return null;
+        for (int i = 1; i < sizes.size() - 1; i++) {
+            if (sizes.get(i) != n) return null;
+        }
+        if (sizes.getLast() >= n) return null;
+        return sizes;
+    }
+
+    // Alt 1 flat; Alt 2 chunked with HardLine (always fails fits() so it's the fallback).
+    private Doc buildTupleArgs(List<Doc> argDocs, List<Integer> sizes) {
+        var flatAlt = concat(
+                text("("),
+                join(concat(text(","), text(" ")), argDocs),
+                text(")")
+        );
+
+        var chunkDocs = new ArrayList<Doc>();
+        int idx = 0;
+        for (int size : sizes) {
+            var chunk = argDocs.subList(idx, idx + size);
+            chunkDocs.add(join(concat(text(","), text(" ")), chunk));
+            idx += size;
+        }
+
+        var chunkedAlt = concat(
+                text("("),
+                indent(concat(
+                        hardLine(),
+                        join(concat(text(","), hardLine()), chunkDocs)
+                )),
+                hardLine(),
+                text(")")
+        );
+
+        return conditionalGroup(List.of(flatAlt, chunkedAlt));
     }
 
     @Override

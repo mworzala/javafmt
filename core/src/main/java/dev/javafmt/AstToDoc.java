@@ -940,6 +940,8 @@ final class AstToDoc extends ASTVisitor {
 
         parts.add(text("for ("));
 
+        // Space only goes BEFORE a present clause: `for (init; cond; update)`,
+        // `for (;; update)`, `for (init;;)`, `for (;;)`, etc.
         var initializers = getProperty(node, ForStatement.INITIALIZERS_PROPERTY);
         if (!initializers.isEmpty()) {
             var initDocs = new ArrayList<Doc>();
@@ -949,17 +951,19 @@ final class AstToDoc extends ASTVisitor {
             }
             parts.add(join(concat(text(","), space()), initDocs));
         }
-        parts.add(text("; "));
+        parts.add(text(";"));
 
         var condition = getProperty(node, ForStatement.EXPRESSION_PROPERTY);
         if (condition != null) {
+            parts.add(space());
             condition.accept(this);
             parts.add(result);
         }
-        parts.add(text("; "));
+        parts.add(text(";"));
 
         var updaters = getProperty(node, ForStatement.UPDATERS_PROPERTY);
         if (!updaters.isEmpty()) {
+            parts.add(space());
             var updateDocs = new ArrayList<Doc>();
             for (var updater : updaters) {
                 updater.accept(this);

@@ -1,0 +1,33 @@
+class Example {
+    void allEightClauseCombinations() {
+        for (int i = 0; i < n; i++) {}
+        for (; i < n; i++) {}
+        for (int i = 0;; i++) {}
+        for (int i = 0; i < n;) {}
+        for (int i = 0;;) {}
+        for (; i < n;) {}
+        for (;; i++) {}
+        for (;;) {}
+    }
+
+    void multipleInitAndUpdate() {
+        for (int i = 0, j = 10; i < j; i++, j--) {}
+    }
+}
+---
+class Example {
+    void allEightClauseCombinations() {
+        for (int i = 0; i < n; i++) {}
+        for (; i < n; i++) {}
+        for (int i = 0;; i++) {}
+        for (int i = 0; i < n;) {}
+        for (int i = 0;;) {}
+        for (; i < n;) {}
+        for (;; i++) {}
+        for (;;) {}
+    }
+
+    void multipleInitAndUpdate() {
+        for (int i = 0, j = 10; i < j; i++, j--) {}
+    }
+}

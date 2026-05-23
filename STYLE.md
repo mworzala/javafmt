@@ -774,8 +774,6 @@ expect.
 - **No import sorting or grouping.** Imports stay in the order you wrote them.
 - **Javadoc prose is not reformatted.** Lines are re-indented but the text inside
   `/** */` or `///` is untouched.
-- **`for (;;)` is rewritten as `for (; ; )`.** A spacing artifact of the empty
-  initializer/condition/updater triplet.
 - **try-with-resources continuation lines** are not indented under the opening `(`
   when they break; they sit at the outer indent.
 - **Module declarations (`module-info.java`) are not yet supported.** The formatter

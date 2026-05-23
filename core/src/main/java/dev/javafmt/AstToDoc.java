@@ -2013,17 +2013,27 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
     }
 
     // Alt 1 flat; Alt 2 chunked with HardLine (always fails fits() so it's the fallback).
+    // Args are pre-flattened to text so chunk-internal layout decisions can't break.
+    // This makes tuple-args mean "user opted into per-line rows; render rows verbatim
+    // even if one row exceeds the line budget." Rest-aware fits inside an inner arg
+    // would otherwise see all of its sibling args in the same row and decide to break
+    // the inner expression, mangling the row layout and breaking idempotence.
     private Doc buildTupleArgs(List<Doc> argDocs, List<Integer> sizes) {
+        var flatArgs = new ArrayList<Doc>();
+        for (var arg : argDocs) {
+            flatArgs.add(text(new DocPrinter(Integer.MAX_VALUE).print(arg)));
+        }
+
         var flatAlt = concat(
                 text("("),
-                join(concat(text(","), text(" ")), argDocs),
+                join(concat(text(","), text(" ")), flatArgs),
                 text(")")
         );
 
         var chunkDocs = new ArrayList<Doc>();
         int idx = 0;
         for (int size : sizes) {
-            var chunk = argDocs.subList(idx, idx + size);
+            var chunk = flatArgs.subList(idx, idx + size);
             chunkDocs.add(join(concat(text(","), text(" ")), chunk));
             idx += size;
         }

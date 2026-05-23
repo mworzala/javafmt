@@ -5,11 +5,11 @@ sealed interface Doc {
     /** Literal text (no newlines allowed inside). */
     record Text(String value) implements Doc {}
 
-    /** A newline if the enclosing group breaks; otherwise {@code flat}. */
-    record Line(String flat) implements Doc {
-        /** Line that becomes a space when flattened. */
-        public Line() { this(" "); }
-    }
+    /** Space when the enclosing group fits flat; newline when broken. */
+    record Line() implements Doc {}
+
+    /** Empty when the enclosing group fits flat; newline when broken. */
+    record SoftLine() implements Doc {}
 
     /** Always a newline, regardless of grouping. */
     record HardLine() implements Doc {}
@@ -17,12 +17,12 @@ sealed interface Doc {
     /** Sequence of docs. */
     record Concat(java.util.List<Doc> parts) implements Doc {}
 
-    /** Increase indent for contents. */
+    /** Increase indent for contents by one step (configured on the printer). */
     record Indent(Doc doc) implements Doc {}
 
     /**
      * Try to fit {@code doc} on a single line.
-     * If it doesn't fit within the remaining width, break all Line nodes.
+     * If it doesn't fit within the remaining width, break all Line/SoftLine nodes.
      */
     record Group(Doc doc) implements Doc {}
 
@@ -38,7 +38,7 @@ sealed interface Doc {
     static Doc space()                  { return text(" "); }
     static Doc text(String s)           { return new Text(s); }
     static Doc line()                   { return new Line(); }
-    static Doc line(String s)                   { return new Line(s); }
+    static Doc softLine()               { return new SoftLine(); }
     static Doc hardLine()               { return new HardLine(); }
     static Doc indent(Doc d)            { return new Indent(d); }
     static Doc group(Doc d)             { return new Group(d); }

@@ -255,10 +255,10 @@ final class AstToDoc extends ASTVisitor {
             parts.add(group(concat(
                     text("("),
                     indent(concat(
-                            line(""),
+                            softLine(),
                             join(concat(text(","), line()), componentDocs)
                     )),
-                    line(""),
+                    softLine(),
                     text(")")
             )));
         }
@@ -363,10 +363,10 @@ final class AstToDoc extends ASTVisitor {
             parts.add(group(concat(
                     text("("),
                     indent(concat(
-                            line(""),
+                            softLine(),
                             join(concat(text(","), line()), argDocs)
                     )),
-                    line(""),
+                    softLine(),
                     text(")")
             )));
         }
@@ -668,10 +668,10 @@ final class AstToDoc extends ASTVisitor {
             parts.add(group(concat(
                     text("("),
                     indent(concat(
-                            line(""),
+                            softLine(),
                             join(concat(text(","), line()), paramDocs)
                     )),
-                    line(""),
+                    softLine(),
                     text(")")
             )));
         }
@@ -1137,10 +1137,10 @@ final class AstToDoc extends ASTVisitor {
             parts.add(group(concat(
                     text("("),
                     indent(concat(
-                            line(""),
+                            softLine(),
                             join(concat(text(","), line()), patternDocs)
                     )),
-                    line(""),
+                    softLine(),
                     text(")")
             )));
         }
@@ -1263,10 +1263,10 @@ final class AstToDoc extends ASTVisitor {
             parts.add(group(concat(
                     text("("),
                     indent(concat(
-                            line(""),
+                            softLine(),
                             join(concat(text(","), line()), argDocs)
                     )),
-                    line(""),
+                    softLine(),
                     text(")")
             )));
         }
@@ -1303,10 +1303,10 @@ final class AstToDoc extends ASTVisitor {
             parts.add(group(concat(
                     text("("),
                     indent(concat(
-                            line(""),
+                            softLine(),
                             join(concat(text(","), line()), argDocs)
                     )),
-                    line(""),
+                    softLine(),
                     text(")")
             )));
         }
@@ -1854,7 +1854,7 @@ final class AstToDoc extends ASTVisitor {
         fullBreakParts.add(rootDoc);
         var indentAllParts = new ArrayList<Doc>();
         for (var segDoc : segDocs) {
-            indentAllParts.add(line(""));
+            indentAllParts.add(softLine());
             indentAllParts.add(segDoc);
         }
         fullBreakParts.add(indent(concat(indentAllParts)));
@@ -1877,7 +1877,7 @@ final class AstToDoc extends ASTVisitor {
             partialBreakParts.add(segDocs.getFirst());
             var indentRestParts = new ArrayList<Doc>();
             for (int i = 1; i < segDocs.size(); i++) {
-                indentRestParts.add(line(""));
+                indentRestParts.add(softLine());
                 indentRestParts.add(segDocs.get(i));
             }
             partialBreakParts.add(indent(concat(indentRestParts)));
@@ -1951,7 +1951,7 @@ final class AstToDoc extends ASTVisitor {
                 parts.add(group(concat(
                         text("("),
                         indent(concat(
-                                line(""),
+                                softLine(),
                                 join(concat(text(","), line()), argDocs.subList(0, argDocs.size() - 1)),
                                 text(","),
                                 line()
@@ -1967,10 +1967,10 @@ final class AstToDoc extends ASTVisitor {
                     parts.add(group(concat(
                             text("("),
                             indent(concat(
-                                    line(""),
+                                    softLine(),
                                     join(concat(text(","), line()), argDocs)
                             )),
-                            line(""),
+                            softLine(),
                             text(")")
                     )));
                 }
@@ -2066,10 +2066,10 @@ final class AstToDoc extends ASTVisitor {
             parts.add(group(concat(
                     text("("),
                     indent(concat(
-                            line(""),
+                            softLine(),
                             join(concat(text(","), line()), argDocs)
                     )),
-                    line(""),
+                    softLine(),
                     text(")")
             )));
         }
@@ -2118,10 +2118,10 @@ final class AstToDoc extends ASTVisitor {
             parts.add(group(concat(
                     text("("),
                     indent(concat(
-                            line(""),
+                            softLine(),
                             join(concat(text(","), line()), argDocs)
                     )),
-                    line(""),
+                    softLine(),
                     text(")")
             )));
         }
@@ -2258,9 +2258,9 @@ final class AstToDoc extends ASTVisitor {
         boolean skipParens = parameters.size() == 1 && parameters.getFirst() instanceof VariableDeclarationFragment;
         parts.add(group(concat(
                 skipParens ? paramsDoc.getFirst() : concat(text("("), indent(concat(
-                        line(""),
+                        softLine(),
                         join(concat(text(","), line()), paramsDoc)
-                )), line(""), text(")")),
+                )), softLine(), text(")")),
                 text(" -> ")
         )));
 
@@ -2363,7 +2363,7 @@ final class AstToDoc extends ASTVisitor {
         var indexDoc = result;
 
         var flat = concat(arrayDoc, text("["), indexDoc, text("]"));
-        var breaking = concat(arrayDoc, text("["), indent(concat(new Doc.Line(""), indexDoc)), new Doc.Line(""),
+        var breaking = concat(arrayDoc, text("["), indent(concat(softLine(), indexDoc)), softLine(),
                               text("]"));
         result = conditionalGroup(List.of(flat, breaking));
         lastResultGluesToEquals = true;
@@ -2715,10 +2715,10 @@ final class AstToDoc extends ASTVisitor {
             parts.add(group(concat(
                     text("("),
                     indent(concat(
-                            line(""),
+                            softLine(),
                             join(concat(text(","), line()), valueDocs)
                     )),
-                    line(""),
+                    softLine(),
                     text(")")
             )));
         }

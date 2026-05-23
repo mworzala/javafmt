@@ -5,6 +5,7 @@ import java.util.Deque;
 
 final class DocPrinter {
     private final int maxWidth;
+    private final int indentStep;
     private final StringBuilder out = new StringBuilder();
     private int currentLineWidth = 0;
     private int pendingIndent = -1; // -1 means no pending newline
@@ -13,7 +14,12 @@ final class DocPrinter {
     private record Frame(int indent, boolean flat, Doc doc) {}
 
     public DocPrinter(int maxWidth) {
+        this(maxWidth, 4);
+    }
+
+    public DocPrinter(int maxWidth, int indentStep) {
         this.maxWidth = maxWidth;
+        this.indentStep = indentStep;
     }
 
     public String print(Doc doc) {
@@ -39,17 +45,21 @@ final class DocPrinter {
                 }
 
                 case Doc.Indent d -> {
-                    stack.push(new Frame(frame.indent() + 4, frame.flat(), d.doc()));
+                    stack.push(new Frame(frame.indent() + indentStep, frame.flat(), d.doc()));
                 }
 
-                case Doc.Line line -> {
+                case Doc.Line ignored -> {
                     if (frame.flat()) {
                         flushPendingIndent();
-
-                        // Group didn't break — emit the flat alternative (usually a space).
-                        out.append(line.flat());
-                        currentLineWidth += line.flat().length();
+                        out.append(' ');
+                        currentLineWidth += 1;
                     } else {
+                        emitNewline(frame.indent());
+                    }
+                }
+
+                case Doc.SoftLine ignored -> {
+                    if (!frame.flat()) {
                         emitNewline(frame.indent());
                     }
                 }
@@ -117,7 +127,8 @@ final class DocPrinter {
             Doc d = work.pop();
             switch (d) {
                 case Doc.Text t -> remaining -= t.value().length();
-                case Doc.Line l -> remaining -= l.flat().length();
+                case Doc.Line ignored -> remaining -= 1;
+                case Doc.SoftLine ignored -> { /* zero-width when flat */ }
                 case Doc.HardLine h -> {
                     return false;
                 }

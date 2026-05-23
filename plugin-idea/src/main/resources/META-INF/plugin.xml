@@ -4,21 +4,34 @@
 
     <description>
         <![CDATA[
-      TODO: fill me in with a description of the plugin
+      <p>An opinionated, zero-configuration Java formatter.</p>
+
+      <p>The plugin replaces IntelliJ's built-in Java formatter when a project applies the
+      <code>dev.javafmt.gradle</code> plugin. <b>Reformat Code</b> and format-on-save both
+      route through javafmt automatically &mdash; there is nothing new to invoke.</p>
+
+      <ul>
+        <li>Zero configuration. No style options, no <code>.editorconfig</code> overrides.</li>
+        <li>Version is pinned by the Gradle plugin, so every contributor on the project
+            formats with the same javafmt build.</li>
+        <li>Falls back transparently to the built-in formatter for projects that don't use
+            javafmt.</li>
+      </ul>
+
+      <p>See <a href="https://github.com/mworzala/javafmt">the project on GitHub</a> for the
+      Gradle plugin, the CLI, and the style guide.</p>
     ]]>
     </description>
     <change-notes>
         <![CDATA[
       <ul>
-        <li><b>2.0.0</b> Renamed from register_actions and converted to Gradle project.</li>
-        <li><b>1.1</b> Refactor to give users feedback when selecting menu items.</li>
-        <li><b>1.0</b> Release 2018.3 and earlier.</li>
+        <li><b>Initial release.</b> Adds javafmt-based Java formatting, sourced from the
+            <code>dev.javafmt.gradle</code> Gradle plugin applied to the project.</li>
       </ul>
     ]]>
     </change-notes>
 
-    <!-- Text to display as company information on Settings | Plugin page -->
-    <vendor url="https://plugins.jetbrains.com">IntelliJ Platform SDK</vendor>
+    <vendor url="https://github.com/mworzala" email="matt@hollowcube.net">Matt Worzala</vendor>
 
     <depends>com.intellij.modules.java</depends>
     <depends>com.intellij.gradle</depends>

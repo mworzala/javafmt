@@ -43,6 +43,10 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
 }
 
+tasks.buildPlugin {
+    archiveBaseName.set("javafmt-idea")
+}
+
 tasks.test {
     useJUnit()
     val classpathFiles = formatterTestClasspath

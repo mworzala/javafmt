@@ -13,7 +13,14 @@ repositories {
 
 dependencies {
     api(libs.jspecify)
-    implementation(libs.jdt)
+    implementation(libs.jdt) {
+        exclude(group = "net.java.dev.jna")
+        exclude(group = "org.eclipse.platform", module = "org.eclipse.core.filesystem")
+        exclude(group = "org.eclipse.platform", module = "org.eclipse.core.expressions")
+        exclude(group = "org.eclipse.platform", module = "org.eclipse.core.commands")
+        exclude(group = "org.eclipse.platform", module = "org.eclipse.equinox.app")
+        exclude(group = "org.eclipse.platform", module = "org.eclipse.equinox.registry")
+    }
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)

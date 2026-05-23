@@ -9,6 +9,7 @@ intellij-platform = "2.14.0"
 graalvm-native = "0.11.1"
 gradle-plugin-publish = "2.1.1"
 maven-publish = "0.36.0"
+shadow = "9.4.1"
 
 [libraries]
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
@@ -24,3 +25,4 @@ intellij-platform = { id = "org.jetbrains.intellij.platform", version.ref = "int
 graalvm-native = { id = "org.graalvm.buildtools.native", version.ref = "graalvm-native" }
 gradle-plugin-publish = { id = "com.gradle.plugin-publish", version.ref = "gradle-plugin-publish" }
 maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

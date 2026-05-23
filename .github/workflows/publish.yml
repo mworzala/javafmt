@@ -20,18 +20,21 @@ jobs:
       # TODO: re-enable once the project self-check passes.
       # - run: ./gradlew :cli:run --args='check .'
 
-  publish-core:
+  publish:
     runs-on: ubuntu-latest
     needs: test
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.release.tag_name }}
+      # Keep IntelliJ cache + free-disk-space on; the plugin-idea publish will live
+      # in this same job once it's enabled.
       - uses: ./.github/actions/setup-ci-runner
-        with:
-          cache-intellij: 'false'
 
-      - run: ./gradlew :core:publishToMavenCentral
+      - name: Publish core to Maven Central
+        run: ./gradlew :core:publishToMavenCentral
         env:
           JAVAFMT_VERSION: ${{ github.event.release.tag_name }}
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USER }}
@@ -39,33 +42,30 @@ jobs:
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_KEY }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_KEY_PASSWORD }}
 
-  publish-gradle-plugin:
-    runs-on: ubuntu-latest
-    needs: publish-core
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.release.tag_name }}
-      - uses: ./.github/actions/setup-ci-runner
-        with:
-          cache-intellij: 'false'
-
-      - run: ./gradlew :plugin-gradle:publishPlugins
+      - name: Publish Gradle plugin to Plugin Portal
+        run: ./gradlew :plugin-gradle:publishPlugins
         env:
           JAVAFMT_VERSION: ${{ github.event.release.tag_name }}
           GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
           GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
 
-#  publish-intellij-plugin:
-#    runs-on: ubuntu-latest
-#    needs: publish-core
-#    steps:
-#      - uses: actions/checkout@v5
-#        with:
-#          ref: ${{ github.event.release.tag_name }}
-#      - uses: ./.github/actions/setup-ci-runner
-#
-#      - run: ./gradlew :plugin-idea:publishPlugin
+      - name: Build release artifacts
+        run: ./gradlew :cli:shadowJar :plugin-idea:buildPlugin
+        env:
+          JAVAFMT_VERSION: ${{ github.event.release.tag_name }}
+
+      - name: Upload CLI jar and IntelliJ plugin zip to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh release upload "$TAG" \
+            "cli/build/libs/javafmt-${TAG}.jar" \
+            "plugin-idea/build/distributions/javafmt-idea-${TAG}.zip" \
+            --clobber
+
+#      - name: Publish IntelliJ plugin to JetBrains Marketplace
+#        run: ./gradlew :plugin-idea:publishPlugin
 #        env:
 #          JAVAFMT_VERSION: ${{ github.event.release.tag_name }}
 #          JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}

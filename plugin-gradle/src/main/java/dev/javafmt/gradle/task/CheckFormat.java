@@ -2,7 +2,6 @@ package dev.javafmt.gradle.task;
 
 import dev.javafmt.Formatter;
 import org.gradle.api.GradleException;
-import org.gradle.api.file.FileType;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.problems.ProblemGroup;
 import org.gradle.api.problems.ProblemId;
@@ -11,57 +10,56 @@ import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
-import org.gradle.work.ChangeType;
-import org.gradle.work.FileChange;
-import org.gradle.work.InputChanges;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 @CacheableTask
-public abstract class FormatJava extends JavaFmtTask {
+public abstract class CheckFormat extends JavaFmtTask {
 
     @OutputFile
-    public abstract RegularFileProperty getStampFile();
+    public abstract RegularFileProperty getReportFile();
 
     @TaskAction
-    public void format(InputChanges inputChanges) {
+    public void check() {
         var languageVersion = getLanguageVersion().getOrElse(JavaLanguageVersion.current());
         var enablePreview = getEnablePreview().getOrElse(false);
         var formatter = new Formatter(languageVersion.asInt(), enablePreview);
         var projectDir = getProject().getProjectDir().toPath();
+        var affected = new TreeSet<String>();
         var errors = new ArrayList<FormatError>();
-        var processed = 0;
 
-        for (FileChange change : inputChanges.getFileChanges(getSourceFiles())) {
-            if (change.getFileType() == FileType.DIRECTORY) continue;
-            if (change.getChangeType() == ChangeType.REMOVED) continue;
-
-            var file = change.getFile();
+        for (File file : getSourceFiles().getAsFileTree()) {
             var relativePath = projectDir.relativize(file.toPath()).toString();
             try {
-                processFile(file, relativePath, formatter, errors);
-                processed++;
+                checkFile(file, relativePath, formatter, affected, errors);
             } catch (IOException e) {
                 errors.add(new FormatError(file, relativePath, "I/O error: " + e.getMessage()));
             }
         }
 
-        writeStamp(processed);
+        writeReport(affected);
         reportErrors(errors);
+        if (!affected.isEmpty()) {
+            var msg = affected.stream().collect(Collectors.joining("\n  ",
+                    affected.size() + " file(s) need formatting:\n  ",
+                    "\nRun ./gradlew formatJava to fix."));
+            throw new GradleException(msg);
+        }
     }
 
-    private void processFile(File file, String relativePath, Formatter formatter, List<FormatError> errors) throws IOException {
-        getLogger().debug("javafmt: formatting '{}'", relativePath);
+    private void checkFile(File file, String relativePath, Formatter formatter,
+                           TreeSet<String> affected, List<FormatError> errors) throws IOException {
         var source = Files.readString(file.toPath());
         switch (formatter.format(source)) {
             case Formatter.Success(var formatted) -> {
                 if (!formatted.equals(source)) {
-                    Files.writeString(file.toPath(), formatted);
+                    affected.add(relativePath);
                 }
             }
             case Formatter.SyntaxError(var ignored) ->
@@ -71,13 +69,13 @@ public abstract class FormatJava extends JavaFmtTask {
         }
     }
 
-    private void writeStamp(int processed) {
+    private void writeReport(TreeSet<String> affected) {
         try {
-            var stamp = getStampFile().get().getAsFile().toPath();
-            Files.createDirectories(stamp.getParent());
-            Files.writeString(stamp, "processed=" + processed + "\n");
+            var report = getReportFile().get().getAsFile().toPath();
+            Files.createDirectories(report.getParent());
+            Files.writeString(report, String.join("\n", affected) + (affected.isEmpty() ? "" : "\n"));
         } catch (IOException e) {
-            throw new GradleException("javafmt: failed to write stamp file", e);
+            throw new GradleException("javafmt: failed to write check report", e);
         }
     }
 
@@ -86,7 +84,7 @@ public abstract class FormatJava extends JavaFmtTask {
         var reporter = getProblems().getReporter();
         var problemId = ProblemId.create(
                 "javafmt-error",
-                "javafmt failed to format file",
+                "javafmt failed to check file",
                 ProblemGroup.create("javafmt", "javafmt")
         );
         for (var e : errors) {

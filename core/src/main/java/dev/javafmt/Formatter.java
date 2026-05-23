@@ -24,6 +24,10 @@ public final class Formatter {
     private final int javaRelease;
     private final boolean enablePreview;
     private final int lineLength;
+    // ASTParser isn't safe to share across threads, but reusing a single instance per
+    // thread (via setSource between calls) avoids the non-trivial newParser cost on
+    // every file when formatting a whole repo.
+    private final ThreadLocal<ASTParser> parserCache = ThreadLocal.withInitial(this::newConfiguredParser);
 
     public Formatter() {
         this(AST.getJLSLatest(), false, 100);
@@ -43,18 +47,22 @@ public final class Formatter {
         this.lineLength = lineLength;
     }
 
+    private ASTParser newConfiguredParser() {
+        var parser = ASTParser.newParser(javaRelease);
+        parser.setKind(ASTParser.K_COMPILATION_UNIT);
+        var options = JavaCore.getOptions();
+        options.put(JavaCore.COMPILER_SOURCE, String.valueOf(javaRelease));
+        options.put(
+                JavaCore.COMPILER_PB_ENABLE_PREVIEW_FEATURES,
+                enablePreview ? JavaCore.ENABLED : JavaCore.DISABLED
+        );
+        parser.setCompilerOptions(options);
+        return parser;
+    }
+
     public Result format(String source) {
         try {
-            var parser = ASTParser.newParser(javaRelease);
-            parser.setKind(ASTParser.K_COMPILATION_UNIT);
-            var options = JavaCore.getOptions();
-            options.put(JavaCore.COMPILER_SOURCE, String.valueOf(javaRelease));
-            options.put(
-                    JavaCore.COMPILER_PB_ENABLE_PREVIEW_FEATURES,
-                    enablePreview ? JavaCore.ENABLED : JavaCore.DISABLED
-            );
-            parser.setCompilerOptions(options);
-
+            var parser = parserCache.get();
             parser.setSource(source.toCharArray());
             var cu = (CompilationUnit) parser.createAST(null);
 

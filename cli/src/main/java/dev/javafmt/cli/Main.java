@@ -25,7 +25,7 @@ public class Main {
             from stdin (output goes to stdout).
 
             Available options:
-            --threads <n>, -t<n>     number of threads to use (default: 1)
+            --threads <n>, -t<n>     number of threads to use (default: number of CPUs)
             --release <n>            Java language release (default: 25)
             --enable-preview         enable Java preview features
             --line-length <n>        max line width (default: 100)
@@ -78,7 +78,8 @@ public class Main {
 
     private int execute(String[] args) {
         var flags = new Flags("javafmt", USAGE, err);
-        var threads = flags.intFlag("threads", "t", 1, "number of threads to use");
+        var threads = flags.intFlag("threads", "t", Runtime.getRuntime().availableProcessors(),
+                                     "number of threads to use");
         var release = flags.intFlag("release", 25, "Java language release");
         var enablePreview = flags.boolFlag("enable-preview", false, "enable Java preview features");
         var lineLength = flags.intFlag("line-length", 100, "max line width");

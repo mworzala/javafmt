@@ -23,8 +23,12 @@ sealed interface Doc {
     /**
      * Try to fit {@code doc} on a single line.
      * If it doesn't fit within the remaining width, break all Line/SoftLine nodes.
+     * When {@code shouldBreak} is true, the group enters break mode immediately
+     * without consulting the available width.
      */
-    record Group(Doc doc) implements Doc {}
+    record Group(Doc doc, boolean shouldBreak) implements Doc {
+        public Group(Doc doc) { this(doc, false); }
+    }
 
     /**
      * Try each alternative in order; use the first that fits flat.
@@ -42,6 +46,7 @@ sealed interface Doc {
     static Doc hardLine()               { return new HardLine(); }
     static Doc indent(Doc d)            { return new Indent(d); }
     static Doc group(Doc d)             { return new Group(d); }
+    static Doc breakGroup(Doc d)        { return new Group(d, true); }
     static Doc conditionalGroup(java.util.List<Doc> alts) { return new ConditionalGroup(alts); }
 
     static Doc concat(Doc... parts) {

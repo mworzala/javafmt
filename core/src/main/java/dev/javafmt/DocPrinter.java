@@ -69,12 +69,10 @@ final class DocPrinter {
                 }
 
                 case Doc.Group g -> {
-                    // Try flat first. If the entire group fits, use flat mode.
-                    if (fits(frame.indent(), g.doc())) {
-                        stack.push(new Frame(frame.indent(), true, g.doc()));
-                    } else {
-                        stack.push(new Frame(frame.indent(), false, g.doc()));
-                    }
+                    // shouldBreak=true forces break mode immediately;
+                    // otherwise try flat first and fall back to break if it doesn't fit.
+                    boolean flatMode = !g.shouldBreak() && fits(frame.indent(), g.doc());
+                    stack.push(new Frame(frame.indent(), flatMode, g.doc()));
                 }
 
                 case Doc.ConditionalGroup cg -> {

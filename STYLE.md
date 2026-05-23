@@ -232,9 +232,6 @@ class A {
 followed by either a brace-block or a single statement.
 
 ```java
-if (x > 0) doA();
-else doB();
-
 for (int i = 0; i < arr.length; i++) System.out.println(arr[i]);
 for (var v : arr) System.out.println(v);
 ```
@@ -245,6 +242,32 @@ When an `if` body uses braces, the `else` follows the closing brace on the same 
 if (x > 0) {
     doA();
 } else {
+    doB();
+}
+```
+
+When an `if` body does NOT use braces, `else` moves to its own line so the non-braced
+then-body stays visible:
+
+```java
+if (x > 0) doA();
+else doB();
+
+if (x > 0) doA();
+else if (x < 0) doB();
+else doC();
+```
+
+The decision is made per-branch based on whether *that branch's* then-body uses
+braces, so mixed chains render exactly as written:
+
+```java
+if (x > 0) {
+    doA();
+} else doB();
+
+if (x > 0) doA();
+else {
     doB();
 }
 ```
@@ -751,16 +774,6 @@ expect.
 - **No import sorting or grouping.** Imports stay in the order you wrote them.
 - **Javadoc prose is not reformatted.** Lines are re-indented but the text inside
   `/** */` or `///` is untouched.
-- **`if/else` chains without braces stay on a single line.** Source like
-  ```java
-  if (x > 0) doA();
-  else doB();
-  ```
-  becomes
-  ```java
-  if (x > 0) doA(); else doB();
-  ```
-  Add braces if you want them on separate lines.
 - **`for (;;)` is rewritten as `for (; ; )`.** A spacing artifact of the empty
   initializer/condition/updater triplet.
 - **try-with-resources continuation lines** are not indented under the opening `(`

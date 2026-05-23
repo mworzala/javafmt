@@ -1,0 +1,125 @@
+class Example {
+    void simple(int x) {
+        if (x > 0) doA();
+        else doB();
+    }
+
+    void chain(int x) {
+        if (x > 0) doA();
+        else if (x < 0) doB();
+        else doC();
+    }
+
+    void noElse(int x) {
+        if (x > 0) doA();
+    }
+
+    int returnBodies(int x) {
+        if (x > 0) return 1;
+        else if (x < 0) return -1;
+        else return 0;
+    }
+
+    void throwBody(int x) {
+        if (x < 0) throw new IllegalArgumentException();
+        else doSomething();
+    }
+
+    void bracedThenBareElse(int x) {
+        if (x > 0) {
+            doA();
+        } else doB();
+    }
+
+    void bareThenBracedElse(int x) {
+        if (x > 0) doA();
+        else {
+            doB();
+        }
+    }
+
+    void allBracedUnchanged(int x) {
+        if (x > 0) {
+            doA();
+        } else if (x < 0) {
+            doB();
+        } else {
+            doC();
+        }
+    }
+
+    void nestedBracedOuterBareInner(int x, int y) {
+        if (x > 0) {
+            if (y > 0) doInner();
+            else doOtherInner();
+        } else doOuter();
+    }
+
+    void forLoopBodyInThen(int x) {
+        if (x > 0) for (int i = 0; i < x; i++) System.out.println(i);
+        else doB();
+    }
+}
+---
+class Example {
+    void simple(int x) {
+        if (x > 0) doA();
+        else doB();
+    }
+
+    void chain(int x) {
+        if (x > 0) doA();
+        else if (x < 0) doB();
+        else doC();
+    }
+
+    void noElse(int x) {
+        if (x > 0) doA();
+    }
+
+    int returnBodies(int x) {
+        if (x > 0) return 1;
+        else if (x < 0) return -1;
+        else return 0;
+    }
+
+    void throwBody(int x) {
+        if (x < 0) throw new IllegalArgumentException();
+        else doSomething();
+    }
+
+    void bracedThenBareElse(int x) {
+        if (x > 0) {
+            doA();
+        } else doB();
+    }
+
+    void bareThenBracedElse(int x) {
+        if (x > 0) doA();
+        else {
+            doB();
+        }
+    }
+
+    void allBracedUnchanged(int x) {
+        if (x > 0) {
+            doA();
+        } else if (x < 0) {
+            doB();
+        } else {
+            doC();
+        }
+    }
+
+    void nestedBracedOuterBareInner(int x, int y) {
+        if (x > 0) {
+            if (y > 0) doInner();
+            else doOtherInner();
+        } else doOuter();
+    }
+
+    void forLoopBodyInThen(int x) {
+        if (x > 0) for (int i = 0; i < x; i++) System.out.println(i);
+        else doB();
+    }
+}

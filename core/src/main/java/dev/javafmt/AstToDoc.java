@@ -876,7 +876,14 @@ final class AstToDoc extends ASTVisitor {
 
         var elseStmt = getProperty(node, IfStatement.ELSE_STATEMENT_PROPERTY);
         if (elseStmt != null) {
-            parts.add(text(" else "));
+            // `} else` stays on the same line when the then-body uses braces;
+            // otherwise `else` moves to its own line so a non-braced then is visible.
+            if (thenStmt instanceof Block) {
+                parts.add(text(" else "));
+            } else {
+                parts.add(hardLine());
+                parts.add(text("else "));
+            }
             elseStmt.accept(this);
             parts.add(result);
         }

@@ -33,6 +33,7 @@ import java.util.List;
 /// attachments because the rules use line-relative position only at build time.
 final class CommentMap {
     private final IdentityHashMap<ASTNode, NodeComments> attachments = new IdentityHashMap<>();
+    private int attachedCount = 0;
 
     static final class NodeComments {
         final List<Comment> leading = new ArrayList<>();
@@ -42,9 +43,15 @@ final class CommentMap {
 
     static CommentMap build(CompilationUnit cu, String source) {
         var map = new CommentMap();
+        int eligible = 0;
         for (Comment c : commentsOf(cu)) {
             if (isMarkdownJavadoc(c, source)) continue;
+            eligible++;
             map.attach(c, cu, source);
+        }
+        if (map.attachedCount != eligible) {
+            throw new IllegalStateException(
+                    "CommentMap dropped " + (eligible - map.attachedCount) + " of " + eligible + " comments");
         }
         return map;
     }
@@ -90,6 +97,7 @@ final class CommentMap {
         } else {
             getOrCreate(enclosing).dangling.add(c);
         }
+        attachedCount++;
     }
 
     private NodeComments getOrCreate(ASTNode node) {

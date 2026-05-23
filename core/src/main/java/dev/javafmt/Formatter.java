@@ -64,7 +64,8 @@ public final class Formatter {
                 if (!errors.isEmpty()) return new SyntaxError(errors);
             }
 
-            var a2d = new AstToDoc(source);
+            var comments = CommentMap.build(cu, source);
+            var a2d = new AstToDoc(source, comments);
             cu.accept(a2d);
             var printer = new DocPrinter(lineLength);
             var formatted = printer.print(a2d.result());

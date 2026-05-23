@@ -12,17 +12,23 @@ import static dev.javafmt.Doc.*;
 final class AstToDoc extends ASTVisitor {
 
     private final String source;
+    private final CommentMap comments;
     private Doc result;
     private CompilationUnit compilationUnit;
 
     private boolean lastResultGluesToEquals;
 
-    public AstToDoc(String source) {
+    public AstToDoc(String source, CommentMap comments) {
         this.source = source;
+        this.comments = comments;
+    }
+
+    public AstToDoc(String source) {
+        this(source, null);
     }
 
     public AstToDoc() {
-        this.source = null;
+        this(null, null);
     }
 
     public Doc result() {

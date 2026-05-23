@@ -1,0 +1,8 @@
+class A {}
+// between comment
+class B {}
+---
+class A {}
+
+// between comment
+class B {}

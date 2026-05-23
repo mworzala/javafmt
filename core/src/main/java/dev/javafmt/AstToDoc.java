@@ -98,6 +98,14 @@ final class AstToDoc extends ASTVisitor {
                     : (source != null ? source.length() : afterTypeEnd);
             var trailingComments = collectCommentsInRange(afterTypeEnd, nextBoundary);
 
+            // When another type follows, only same-line trailing comments belong here;
+            // standalone comments between types are picked up as leading of the next type.
+            // Without this filter the range is queried twice and the comment is duplicated.
+            if (i + 1 < types.size()) {
+                var prevType = types.get(i);
+                trailingComments.removeIf(c -> !isTrailingComment(prevType, c));
+            }
+
             if (trailingComments.isEmpty()) {
                 parts.add(hardLine());
                 parts.add(hardLine());

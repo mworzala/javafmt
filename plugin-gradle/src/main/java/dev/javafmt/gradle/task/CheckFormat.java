@@ -1,6 +1,7 @@
 package dev.javafmt.gradle.task;
 
-import dev.javafmt.Formatter;
+import dev.javafmt.api.Formatter;
+import dev.javafmt.api.Formatter.Result;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.problems.ProblemGroup;
@@ -29,7 +30,9 @@ public abstract class CheckFormat extends JavaFmtTask {
     public void check() {
         var languageVersion = getLanguageVersion().getOrElse(JavaLanguageVersion.current());
         var enablePreview = getEnablePreview().getOrElse(false);
-        var formatter = new Formatter(languageVersion.asInt(), enablePreview);
+        var formatter = Formatter.create(Formatter.Config.defaults()
+                .withRelease(languageVersion.asInt())
+                .withPreview(enablePreview));
         var projectDir = getProject().getProjectDir().toPath();
         var affected = new TreeSet<String>();
         var errors = new ArrayList<FormatError>();
@@ -57,14 +60,14 @@ public abstract class CheckFormat extends JavaFmtTask {
                            TreeSet<String> affected, List<FormatError> errors) throws IOException {
         var source = Files.readString(file.toPath());
         switch (formatter.format(source)) {
-            case Formatter.Success(var formatted) -> {
+            case Result.Success(var formatted) -> {
                 if (!formatted.equals(source)) {
                     affected.add(relativePath);
                 }
             }
-            case Formatter.SyntaxError(var problems) ->
+            case Result.SyntaxError(var problems) ->
                     errors.add(new FormatError(file, relativePath, "syntax error", problems));
-            case Formatter.Failure(var t) ->
+            case Result.Failure(var t) ->
                     errors.add(new FormatError(file, relativePath, "format failed: " + t.getMessage()));
         }
     }

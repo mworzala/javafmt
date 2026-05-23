@@ -70,14 +70,21 @@ dependencies {
 ```
 
 ```java
-import dev.javafmt.Formatter;
+import dev.javafmt.api.Formatter;
+import dev.javafmt.api.Formatter.Result;
 
-var result = new Formatter().format(source);
+var result = Formatter.defaults().format(source);
 switch (result) {
-    case Formatter.Success(var formatted)   -> System.out.println(formatted);
-    case Formatter.SyntaxError(var problems) -> problems.forEach(System.err::println);
-    case Formatter.Failure(var error)        -> error.printStackTrace();
+    case Result.Success(var formatted)    -> System.out.println(formatted);
+    case Result.SyntaxError(var problems) -> problems.forEach(System.err::println);
+    case Result.Failure(var error)        -> error.printStackTrace();
 }
+```
+
+For custom config:
+
+```java
+var formatter = Formatter.create(Formatter.Config.defaults().withLineLength(120));
 ```
 
 ## Style

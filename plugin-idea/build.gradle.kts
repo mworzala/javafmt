@@ -25,7 +25,7 @@ val formatterTestClasspath by configurations.creating {
 }
 
 dependencies {
-    compileOnly(project(":core"))
+    implementation(project(":api"))
 
     formatterTestClasspath(project(":core"))
 

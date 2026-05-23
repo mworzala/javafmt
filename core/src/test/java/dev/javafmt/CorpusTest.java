@@ -1,5 +1,6 @@
 package dev.javafmt;
 
+import dev.javafmt.api.Formatter;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
@@ -60,9 +61,9 @@ public class CorpusTest {
         Assumptions.assumeTrue(original.getProblems().length == 0,
                 "skipping unparseable source");
 
-        var result = new Formatter().format(source);
+        var result = Formatter.defaults().format(source);
         switch (result) {
-            case Formatter.Success(var formatted) -> {
+            case Formatter.Result.Success(var formatted) -> {
                 var reparsed = parse(formatted);
                 assertTrue(reparsed.getProblems().length == 0,
                         () -> "formatter produced unparseable output: "
@@ -73,14 +74,14 @@ public class CorpusTest {
                     fail("AST diverged after formatting: " + m.getMessage());
                 }
             }
-            case Formatter.SyntaxError(var problems) -> fail("formatter rejected valid input: " + problems);
-            case Formatter.Failure(var error) -> fail("formatter threw: " + error);
+            case Formatter.Result.SyntaxError(var problems) -> fail("formatter rejected valid input: " + problems);
+            case Formatter.Result.Failure(var error) -> fail("formatter threw: " + error);
         }
         // Idempotence: a second format must change nothing.
-        var first = ((Formatter.Success) result).formatted();
-        var second = new Formatter().format(first);
-        assertTrue(second instanceof Formatter.Success, "second pass failed: " + second);
-        assertEquals(first, ((Formatter.Success) second).formatted(), "formatter not idempotent");
+        var first = ((Formatter.Result.Success) result).formatted();
+        var second = Formatter.defaults().format(first);
+        assertTrue(second instanceof Formatter.Result.Success, "second pass failed: " + second);
+        assertEquals(first, ((Formatter.Result.Success) second).formatted(), "formatter not idempotent");
     }
 
     private static CompilationUnit parse(String source) {

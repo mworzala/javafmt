@@ -12,6 +12,7 @@ repositories {
 }
 
 dependencies {
+    api(project(":api"))
     api(libs.jspecify)
     implementation(libs.jdt) {
         exclude(group = "net.java.dev.jna")

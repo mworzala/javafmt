@@ -2,7 +2,8 @@ package dev.javafmt.cli;
 
 import com.github.difflib.DiffUtils;
 import com.github.difflib.UnifiedDiffUtils;
-import dev.javafmt.Formatter;
+import dev.javafmt.api.Formatter;
+import dev.javafmt.api.Formatter.Result;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
@@ -116,7 +117,10 @@ public class Main {
             return 2;
         }
 
-        formatter = new Formatter(release.get(), enablePreview.get(), lineLength.get());
+        formatter = Formatter.create(Formatter.Config.defaults()
+                .withRelease(release.get())
+                .withPreview(enablePreview.get())
+                .withLineLength(lineLength.get()));
 
         if (stdin) {
             return processStdin();
@@ -177,7 +181,7 @@ public class Main {
 
         var result = formatter.format(source);
         return switch (result) {
-            case Formatter.Success(var formatted) -> {
+            case Result.Success(var formatted) -> {
                 if (mode == Mode.FORMAT) {
                     out.print(formatted);
                     yield 0;
@@ -193,11 +197,11 @@ public class Main {
                 diff.forEach(out::println);
                 yield 1;
             }
-            case Formatter.SyntaxError(var problems) -> {
+            case Result.SyntaxError(var problems) -> {
                 printSyntaxErrors("<stdin>", problems);
                 yield 2;
             }
-            case Formatter.Failure(var error) -> {
+            case Result.Failure(var error) -> {
                 printFailure("<stdin>", error);
                 yield 2;
             }
@@ -209,7 +213,7 @@ public class Main {
         try {
             var source = Files.readString(path);
             switch (formatter.format(source)) {
-                case Formatter.Success(var formatted) -> {
+                case Result.Success(var formatted) -> {
                     var changed = !formatted.equals(source);
                     if (!changed) return;
                     changedCount.incrementAndGet();
@@ -228,11 +232,11 @@ public class Main {
                         diffs.add(new Diff(path, diff));
                     }
                 }
-                case Formatter.SyntaxError(var problems) -> {
+                case Result.SyntaxError(var problems) -> {
                     printSyntaxErrors(printPath.toString(), problems);
                     failed.incrementAndGet();
                 }
-                case Formatter.Failure(var error) -> {
+                case Result.Failure(var error) -> {
                     printFailure(printPath.toString(), error);
                     failed.incrementAndGet();
                 }

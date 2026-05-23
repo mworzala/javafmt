@@ -1,6 +1,6 @@
 package dev.javafmt.gradle.task;
 
-import dev.javafmt.Formatter;
+import dev.javafmt.api.Formatter;
 
 import java.io.File;
 import java.util.List;

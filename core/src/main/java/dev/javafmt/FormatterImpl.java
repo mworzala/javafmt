@@ -1,25 +1,20 @@
 package dev.javafmt;
 
+import dev.javafmt.api.Formatter;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.compiler.IProblem;
-import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/// Reusable and thread-safe formatter.
-public final class Formatter {
-    public sealed interface Result {}
-
-    public record Success(String formatted) implements Result {}
-
-    public record SyntaxError(List<Problem> problems) implements Result {}
-
-    public record Failure(Throwable error) implements Result {}
-
-    public record Problem(int line, int column, String message) {}
+/// Reusable, thread-safe implementation of {@link Formatter}.
+///
+/// Not part of the published API surface. Library users construct formatters via
+/// {@link Formatter#defaults()} or {@link Formatter#create(Formatter.Config)}; this
+/// class is reached only through the ServiceLoader-discovered {@link FormatterProviderImpl}.
+public final class FormatterImpl implements Formatter {
 
     private final int javaRelease;
     private final boolean enablePreview;
@@ -29,19 +24,7 @@ public final class Formatter {
     // every file when formatting a whole repo.
     private final ThreadLocal<ASTParser> parserCache = ThreadLocal.withInitial(this::newConfiguredParser);
 
-    public Formatter() {
-        this(AST.getJLSLatest(), false, 100);
-    }
-
-    public Formatter(int javaRelease) {
-        this(javaRelease, false, 100);
-    }
-
-    public Formatter(int javaRelease, boolean enablePreview) {
-        this(javaRelease, enablePreview, 100);
-    }
-
-    public Formatter(int javaRelease, boolean enablePreview, int lineLength) {
+    public FormatterImpl(int javaRelease, boolean enablePreview, int lineLength) {
         this.javaRelease = javaRelease;
         this.enablePreview = enablePreview;
         this.lineLength = lineLength;
@@ -60,6 +43,7 @@ public final class Formatter {
         return parser;
     }
 
+    @Override
     public Result format(String source) {
         try {
             var parser = parserCache.get();
@@ -69,7 +53,7 @@ public final class Formatter {
             var problems = cu.getProblems();
             if (problems.length > 0) {
                 var errors = collectErrors(source, problems);
-                if (!errors.isEmpty()) return new SyntaxError(errors);
+                if (!errors.isEmpty()) return new Result.SyntaxError(errors);
             }
 
             var comments = CommentMap.build(cu, source);
@@ -77,9 +61,9 @@ public final class Formatter {
             cu.accept(a2d);
             var printer = new DocPrinter(lineLength);
             var formatted = printer.print(a2d.result());
-            return new Success(formatted);
+            return new Result.Success(formatted);
         } catch (RuntimeException e) {
-            return new Failure(e);
+            return new Result.Failure(e);
         }
     }
 
@@ -100,5 +84,4 @@ public final class Formatter {
         while (lineStart > 0 && source.charAt(lineStart - 1) != '\n') lineStart--;
         return start - lineStart + 1;
     }
-
 }

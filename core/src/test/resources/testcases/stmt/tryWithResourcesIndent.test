@@ -1,0 +1,79 @@
+class Example {
+    void singleStaysFlat() throws Exception {
+        try (var a = open("a")) {
+            use(a);
+        }
+    }
+
+    void multipleFitStayFlat() throws Exception {
+        try (var a = open("a"); var b = open("b")) {
+            use(a, b);
+        }
+    }
+
+    void multipleBreakWithContinuationIndent() throws Exception {
+        try (var firstResource = open("a"); var secondResource = open("b"); var thirdResource = open("c")) {
+            use(firstResource);
+        }
+    }
+
+    void brokenResourcesWithCatchAndFinally() throws Exception {
+        try (var firstResource = open("a"); var secondResource = open("b"); var thirdResource = open("c")) {
+            use(firstResource);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            cleanup();
+        }
+    }
+
+    void existingVariableResource() throws Exception {
+        try (existingStream) {
+            existingStream.read();
+        }
+    }
+}
+---
+class Example {
+    void singleStaysFlat() throws Exception {
+        try (var a = open("a")) {
+            use(a);
+        }
+    }
+
+    void multipleFitStayFlat() throws Exception {
+        try (var a = open("a"); var b = open("b")) {
+            use(a, b);
+        }
+    }
+
+    void multipleBreakWithContinuationIndent() throws Exception {
+        try (
+            var firstResource = open("a");
+            var secondResource = open("b");
+            var thirdResource = open("c")
+        ) {
+            use(firstResource);
+        }
+    }
+
+    void brokenResourcesWithCatchAndFinally() throws Exception {
+        try (
+            var firstResource = open("a");
+            var secondResource = open("b");
+            var thirdResource = open("c")
+        ) {
+            use(firstResource);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            cleanup();
+        }
+    }
+
+    void existingVariableResource() throws Exception {
+        try (existingStream) {
+            existingStream.read();
+        }
+    }
+}

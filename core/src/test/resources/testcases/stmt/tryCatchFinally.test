@@ -93,9 +93,11 @@ void example() {
     }
 
     // Try-with-resources multiple resources
-    try (var in = new FileInputStream("input");
-    var out = new FileOutputStream("output");
-    var reallyOut = new FileOutputStream("output")) {
+    try (
+        var in = new FileInputStream("input");
+        var out = new FileOutputStream("output");
+        var reallyOut = new FileOutputStream("output")
+    ) {
         in.transferTo(out);
     }
 
@@ -140,10 +142,12 @@ void example() {
     }
 
     // Try-with-resources with long resource declarations
-    try (var veryLongVariableName = new VeryLongClassName(
-        veryLongArgumentName,
-        anotherVeryLongArgumentName
-    )) {
+    try (
+        var veryLongVariableName = new VeryLongClassName(
+            veryLongArgumentName,
+            anotherVeryLongArgumentName
+        )
+    ) {
         veryLongVariableName.doSomething();
     }
 

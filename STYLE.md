@@ -593,8 +593,22 @@ try (var a = open("a"); var b = open("b")) {
 }
 ```
 
-When they don't fit, each resource goes on its own line. (The continuation indent here
-is a known rough edge — see [Known limitations and quirks](#known-limitations-and-quirks).)
+When they don't fit, each resource goes on its own line, indented one level under the
+opening `(`, with the closing `)` on its own line at the outer indent — the same shape
+as a broken method parameter list:
+
+```java
+try (
+    var firstResource = open("a");
+    var secondResource = open("b");
+    var thirdResource = open("c")
+) {
+    use(firstResource);
+}
+```
+
+`catch` and `finally` continue to follow the closing `}` on the same line, as with any
+braced block.
 
 ---
 
@@ -774,8 +788,6 @@ expect.
 - **No import sorting or grouping.** Imports stay in the order you wrote them.
 - **Javadoc prose is not reformatted.** Lines are re-indented but the text inside
   `/** */` or `///` is untouched.
-- **try-with-resources continuation lines** are not indented under the opening `(`
-  when they break; they sit at the outer indent.
 - **Module declarations (`module-info.java`) are not yet supported.** The formatter
   will throw on them.
 - **Single-fragment field declarations** with very long RHS expressions may not

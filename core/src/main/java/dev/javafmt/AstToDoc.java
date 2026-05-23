@@ -1328,16 +1328,21 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
         var resources = getProperty(node, TryStatement.RESOURCES2_PROPERTY);
         if (!resources.isEmpty()) {
-            parts.add(text("("));
-
             var resourceParts = new ArrayList<Doc>();
             for (var resource : resources) {
                 resource.accept(this);
                 resourceParts.add(result);
             }
-            parts.add(group(join(concat(text(";"), line()), resourceParts)));
-
-            parts.add(text(") "));
+            parts.add(group(concat(
+                    text("("),
+                    indent(concat(
+                            softLine(),
+                            join(concat(text(";"), line()), resourceParts)
+                    )),
+                    softLine(),
+                    text(")")
+            )));
+            parts.add(text(" "));
         }
 
         var body = getProperty(node, TryStatement.BODY_PROPERTY);

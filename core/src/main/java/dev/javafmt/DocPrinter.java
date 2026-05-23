@@ -2,6 +2,7 @@ package dev.javafmt;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.List;
 
 final class DocPrinter {
     private final int maxWidth;
@@ -69,9 +70,8 @@ final class DocPrinter {
                 }
 
                 case Doc.Group g -> {
-                    // shouldBreak=true forces break mode immediately;
-                    // otherwise try flat first and fall back to break if it doesn't fit.
-                    boolean flatMode = !g.shouldBreak() && fits(frame.indent(), g.doc());
+                    boolean flatMode = !g.shouldBreak()
+                            && fits(new Frame(frame.indent(), true, g.doc()), stack);
                     stack.push(new Frame(frame.indent(), flatMode, g.doc()));
                 }
 
@@ -79,15 +79,13 @@ final class DocPrinter {
                     var alts = cg.alternatives();
                     boolean found = false;
                     for (Doc alt : alts) {
-                        if (fits(frame.indent(), alt)) {
+                        if (fits(new Frame(frame.indent(), true, alt), stack)) {
                             stack.push(new Frame(frame.indent(), true, alt));
                             found = true;
                             break;
                         }
                     }
-                    if (!found) {
-                        stack.push(new Frame(frame.indent(), false, alts.getLast()));
-                    }
+                    if (!found) stack.push(new Frame(frame.indent(), false, alts.getLast()));
                 }
             }
         }
@@ -113,33 +111,59 @@ final class DocPrinter {
     }
 
     /**
-     * Check if a doc fits on the remaining line in flat mode.
-     * This is a quick pessimistic check — if we hit a HardLine, it doesn't fit.
+     * Two-phase rest-aware fit check. Phase 1 walks the candidate; HardLine here means
+     * the group cannot render flat. Phase 2 walks the pending stack in each frame's
+     * actual mode; HardLine or a break-mode line ends the current line and we fit.
+     * Nested groups in either phase are measured as flat (Prettier MODE_FLAT propagation).
      */
-    private boolean fits(int indent, Doc doc) {
+    private boolean fits(Frame candidate, Deque<Frame> rest) {
         int remaining = maxWidth - (pendingIndent >= 0 ? pendingIndent : currentLineWidth);
-        Deque<Doc> work = new ArrayDeque<>();
-        work.push(doc);
 
-        while (!work.isEmpty() && remaining >= 0) {
-            Doc d = work.pop();
-            switch (d) {
+        Deque<Frame> work = new ArrayDeque<>();
+        work.push(candidate);
+        while (!work.isEmpty()) {
+            if (remaining < 0) return false;
+            Frame f = work.pop();
+            switch (f.doc()) {
                 case Doc.Text t -> remaining -= t.value().length();
                 case Doc.Line ignored -> remaining -= 1;
                 case Doc.SoftLine ignored -> { /* zero-width when flat */ }
-                case Doc.HardLine h -> {
-                    return false;
+                case Doc.HardLine h -> { return false; }
+                case Doc.Indent i -> work.push(new Frame(f.indent() + indentStep, true, i.doc()));
+                case Doc.Group g -> work.push(new Frame(f.indent(), true, g.doc()));
+                case Doc.ConditionalGroup cg -> work.push(new Frame(f.indent(), true, cg.alternatives().getFirst()));
+                case Doc.Concat c -> pushReversed(work, f.indent(), true, c.parts());
+            }
+        }
+
+        var snapshot = rest.toArray(Frame[]::new);
+        for (int i = snapshot.length - 1; i >= 0; i--) work.push(snapshot[i]);
+
+        while (!work.isEmpty()) {
+            if (remaining < 0) return false;
+            Frame f = work.pop();
+            switch (f.doc()) {
+                case Doc.Text t -> remaining -= t.value().length();
+                case Doc.Line ignored -> {
+                    if (f.flat()) remaining -= 1;
+                    else return true;
                 }
-                case Doc.Indent i -> work.push(i.doc());
-                case Doc.Group g -> work.push(g.doc());
-                case Doc.ConditionalGroup cg -> work.push(cg.alternatives().getFirst());
-                case Doc.Concat c -> {
-                    for (int i = c.parts().size() - 1; i >= 0; i--) {
-                        work.push(c.parts().get(i));
-                    }
+                case Doc.SoftLine ignored -> {
+                    if (!f.flat()) return true;
                 }
+                case Doc.HardLine h -> { return true; }
+                case Doc.Indent i -> work.push(new Frame(f.indent() + indentStep, f.flat(), i.doc()));
+                case Doc.Group g -> work.push(new Frame(f.indent(), true, g.doc()));
+                case Doc.ConditionalGroup cg -> work.push(new Frame(f.indent(), f.flat(), cg.alternatives().getFirst()));
+                case Doc.Concat c -> pushReversed(work, f.indent(), f.flat(), c.parts());
             }
         }
         return remaining >= 0;
+    }
+
+    private static void pushReversed(Deque<Frame> work, int indent, boolean flat, List<Doc> parts) {
+        for (int i = parts.size() - 1; i >= 0; i--) {
+            work.push(new Frame(indent, flat, parts.get(i)));
+        }
     }
 }

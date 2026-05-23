@@ -2399,7 +2399,13 @@ final class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(ThisExpression node) {
-        result = text("this");
+        var qualifier = getProperty(node, ThisExpression.QUALIFIER_PROPERTY);
+        if (qualifier == null) {
+            result = text("this");
+        } else {
+            qualifier.accept(this);
+            result = concat(result, text(".this"));
+        }
         return false;
     }
 

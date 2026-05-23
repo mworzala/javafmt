@@ -10,7 +10,7 @@
 void foo() {
     int x = a().b.c.d;
     int y = this.a;
-    int y = this;
+    int y = a.this;
 
     int aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa =
         b().aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;

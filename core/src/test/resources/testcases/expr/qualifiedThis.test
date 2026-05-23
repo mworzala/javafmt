@@ -1,0 +1,27 @@
+class Outer {
+    class Inner {
+        Outer outer() { return Outer.this; }
+        void chained() { Outer.this.doIt(); }
+        int field() { return Outer.this.value; }
+    }
+
+    int value;
+    void doIt() {}
+}
+---
+class Outer {
+    class Inner {
+        Outer outer() {
+            return Outer.this;
+        }
+        void chained() {
+            Outer.this.doIt();
+        }
+        int field() {
+            return Outer.this.value;
+        }
+    }
+
+    int value;
+    void doIt() {}
+}

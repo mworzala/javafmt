@@ -474,81 +474,92 @@ final class AstToDoc extends ASTVisitor {
             boolean withBraces
     ) {
         var body = getProperty(node, property);
+        var dangling = comments != null ? comments.dangling(node) : List.<Comment>of();
 
-        // Find open/close brace positions to scope comment collection
-        int nodeStart = node.getStartPosition();
-        int nodeEnd = nodeStart + node.getLength();
-
-        int commentRangeStart;
-        if (withBraces) {
-            int openBrace = nodeStart;
-            while (openBrace < nodeEnd && source != null && source.charAt(openBrace) != '{') {
-                openBrace++;
-            }
-            commentRangeStart = openBrace + 1;
-        } else {
-            commentRangeStart = nodeStart;
-        }
-
-        // Collect comments that appear at the body level (not inside a member's range)
-        var bodyComments = collectCommentsInRange(commentRangeStart, nodeEnd - (withBraces ? 1 : 0));
-        bodyComments.removeIf(c -> body.stream().anyMatch(decl ->
-                                                                  c.getStartPosition() >= decl.getStartPosition() &&
-                                                                          c.getStartPosition() < decl.getStartPosition() + decl.getLength()));
-
-        // Build merged sorted list of body members and comments
-        var items = new ArrayList<ASTNode>(body);
-        items.addAll(bodyComments);
-        items.sort(Comparator.comparingInt(ASTNode::getStartPosition));
-
-        if (items.isEmpty()) {
+        if (body.isEmpty() && dangling.isEmpty()) {
             if (withBraces) parts.add(text("{}"));
             return;
         }
 
         if (withBraces) parts.add(text("{"));
 
+        // First thing to be rendered after the open brace — used to preserve a blank line
+        // that existed between `{` and the first body content in the source. Accounts for
+        // a leading comment on the first declaration sitting before the declaration itself.
+        ASTNode firstItem = null;
+        int firstStart = Integer.MAX_VALUE;
+        if (!body.isEmpty()) {
+            var firstDecl = body.getFirst();
+            var firstDeclLeading = comments != null ? comments.leading(firstDecl) : List.<Comment>of();
+            ASTNode candidate = firstDeclLeading.isEmpty() ? firstDecl : firstDeclLeading.getFirst();
+            firstItem = candidate;
+            firstStart = candidate.getStartPosition();
+        }
+        if (!dangling.isEmpty() && dangling.getFirst().getStartPosition() < firstStart) {
+            firstItem = dangling.getFirst();
+        }
+        ASTNode lastItem;
+
         var bodyParts = new ArrayList<Doc>();
         if (withBraces) {
             bodyParts.add(hardLine());
-            if (blankLinesAfterOpenBrace(node, items.getFirst()) > 0) {
+            if (firstItem != null && blankLinesAfterOpenBrace(node, firstItem) > 0) {
                 bodyParts.add(hardLine());
             }
         }
-        for (int i = 0; i < items.size(); i++) {
-            var item = items.get(i);
 
-            // Check if this comment is trailing on the same line as the previous item
-            if (item instanceof Comment comment && i > 0 && isTrailingComment(items.get(i - 1), comment)) {
-                var prevDoc = bodyParts.removeLast();
-                bodyParts.add(concat(prevDoc, text(" "), renderComment(comment)));
-                continue;
-            }
-
-            if (i > 0) {
-                bodyParts.add(hardLine());
-                if (blankLinesBetween(items.get(i - 1), items.get(i)) > 0) {
+        ASTNode prevItem = null;
+        for (var decl : body) {
+            var leading = comments != null ? comments.leading(decl) : List.<Comment>of();
+            for (var lc : leading) {
+                if (prevItem != null) {
                     bodyParts.add(hardLine());
+                    if (blankLinesBetween(prevItem, lc) > 0) bodyParts.add(hardLine());
                 }
+                bodyParts.add(renderComment(lc));
+                prevItem = lc;
             }
-            if (item instanceof Comment comment) {
-                bodyParts.add(renderComment(comment));
-            } else {
-                item.accept(this);
-                bodyParts.add(result);
+            if (prevItem != null) {
+                bodyParts.add(hardLine());
+                if (blankLinesBetween(prevItem, decl) > 0) bodyParts.add(hardLine());
+            }
+            decl.accept(this);
+            bodyParts.add(result);
+            prevItem = decl;
+
+            var trailing = comments != null ? comments.trailing(decl) : List.<Comment>of();
+            if (!trailing.isEmpty()) {
+                var prevDoc = bodyParts.removeLast();
+                Doc combined = prevDoc;
+                for (var tc : trailing) {
+                    combined = concat(combined, text(" "), renderComment(tc));
+                    prevItem = tc;
+                }
+                bodyParts.add(combined);
             }
         }
+        for (var dc : dangling) {
+            if (prevItem != null) {
+                bodyParts.add(hardLine());
+                if (blankLinesBetween(prevItem, dc) > 0) bodyParts.add(hardLine());
+            }
+            bodyParts.add(renderComment(dc));
+            prevItem = dc;
+        }
+        lastItem = prevItem;
+
         var bodyDoc = concat(bodyParts);
         parts.add(withBraces ? indent(bodyDoc) : bodyDoc);
 
         if (withBraces) {
             parts.add(hardLine());
-            if (blankLinesBeforeCloseBrace(node, items.getLast()) > 0) {
+            if (lastItem != null && blankLinesBeforeCloseBrace(node, lastItem) > 0) {
                 parts.add(hardLine());
             }
             parts.add(text("}"));
         }
     }
+
 
     private void visitAnnotations(List<Doc> parts, ASTNode node, ChildListPropertyDescriptor property, boolean forceNewline) {
         var annotations = getProperty(node, property);

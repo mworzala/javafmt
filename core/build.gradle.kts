@@ -30,7 +30,9 @@ tasks.test {
 
 mavenPublishing {
     publishToMavenCentral(automaticRelease = true)
-    signAllPublications()
+    if (System.getenv("CI") != null) {
+        signAllPublications()
+    }
 
     coordinates("dev.javafmt", "core", project.version as String)
     pom {

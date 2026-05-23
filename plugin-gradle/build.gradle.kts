@@ -42,12 +42,8 @@ gradlePlugin {
     }
 }
 
-publishing {
-    repositories {
-        maven {
-            url = uri("${layout.projectDirectory}/publish")
-        }
-    }
+signing {
+    setRequired({ System.getenv("CI") != null })
 }
 
 val functionalTestSourceSet = sourceSets.create("functionalTest")

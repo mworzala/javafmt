@@ -50,8 +50,8 @@ The two invariants every reformat upholds:
 - Files end with a single newline.
 
 The line length is a soft target. Where no break is available — a long string literal,
-a long identifier, an arithmetic expression (see [Binary operators](#binary-operators)) —
-the line will exceed it. javafmt never inserts a line break that would change meaning.
+a long identifier — the line will exceed it. javafmt never inserts a line break that
+would change meaning.
 
 ---
 
@@ -400,29 +400,46 @@ If the chain has only 1 or 2 calls, it stays flat (no chain treatment is applied
 
 ## Binary operators
 
-**Logical and bitwise operators wrap.** `&&`, `||`, `&`, `|`, `^` will break with the
-operator at the start of the continuation line:
+Every non-assignment binary operator wraps the same way: when the expression doesn't
+fit on one line, it breaks **before** each operator, with the operator at the start of
+the continuation line, indented one level. This applies uniformly to arithmetic
+(`+`, `-`, `*`, `/`, `%`), comparison (`<`, `>`, `<=`, `>=`, `==`, `!=`), shift
+(`<<`, `>>`, `>>>`), logical (`&&`, `||`), and bitwise (`&`, `|`, `^`) operators.
 
 ```java
 return aLongVariableName > 0 && anotherOneHere > 0 && yetAnotherVariableName > 0
     && extraExtra;
 ```
 
-**Arithmetic, comparison, and shift operators do NOT wrap.** `+`, `-`, `*`, `/`, `%`,
-`<`, `>`, `<=`, `>=`, `==`, `!=`, `<<`, `>>`, `>>>` stay on one line, even if the
-result exceeds the line length:
-
 ```java
-return aaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbb + ccccccccccccccccc + dddddddddddddddd + eeeeeeeeeeeeeeeeee;
+return aaaaaaaaaaaaaaaa
+    + bbbbbbbbbbbbbbbb
+    + ccccccccccccccccc
+    + dddddddddddddddd
+    + eeeeeeeeeeeeeeeeee;
 ```
 
-The reasoning: arithmetic expressions read very differently when broken across lines,
-and the right break point depends on operator precedence in a way that a formatter
-can't reliably guess. Logical chains, by contrast, are almost always read as a list of
-conditions and break cleanly at any `&&` / `||`.
+```java
+return "this is a really long prefix string "
+    + aLongVar
+    + " middle bit "
+    + bLongVar
+    + " end";
+```
 
-If you want a wide arithmetic expression broken, extract subexpressions to local
-variables.
+Mixed-precedence expressions break at the **outermost** operator first; inner
+subexpressions stay flat unless they themselves overflow:
+
+```java
+return aLongVariableName + somethingElseHere
+    > anotherLongVariable + somethingElseEntirelyy + z;
+```
+
+Assignment operators (`=`, `+=`, `-=`, etc.) are handled separately — see
+[Assignments](#assignments).
+
+This rule matches the [Google Java Style Guide](https://google.github.io/styleguide/javaguide.html#s4.5.1-line-wrapping-where-to-break):
+"when a line is broken at a non-assignment operator the break comes before the symbol."
 
 ---
 
@@ -708,8 +725,6 @@ expect.
 - **No import sorting or grouping.** Imports stay in the order you wrote them.
 - **Javadoc prose is not reformatted.** Lines are re-indented but the text inside
   `/** */` or `///` is untouched.
-- **Arithmetic, comparison, and shift expressions never wrap.** See
-  [Binary operators](#binary-operators).
 - **`if/else` chains without braces stay on a single line.** Source like
   ```java
   if (x > 0) doA();

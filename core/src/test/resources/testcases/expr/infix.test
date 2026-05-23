@@ -1,0 +1,97 @@
+class Example {
+    void shortStaysFlat() {
+        int x = a + b + c;
+        boolean y = a > 0 && b > 0;
+        int z = a | b | c;
+        int s = a << 1;
+    }
+
+    int wideArithmetic(int aaaaaaaaaaaaaaaa, int bbbbbbbbbbbbbbbb, int ccccccccccccccccc) {
+        return aaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbb + ccccccccccccccccc + dddddddddddddddd + eeeeeeeeeeeeeeeeee;
+    }
+
+    boolean wideComparison(int aLongVariableName, int anotherLongVariable, int yetAnotherVariableName) {
+        return aLongVariableName == anotherLongVariable && yetAnotherVariableName == doYouSeeAPattern;
+    }
+
+    int wideBitwise(int aaaaaaaaaaaaaaaa, int bbbbbbbbbbbbbbbb, int ccccccccccccccccc, int dddddddddddddddd) {
+        return aaaaaaaaaaaaaaaa | bbbbbbbbbbbbbbbb | ccccccccccccccccc | dddddddddddddddd | eeeeeeeeeeeeeeeeee;
+    }
+
+    int wideShift(int aaaaaaaaaaaaaaaa, int bbbbbbbbbbbbbbbb) {
+        return aaaaaaaaaaaaaaaa << bbbbbbbbbbbbbbbb >> ccccccccccccccccc >>> dddddddddddddddd;
+    }
+
+    boolean wideLogical(int aLongVariableName, int anotherOneHere, int yetAnotherVariableName) {
+        return aLongVariableName > 0 && anotherOneHere > 0 && yetAnotherVariableName > 0 && extraExtra;
+    }
+
+    String wideStringConcat(String aLongVar, String bLongVar) {
+        return "this is a really long prefix string " + aLongVar + " middle bit " + bLongVar + " end";
+    }
+
+    boolean mixedPrecedence() {
+        return aLongVariableName + somethingElseHere > anotherLongVariable + somethingElseEntirelyy + z;
+    }
+}
+---
+class Example {
+    void shortStaysFlat() {
+        int x = a + b + c;
+        boolean y = a > 0 && b > 0;
+        int z = a | b | c;
+        int s = a << 1;
+    }
+
+    int wideArithmetic(int aaaaaaaaaaaaaaaa, int bbbbbbbbbbbbbbbb, int ccccccccccccccccc) {
+        return aaaaaaaaaaaaaaaa
+            + bbbbbbbbbbbbbbbb
+            + ccccccccccccccccc
+            + dddddddddddddddd
+            + eeeeeeeeeeeeeeeeee;
+    }
+
+    boolean wideComparison(
+        int aLongVariableName,
+        int anotherLongVariable,
+        int yetAnotherVariableName
+    ) {
+        return aLongVariableName == anotherLongVariable
+            && yetAnotherVariableName == doYouSeeAPattern;
+    }
+
+    int wideBitwise(
+        int aaaaaaaaaaaaaaaa,
+        int bbbbbbbbbbbbbbbb,
+        int ccccccccccccccccc,
+        int dddddddddddddddd
+    ) {
+        return aaaaaaaaaaaaaaaa
+            | bbbbbbbbbbbbbbbb
+            | ccccccccccccccccc
+            | dddddddddddddddd
+            | eeeeeeeeeeeeeeeeee;
+    }
+
+    int wideShift(int aaaaaaaaaaaaaaaa, int bbbbbbbbbbbbbbbb) {
+        return aaaaaaaaaaaaaaaa << bbbbbbbbbbbbbbbb >> ccccccccccccccccc >>> dddddddddddddddd;
+    }
+
+    boolean wideLogical(int aLongVariableName, int anotherOneHere, int yetAnotherVariableName) {
+        return aLongVariableName > 0 && anotherOneHere > 0 && yetAnotherVariableName > 0
+            && extraExtra;
+    }
+
+    String wideStringConcat(String aLongVar, String bLongVar) {
+        return "this is a really long prefix string "
+            + aLongVar
+            + " middle bit "
+            + bLongVar
+            + " end";
+    }
+
+    boolean mixedPrecedence() {
+        return aLongVariableName + somethingElseHere
+            > anotherLongVariable + somethingElseEntirelyy + z;
+    }
+}

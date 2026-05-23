@@ -1662,26 +1662,6 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
         var extendedOperands = getProperty(node, InfixExpression.EXTENDED_OPERANDS_PROPERTY);
 
-        // Only wrap for logical/bitwise/comparison operators, not arithmetic
-        boolean shouldWrap = op == InfixExpression.Operator.CONDITIONAL_AND
-                || op == InfixExpression.Operator.CONDITIONAL_OR
-                || op == InfixExpression.Operator.AND
-                || op == InfixExpression.Operator.OR
-                || op == InfixExpression.Operator.XOR;
-
-        if (!shouldWrap) {
-            // Arithmetic, comparison, shift — keep flat
-            parts.add(text(" " + operator + " "));
-            parts.add(rightDoc);
-            for (var operand : extendedOperands) {
-                parts.add(text(" " + operator + " "));
-                operand.accept(this);
-                parts.add(result);
-            }
-            result = concat(parts);
-            return false;
-        }
-
         if (extendedOperands.isEmpty()) {
             parts.add(indent(concat(
                     line(),

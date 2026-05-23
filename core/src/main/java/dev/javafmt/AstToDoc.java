@@ -66,63 +66,54 @@ final class AstToDoc extends ASTVisitor {
 
         var types = getProperty(node, CompilationUnit.TYPES_PROPERTY);
         for (int i = 0; i < types.size(); i++) {
-            // Collect comments before this type (after previous type, imports, package, or start of file)
-            int beforeTypeStart;
-            if (i > 0) {
-                beforeTypeStart = types.get(i - 1).getStartPosition() + types.get(i - 1).getLength();
-            } else if (!imports.isEmpty()) {
-                var lastImport = imports.getLast();
-                beforeTypeStart = lastImport.getStartPosition() + lastImport.getLength();
-            } else if (package_ != null) {
-                beforeTypeStart = package_.getStartPosition() + package_.getLength();
-            } else {
-                beforeTypeStart = 0;
-            }
-            var leadingComments = collectCommentsInRange(beforeTypeStart, types.get(i).getStartPosition());
-            if (!leadingComments.isEmpty()) {
+            var type = types.get(i);
+            var leading = comments != null ? comments.leading(type) : List.<Comment>of();
+
+            if (!leading.isEmpty()) {
                 ASTNode prev = null;
-                for (var c : leadingComments) {
-                    if (prev != null && blankLinesBetween(prev, c) > 0) {
-                        parts.add(hardLine());
-                    }
+                for (var c : leading) {
+                    if (prev != null && blankLinesBetween(prev, c) > 0) parts.add(hardLine());
                     parts.add(renderComment(c));
                     parts.add(hardLine());
                     prev = c;
                 }
-                if (blankLinesBetween(leadingComments.getLast(), types.get(i)) > 0) {
-                    parts.add(hardLine());
-                }
+                if (blankLinesBetween(leading.getLast(), type) > 0) parts.add(hardLine());
             }
 
-            types.get(i).accept(this);
+            type.accept(this);
             parts.add(result);
 
-            // Collect line comments between this type and the next (or EOF)
-            int afterTypeEnd = types.get(i).getStartPosition() + types.get(i).getLength();
-            int nextBoundary = (i + 1 < types.size())
-                    ? types.get(i + 1).getStartPosition()
-                    : (source != null ? source.length() : afterTypeEnd);
-            var trailingComments = collectCommentsInRange(afterTypeEnd, nextBoundary);
-
-            // When another type follows, only same-line trailing comments belong here;
-            // standalone comments between types are picked up as leading of the next type.
-            // Without this filter the range is queried twice and the comment is duplicated.
-            if (i + 1 < types.size()) {
-                var prevType = types.get(i);
-                trailingComments.removeIf(c -> !isTrailingComment(prevType, c));
+            var trailing = comments != null ? comments.trailing(type) : List.<Comment>of();
+            if (!trailing.isEmpty()) {
+                var prevDoc = parts.removeLast();
+                Doc combined = prevDoc;
+                for (var tc : trailing) {
+                    combined = concat(combined, text(" "), renderComment(tc));
+                }
+                parts.add(combined);
             }
 
-            if (trailingComments.isEmpty()) {
-                parts.add(hardLine());
-                parts.add(hardLine());
-            } else {
-                ASTNode prev = types.get(i);
-                for (var c : trailingComments) {
+            boolean lastType = (i == types.size() - 1);
+            if (lastType && comments != null) {
+                // Comments after the last type but before EOF attach as dangling of the
+                // compilation unit. Render them with the same separator pattern the old
+                // "trailing-of-last-type" loop used.
+                var dangling = comments.dangling(node);
+                if (dangling.isEmpty()) {
                     parts.add(hardLine());
-                    if (blankLinesBetween(prev, c) > 0) parts.add(hardLine());
-                    parts.add(renderComment(c));
-                    prev = c;
+                    parts.add(hardLine());
+                } else {
+                    ASTNode prev = type;
+                    for (var dc : dangling) {
+                        parts.add(hardLine());
+                        if (blankLinesBetween(prev, dc) > 0) parts.add(hardLine());
+                        parts.add(renderComment(dc));
+                        prev = dc;
+                    }
+                    parts.add(hardLine());
                 }
+            } else {
+                parts.add(hardLine());
                 parts.add(hardLine());
             }
         }

@@ -2,7 +2,6 @@ import org.gradle.plugin.compatibility.compatibility
 
 plugins {
     alias(libs.plugins.gradle.plugin.publish)
-    signing
 }
 
 
@@ -49,10 +48,6 @@ gradlePlugin {
 
         }
     }
-}
-
-signing {
-    setRequired({ System.getenv("CI") != null })
 }
 
 val functionalTestSourceSet = sourceSets.create("functionalTest")

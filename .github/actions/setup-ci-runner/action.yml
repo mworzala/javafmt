@@ -1,0 +1,47 @@
+name: Setup CI runner
+description: >
+  Free disk space, install Java + Gradle, and (optionally) cache the IntelliJ
+  Platform download. The caller is responsible for checking out the repo first
+  (this composite action lives in the repo, so it can't run before checkout).
+
+inputs:
+  cache-intellij:
+    description: Whether to restore/save the IntelliJ Platform cache. Set to 'false' for jobs that don't build plugin-idea.
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    # IntelliJ is big :-(
+    - name: Free disk space
+      uses: jlumbroso/free-disk-space@main
+      with:
+        tool-cache: false
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: true
+
+    - uses: actions/setup-java@v5
+      with:
+        distribution: 'graalvm'
+        java-version: '25'
+
+    # Cache the IntelliJ Platform download separately from setup-gradle's cache.
+    # Keyed on plugin-idea/build.gradle.kts so unrelated build-script churn
+    # doesn't invalidate the multi-GB IDE blob.
+    - name: Cache IntelliJ Platform
+      if: inputs.cache-intellij == 'true'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches/modules-2/files-2.1/com.jetbrains.intellij.idea
+          ~/.gradle/caches/modules-2/files-2.1/com.jetbrains.intellij.platform
+        key: intellij-${{ runner.os }}-${{ hashFiles('plugin-idea/build.gradle.kts') }}
+        restore-keys: |
+          intellij-${{ runner.os }}-
+
+    - uses: gradle/actions/setup-gradle@v6

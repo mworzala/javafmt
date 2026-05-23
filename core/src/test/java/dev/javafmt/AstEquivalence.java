@@ -4,6 +4,7 @@ import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ChildListPropertyDescriptor;
 import org.eclipse.jdt.core.dom.ChildPropertyDescriptor;
 import org.eclipse.jdt.core.dom.Javadoc;
+import org.eclipse.jdt.core.dom.LambdaExpression;
 import org.eclipse.jdt.core.dom.SimplePropertyDescriptor;
 import org.eclipse.jdt.core.dom.StructuralPropertyDescriptor;
 
@@ -43,6 +44,9 @@ final class AstEquivalence {
         for (var prop : props) {
             var childPath = path + "/" + prop.getId();
             if (prop instanceof SimplePropertyDescriptor sp) {
+                // The formatter intentionally normalizes (x) -> ... to x -> ... for
+                // single-parameter lambdas with inferred type; both forms are bytecode-identical.
+                if (a instanceof LambdaExpression && "parentheses".equals(sp.getId())) continue;
                 var av = a.getStructuralProperty(sp);
                 var bv = b.getStructuralProperty(sp);
                 if (!Objects.equals(av, bv)) {

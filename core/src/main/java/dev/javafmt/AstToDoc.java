@@ -1718,37 +1718,35 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
     @Override
     public boolean visit(InstanceofExpression node) {
-        var parts = new ArrayList<Doc>();
-
         var left = getProperty(node, InstanceofExpression.LEFT_OPERAND_PROPERTY);
         left.accept(this);
-        parts.add(result);
-
-        parts.add(text(" instanceof "));
+        var leftDoc = result;
 
         var right = getProperty(node, InstanceofExpression.RIGHT_OPERAND_PROPERTY);
         right.accept(this);
-        parts.add(result);
+        var rightDoc = result;
 
-        result = concat(parts);
+        result = group(concat(
+                leftDoc,
+                indent(concat(line(), text("instanceof "), rightDoc))
+        ));
         return false;
     }
 
     @Override
     public boolean visit(PatternInstanceofExpression node) {
-        var parts = new ArrayList<Doc>();
-
         var left = getProperty(node, PatternInstanceofExpression.LEFT_OPERAND_PROPERTY);
         left.accept(this);
-        parts.add(result);
-
-        parts.add(text(" instanceof "));
+        var leftDoc = result;
 
         var pattern = getProperty(node, PatternInstanceofExpression.PATTERN_PROPERTY);
         pattern.accept(this);
-        parts.add(result);
+        var patternDoc = result;
 
-        result = concat(parts);
+        result = group(concat(
+                leftDoc,
+                indent(concat(line(), text("instanceof "), patternDoc))
+        ));
         return false;
     }
 

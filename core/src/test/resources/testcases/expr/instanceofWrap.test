@@ -1,0 +1,42 @@
+class Example {
+    boolean shortStaysFlat(Object o) {
+        boolean a = o instanceof String;
+        boolean b = o instanceof String s;
+        return o instanceof Integer;
+    }
+
+    boolean wideTypeWraps() {
+        return aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa instanceof aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+    }
+
+    boolean widePatternWraps() {
+        return aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa instanceof SomeQualifiedTypeWithLongName someBoundName;
+    }
+
+    boolean instanceofInsideLogical(Object o) {
+        return aaaaaaaaaa instanceof String value && value.length() > someLimitConstant + extraStuff;
+    }
+}
+---
+class Example {
+    boolean shortStaysFlat(Object o) {
+        boolean a = o instanceof String;
+        boolean b = o instanceof String s;
+        return o instanceof Integer;
+    }
+
+    boolean wideTypeWraps() {
+        return aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            instanceof aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+    }
+
+    boolean widePatternWraps() {
+        return aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            instanceof SomeQualifiedTypeWithLongName someBoundName;
+    }
+
+    boolean instanceofInsideLogical(Object o) {
+        return aaaaaaaaaa instanceof String value
+            && value.length() > someLimitConstant + extraStuff;
+    }
+}

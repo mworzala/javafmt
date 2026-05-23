@@ -404,7 +404,7 @@ Every non-assignment binary operator wraps the same way: when the expression doe
 fit on one line, it breaks **before** each operator, with the operator at the start of
 the continuation line, indented one level. This applies uniformly to arithmetic
 (`+`, `-`, `*`, `/`, `%`), comparison (`<`, `>`, `<=`, `>=`, `==`, `!=`), shift
-(`<<`, `>>`, `>>>`), logical (`&&`, `||`), and bitwise (`&`, `|`, `^`) operators.
+(`<<`, `>>`, `>>>`), logical (`&&`, `||`), bitwise (`&`, `|`, `^`), and `instanceof`.
 
 ```java
 return aLongVariableName > 0 && anotherOneHere > 0 && yetAnotherVariableName > 0
@@ -425,6 +425,11 @@ return "this is a really long prefix string "
     + " middle bit "
     + bLongVar
     + " end";
+```
+
+```java
+return aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    instanceof aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
 ```
 
 Mixed-precedence expressions break at the **outermost** operator first; inner

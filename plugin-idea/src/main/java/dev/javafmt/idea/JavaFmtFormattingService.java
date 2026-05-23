@@ -1,6 +1,5 @@
 package dev.javafmt.idea;
 
-import dev.javafmt.Black;
 import com.intellij.formatting.service.AsyncDocumentFormattingService;
 import com.intellij.formatting.service.AsyncFormattingRequest;
 import com.intellij.lang.java.JavaLanguage;
@@ -42,12 +41,14 @@ public class JavaFmtFormattingService extends AsyncDocumentFormattingService {
             @Override
             public void run() {
                 var project = request.getContext().getProject();
-                var projectSettings = JavaFmtProjectSettings.getInstance(project);
-                var jarPath = projectSettings.getFormatterJarPath();
-
-                request.onTextReady(
-                        Black.formatSource(request.getDocumentText())
-                );
+                var paths = JavaFmtProjectSettings.getInstance(project).getFormatterClasspath();
+                var loader = JavaFmtFormatterLoader.getInstance(project);
+                try {
+                    var formatted = loader.format(paths, request.getDocumentText());
+                    request.onTextReady(formatted);
+                } catch (JavaFmtFormatterLoader.FormatException e) {
+                    request.onError("javafmt", e.getMessage());
+                }
             }
 
             @Override

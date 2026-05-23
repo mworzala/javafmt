@@ -29,6 +29,12 @@
         <formattingService implementation="dev.javafmt.idea.JavaFmtFormattingService" />
 
         <externalProjectDataService implementation="dev.javafmt.idea.JavaFmtDataService" />
+
+        <projectConfigurable
+                parentId="tools"
+                id="dev.javafmt.idea.settings"
+                displayName="javafmt"
+                instance="dev.javafmt.idea.JavaFmtConfigurable" />
     </extensions>
 
     <extensions defaultExtensionNs="org.jetbrains.plugins.gradle">

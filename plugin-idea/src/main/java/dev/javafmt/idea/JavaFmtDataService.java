@@ -30,7 +30,7 @@ public class JavaFmtDataService extends AbstractProjectDataService<JavaFmtToolDa
         var projectSettings = JavaFmtProjectSettings.getInstance(project);
 
         for (DataNode<JavaFmtToolData> node : toImport) {
-            projectSettings.setFormatterJarPath(node.getData().path());
+            projectSettings.setFormatterClasspath(node.getData().paths());
             return;
         }
 

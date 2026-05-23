@@ -9,6 +9,7 @@ import org.gradle.tooling.model.idea.IdeaModule;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.gradle.service.project.AbstractProjectResolverExtension;
 
+import java.util.List;
 import java.util.Set;
 
 @Order(ExternalSystemConstants.UNORDERED)
@@ -23,9 +24,8 @@ public class JavaFmtProjectResolverExtension extends AbstractProjectResolverExte
     public void populateModuleExtraModels(@NotNull IdeaModule gradleModule, @NotNull DataNode<ModuleData> ideModule) {
         var toolInfo = resolverCtx.getExtraProject(gradleModule, JavaFmtToolInfo.class);
         if (toolInfo != null) {
-            var data = new JavaFmtToolData(toolInfo.path());
+            var data = new JavaFmtToolData(List.copyOf(toolInfo.paths()));
             ideModule.createChild(JavaFmtToolData.KEY, data);
-            System.err.println("black: loaded tool info " + data);
         }
 
         nextResolver.populateModuleExtraModels(gradleModule, ideModule);

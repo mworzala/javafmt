@@ -3,6 +3,19 @@
 javafmt is a highly opinionated, zero-configuration code formatter for Java. You hand it your source, it gives
 you back consistently formatted code. No style options, no debates, no `.editorconfig` archaeology.
 
+### Why javafmt?
+
+Java has no shortage of formatters (google-java-format, Eclipse JDT, IntelliJ's built-in, Palantir's
+fork, Spotless as a wrapper around any of them). javafmt exists because none of them give you all three of
+the following at once:
+
+- **Zero config.** No thought or debate.
+- **Tier-one Gradle and IntelliJ integration.** Both are first-party plugins. No need to configure Spotless, 
+  no manual *Reformat Code* dance. The IntelliJ plugin transparently replaces the built-in formatter, so
+  format-on-save and **Reformat Code** route through javafmt.
+- **Fast support for new Java releases.** javafmt is built on the Eclipse JDT parser, which ships support for new
+  language features alongside the JDK release allowing javafmt to support releases quickly.
+
 ---
 
 ## Install

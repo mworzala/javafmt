@@ -4,11 +4,9 @@
 
     <description>
         <![CDATA[
-      <p>An opinionated, zero-configuration Java formatter.</p>
-
-      <p>The plugin replaces IntelliJ's built-in Java formatter when a project applies the
-      <code>dev.javafmt.gradle</code> plugin. <b>Reformat Code</b> and format-on-save both
-      route through javafmt automatically &mdash; there is nothing new to invoke.</p>
+      <p>An opinionated, zero-configuration Java formatter. Replaces IntelliJ's built-in
+      formatter on projects that apply the <code>dev.javafmt.gradle</code> plugin, so
+      <b>Reformat Code</b> and format-on-save route through javafmt automatically.</p>
 
       <ul>
         <li>Zero configuration. No style options, no <code>.editorconfig</code> overrides.</li>
@@ -25,8 +23,7 @@
     <change-notes>
         <![CDATA[
       <ul>
-        <li><b>Initial release.</b> Adds javafmt-based Java formatting, sourced from the
-            <code>dev.javafmt.gradle</code> Gradle plugin applied to the project.</li>
+        <li>Improved compatibility layer for loading gradle plugin formatter version</li>
       </ul>
     ]]>
     </change-notes>

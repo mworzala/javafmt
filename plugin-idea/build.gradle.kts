@@ -47,6 +47,12 @@ tasks.buildPlugin {
     archiveBaseName.set("javafmt-idea")
 }
 
+intellijPlatform {
+    publishing {
+        token = providers.environmentVariable("JETBRAINS_MARKETPLACE_TOKEN")
+    }
+}
+
 tasks.test {
     useJUnit()
     val classpathFiles = formatterTestClasspath

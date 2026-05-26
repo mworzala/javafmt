@@ -1650,43 +1650,60 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
     @Override
     public boolean visit(InfixExpression node) {
-        var parts = new ArrayList<Doc>();
-
-        var left = getProperty(node, InfixExpression.LEFT_OPERAND_PROPERTY);
-        left.accept(this);
-        parts.add(result);
-
         var op = node.getOperator();
         var operator = op.toString();
 
-        var right = getProperty(node, InfixExpression.RIGHT_OPERAND_PROPERTY);
-        right.accept(this);
-        var rightDoc = result;
+        // Flatten same-operator chains. JDT sometimes returns a flat node (a single
+        // InfixExpression with extended operands) and sometimes a left-leaning tree
+        // of nested InfixExpressions — the AST shape depends on the operator. If we
+        // let each nested layer keep its own group, inner sub-chains would fit flat
+        // independently of the outer break decision, producing a hybrid where some
+        // operands pack on the first line and the rest chop one-per-line. By folding
+        // all same-operator operands up into one group, the whole chain breaks (or
+        // not) as a unit — chop-all semantics for binary operator chains.
+        var operands = new ArrayList<ASTNode>();
+        collectSameOpOperands(node, op, operands);
 
-        var extendedOperands = getProperty(node, InfixExpression.EXTENDED_OPERANDS_PROPERTY);
-
-        if (extendedOperands.isEmpty()) {
-            parts.add(indent(concat(
-                    line(),
-                    text(operator + " "),
-                    rightDoc
-            )));
-        } else {
-            var operandDocs = new ArrayList<Doc>();
-            operandDocs.add(rightDoc);
-            for (var operand : extendedOperands) {
-                operand.accept(this);
-                operandDocs.add(result);
-            }
-            parts.add(indent(concat(
-                    line(),
-                    text(operator + " "),
-                    join(concat(line(), text(operator + " ")), operandDocs)
-            )));
+        var operandDocs = new ArrayList<Doc>();
+        for (var operand : operands) {
+            operand.accept(this);
+            operandDocs.add(result);
         }
 
-        result = group(concat(parts));
+        var tail = new ArrayList<Doc>();
+        for (int i = 1; i < operandDocs.size(); i++) {
+            tail.add(line());
+            tail.add(text(operator + " "));
+            tail.add(operandDocs.get(i));
+        }
+        result = group(concat(operandDocs.get(0), indent(concat(tail))));
         return false;
+    }
+
+    /// Walks the left spine of a same-operator InfixExpression chain, appending every
+    /// leaf operand (in source order) into {@code out}. Stops descending at any node
+    /// whose operator differs or that is not an InfixExpression (e.g.
+    /// ParenthesizedExpression — parentheses correctly halt flattening).
+    private void collectSameOpOperands(InfixExpression node, InfixExpression.Operator op, List<ASTNode> out) {
+        var left = getProperty(node, InfixExpression.LEFT_OPERAND_PROPERTY);
+        if (left instanceof InfixExpression leftInfix && leftInfix.getOperator() == op) {
+            collectSameOpOperands(leftInfix, op, out);
+        } else {
+            out.add(left);
+        }
+        var right = getProperty(node, InfixExpression.RIGHT_OPERAND_PROPERTY);
+        if (right instanceof InfixExpression rightInfix && rightInfix.getOperator() == op) {
+            collectSameOpOperands(rightInfix, op, out);
+        } else {
+            out.add(right);
+        }
+        for (var ext : getProperty(node, InfixExpression.EXTENDED_OPERANDS_PROPERTY)) {
+            if (ext instanceof InfixExpression extInfix && extInfix.getOperator() == op) {
+                collectSameOpOperands(extInfix, op, out);
+            } else {
+                out.add(ext);
+            }
+        }
     }
 
     @Override

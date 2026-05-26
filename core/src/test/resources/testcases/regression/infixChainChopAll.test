@@ -1,0 +1,64 @@
+class Example {
+    // The original mapmaker shape: a long `||` chain whose operands are themselves
+    // comparisons. JDT produces a left-leaning tree of nested `||` nodes, and the
+    // formatter must flatten the chain so it chops all-or-nothing, not as a hybrid
+    // where the first pair packs and the rest wrap.
+    void hub(Pos playerPos) {
+        if (playerPos.x() < HUB_BB_MIN.x() || playerPos.x() > HUB_BB_MAX.x() || playerPos.y() < HUB_BB_MIN.y() || playerPos.y() > HUB_BB_MAX.y() || playerPos.z() < HUB_BB_MIN.z() || playerPos.z() > HUB_BB_MAX.z()) {
+            event.getPlayer().teleport(spawnPointFor(event.getPlayer()));
+        }
+    }
+
+    // Same chop-all expectation for `&&`. Each operand is its own InfixExpression
+    // (`==` / `<`), forcing JDT to keep the `&&` operands at the outer node — which
+    // is the exact AST shape that used to defeat the cached-parser-style grouping.
+    boolean andChain(int alpha, int beta, int gamma, int delta) {
+        return aaaaaaaaaaaaaaaa == 1 && bbbbbbbbbbbbbbbb == 2 && ccccccccccccccccc == 3 && ddddddddddddd < 4;
+    }
+
+    // Mixing `&&` with a parenthesized `||` sub-chain: the outer `&&` flattens its
+    // own operands but parens are an opaque boundary, so the inner `||` chain forms
+    // its own group and chops independently.
+    boolean nested(Object x) {
+        return aaaaaaaaaaaaaaaaaa instanceof String s && (s.equals("alpha") || s.equals("beta") || s.equals("gamma") || s.equals("delta") || s.equals("epsilon"));
+    }
+}
+---
+class Example {
+    // The original mapmaker shape: a long `||` chain whose operands are themselves
+    // comparisons. JDT produces a left-leaning tree of nested `||` nodes, and the
+    // formatter must flatten the chain so it chops all-or-nothing, not as a hybrid
+    // where the first pair packs and the rest wrap.
+    void hub(Pos playerPos) {
+        if (playerPos.x() < HUB_BB_MIN.x()
+            || playerPos.x() > HUB_BB_MAX.x()
+            || playerPos.y() < HUB_BB_MIN.y()
+            || playerPos.y() > HUB_BB_MAX.y()
+            || playerPos.z() < HUB_BB_MIN.z()
+            || playerPos.z() > HUB_BB_MAX.z()) {
+            event.getPlayer().teleport(spawnPointFor(event.getPlayer()));
+        }
+    }
+
+    // Same chop-all expectation for `&&`. Each operand is its own InfixExpression
+    // (`==` / `<`), forcing JDT to keep the `&&` operands at the outer node — which
+    // is the exact AST shape that used to defeat the cached-parser-style grouping.
+    boolean andChain(int alpha, int beta, int gamma, int delta) {
+        return aaaaaaaaaaaaaaaa == 1
+            && bbbbbbbbbbbbbbbb == 2
+            && ccccccccccccccccc == 3
+            && ddddddddddddd < 4;
+    }
+
+    // Mixing `&&` with a parenthesized `||` sub-chain: the outer `&&` flattens its
+    // own operands but parens are an opaque boundary, so the inner `||` chain forms
+    // its own group and chops independently.
+    boolean nested(Object x) {
+        return aaaaaaaaaaaaaaaaaa instanceof String s
+            && (s.equals("alpha")
+                || s.equals("beta")
+                || s.equals("gamma")
+                || s.equals("delta")
+                || s.equals("epsilon"));
+    }
+}

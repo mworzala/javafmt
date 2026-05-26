@@ -78,7 +78,9 @@ class Example {
     }
 
     boolean wideLogical(int aLongVariableName, int anotherOneHere, int yetAnotherVariableName) {
-        return aLongVariableName > 0 && anotherOneHere > 0 && yetAnotherVariableName > 0
+        return aLongVariableName > 0
+            && anotherOneHere > 0
+            && yetAnotherVariableName > 0
             && extraExtra;
     }
 

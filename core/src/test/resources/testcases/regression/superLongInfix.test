@@ -4,7 +4,8 @@ void example() {
 ---
 void example() {
     boolean shouldSave = !(nextState instanceof Finished)
-        && (nextState == null || nextState instanceof Spectating
+        && (nextState == null
+            || nextState instanceof Spectating
             || saveState.getRealPlaytime() > 10_000
             || saveState.isCompleted());
 }

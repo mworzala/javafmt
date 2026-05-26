@@ -1,0 +1,145 @@
+class Example {
+    // Reported mapmaker case: a multi-arg call with a trailing lambda whose body
+    // is a Block. The whole call doesn't fit on one line, so args wrap. The
+    // lambda body sits one indent level inside its `{`, the closing `}` sits at
+    // the args' indent, and the call's `)` lives on its own line at the call's
+    // base indent — matching every other wrapped multi-arg call.
+    void registerInteraction() {
+        this.interactionEntity.setTag(NpcHandler.TAG, (player, npc, hand, isLeftHand) -> {
+            if (!BaseNpcEntity.this.hasTag(NpcHandler.TAG)) return;
+            BaseNpcEntity.this.getTag(NpcHandler.TAG).handlePlayerInteract(player, BaseNpcEntity.this, hand, isLeftHand);
+        });
+    }
+
+    // Two non-lambda args plus a trailing lambda. Same indent rule.
+    void threeArgs() {
+        registerHandler(EventKind.JOIN, Priority.NORMAL, event -> {
+            doFirst(event);
+            doSecond(event);
+        });
+    }
+
+    // Single-arg trailing lambda call that fits inline — should stay one line.
+    void singleArgInline() {
+        list.forEach(item -> item.process());
+    }
+
+    // Single-arg lambda where only the lambda is the arg AND its body is a
+    // block. The single-arg path glues `});` together — the conventional
+    // trailing-call idiom for Stream-style APIs (forEach, execute, etc.) which
+    // we deliberately preserve.
+    void singleArgBlock() {
+        runnable.execute(() -> {
+            stepOne();
+            stepTwo();
+        });
+    }
+
+    // Trailing anonymous class — multi-arg path, `)` on its own line.
+    void anonClass() {
+        registry.register(Topic.JOIN, new EventHandler<Event>() {
+            @Override
+            public void handle(Event event) {
+                doSomething(event);
+            }
+        });
+    }
+
+    // Trailing switch expression — multi-arg path, `)` on its own line.
+    void switchExprArg(int kind) {
+        reporter.report(Severity.INFO, switch (kind) {
+            case 0 -> "zero";
+            case 1 -> "one";
+            default -> "many";
+        });
+    }
+
+    // No regression on plain wrapping: a call with no block-like trailing arg
+    // breaks all args symmetrically.
+    void plainWrap() {
+        compute(firstArgumentNameHere, secondArgumentNameHere, thirdArgumentNameHere, fourthArgumentNameHere);
+    }
+}
+---
+class Example {
+    // Reported mapmaker case: a multi-arg call with a trailing lambda whose body
+    // is a Block. The whole call doesn't fit on one line, so args wrap. The
+    // lambda body sits one indent level inside its `{`, the closing `}` sits at
+    // the args' indent, and the call's `)` lives on its own line at the call's
+    // base indent — matching every other wrapped multi-arg call.
+    void registerInteraction() {
+        this.interactionEntity.setTag(
+            NpcHandler.TAG,
+            (player, npc, hand, isLeftHand) -> {
+                if (!BaseNpcEntity.this.hasTag(NpcHandler.TAG)) return;
+                BaseNpcEntity.this.getTag(
+                    NpcHandler.TAG
+                ).handlePlayerInteract(player, BaseNpcEntity.this, hand, isLeftHand);
+            }
+        );
+    }
+
+    // Two non-lambda args plus a trailing lambda. Same indent rule.
+    void threeArgs() {
+        registerHandler(
+            EventKind.JOIN,
+            Priority.NORMAL,
+            event -> {
+                doFirst(event);
+                doSecond(event);
+            }
+        );
+    }
+
+    // Single-arg trailing lambda call that fits inline — should stay one line.
+    void singleArgInline() {
+        list.forEach(item -> item.process());
+    }
+
+    // Single-arg lambda where only the lambda is the arg AND its body is a
+    // block. The single-arg path glues `});` together — the conventional
+    // trailing-call idiom for Stream-style APIs (forEach, execute, etc.) which
+    // we deliberately preserve.
+    void singleArgBlock() {
+        runnable.execute(() -> {
+            stepOne();
+            stepTwo();
+        });
+    }
+
+    // Trailing anonymous class — multi-arg path, `)` on its own line.
+    void anonClass() {
+        registry.register(
+            Topic.JOIN,
+            new EventHandler<Event>() {
+                @Override
+                public void handle(Event event) {
+                    doSomething(event);
+                }
+            }
+        );
+    }
+
+    // Trailing switch expression — multi-arg path, `)` on its own line.
+    void switchExprArg(int kind) {
+        reporter.report(
+            Severity.INFO,
+            switch (kind) {
+                case 0 -> "zero";
+                case 1 -> "one";
+                default -> "many";
+            }
+        );
+    }
+
+    // No regression on plain wrapping: a call with no block-like trailing arg
+    // breaks all args symmetrically.
+    void plainWrap() {
+        compute(
+            firstArgumentNameHere,
+            secondArgumentNameHere,
+            thirdArgumentNameHere,
+            fourthArgumentNameHere
+        );
+    }
+}

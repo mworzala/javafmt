@@ -1957,15 +1957,33 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
                 parts.add(argDocs.getFirst());
                 parts.add(text(")"));
             } else if (lastArgIsBlock) {
+                // Trailing-block call (lambda body, switch expr, anonymous class):
+                //   foo(
+                //       arg1,
+                //       arg2,
+                //       () -> {
+                //           bodyStmt;       <-- indented +1 relative to the lambda's `{`
+                //       }                   <-- `}` at base+4
+                //   );                      <-- `)` on its own line at base+0
+                //
+                // Last arg lives INSIDE the indent so its block contents render at
+                // base+8 and the block's closing brace at base+4. A softLine() AFTER
+                // the indent puts the call's `)` at base+0 — matching every other
+                // wrapped multi-arg call so a trailing block isn't a special case.
+                //
+                // (The single-arg lambda case `foo(() -> { ... })` is handled above
+                // and intentionally glues `});` together — that's the conventional
+                // trailing-call idiom for Stream-style APIs and we keep it.)
                 parts.add(group(concat(
                         text("("),
                         indent(concat(
                                 softLine(),
                                 join(concat(text(","), line()), argDocs.subList(0, argDocs.size() - 1)),
                                 text(","),
-                                line()
+                                line(),
+                                argDocs.getLast()
                         )),
-                        argDocs.getLast(),
+                        softLine(),
                         text(")")
                 )));
             } else {

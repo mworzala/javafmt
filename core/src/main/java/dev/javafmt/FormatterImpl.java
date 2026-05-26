@@ -8,6 +8,7 @@ import org.eclipse.jdt.core.dom.CompilationUnit;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /// Reusable, thread-safe implementation of {@link Formatter}.
 ///
@@ -19,34 +20,38 @@ public final class FormatterImpl implements Formatter {
     private final int javaRelease;
     private final boolean enablePreview;
     private final int lineLength;
-    // ASTParser isn't safe to share across threads, but reusing a single instance per
-    // thread (via setSource between calls) avoids the non-trivial newParser cost on
-    // every file when formatting a whole repo.
-    private final ThreadLocal<ASTParser> parserCache = ThreadLocal.withInitial(this::newConfiguredParser);
+    private final Map<String, String> compilerOptions;
+    // ASTParser isn't safe to share across threads, but reusing one per thread avoids
+    // the non-trivial newParser cost on every file. Per-call setup happens in format()
+    // because createAST() invokes JDT's private initializeDefaults() afterwards, which
+    // resets compilerOptions back to JavaCore.getOptions() (compliance 1.8). Without
+    // re-applying, every parse after the first would reject any post-Java-8 syntax.
+    private final ThreadLocal<ASTParser> parserCache;
 
     public FormatterImpl(int javaRelease, boolean enablePreview, int lineLength) {
         this.javaRelease = javaRelease;
         this.enablePreview = enablePreview;
         this.lineLength = lineLength;
-    }
-
-    private ASTParser newConfiguredParser() {
-        var parser = ASTParser.newParser(javaRelease);
-        parser.setKind(ASTParser.K_COMPILATION_UNIT);
+        this.parserCache = ThreadLocal.withInitial(() -> ASTParser.newParser(javaRelease));
         var options = JavaCore.getOptions();
-        options.put(JavaCore.COMPILER_SOURCE, String.valueOf(javaRelease));
+        JavaCore.setComplianceOptions(versionString(javaRelease), options);
         options.put(
                 JavaCore.COMPILER_PB_ENABLE_PREVIEW_FEATURES,
                 enablePreview ? JavaCore.ENABLED : JavaCore.DISABLED
         );
-        parser.setCompilerOptions(options);
-        return parser;
+        this.compilerOptions = options;
+    }
+
+    private static String versionString(int release) {
+        return release <= 8 ? "1." + release : String.valueOf(release);
     }
 
     @Override
     public Result format(String source) {
         try {
             var parser = parserCache.get();
+            parser.setKind(ASTParser.K_COMPILATION_UNIT);
+            parser.setCompilerOptions(compilerOptions);
             parser.setSource(source.toCharArray());
             var cu = (CompilationUnit) parser.createAST(null);
 

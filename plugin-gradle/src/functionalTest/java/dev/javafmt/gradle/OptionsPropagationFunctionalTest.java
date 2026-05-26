@@ -30,6 +30,41 @@ class OptionsPropagationFunctionalTest extends FunctionalTestSupport {
     }
 
     @Test
+    void toolchainLanguageVersionReachesFormatter() throws IOException {
+        // Configure the project's Java toolchain to Java 21; the plugin must propagate
+        // that into the formatter so modern syntax (records, switch arrows, type
+        // patterns, '_') parses cleanly.
+        setupBuild("""
+                java {
+                    toolchain {
+                        languageVersion = JavaLanguageVersion.of(25)
+                    }
+                }
+                """);
+        // Multiple files: a regression where the cached parser loses its compiler
+        // options after the first parse would format file 1 fine and reject file 2.
+        for (int i = 1; i <= 3; i++) {
+            writeFile(srcFile("Modern" + i + ".java"), """
+                    class Modern%d {
+                        sealed interface S permits A, B {}
+                        record A(int x) implements S {}
+                        record B(int y) implements S {}
+                        static String describe(S s) {
+                            return switch (s) {
+                                case A a -> "a";
+                                case B b -> "b";
+                            };
+                        }
+                    }
+                    """.formatted(i));
+        }
+
+        var result = runner("formatJava").build();
+
+        assertEquals(TaskOutcome.SUCCESS, result.task(":formatJava").getOutcome());
+    }
+
+    @Test
     void enablePreviewIsAcceptedOnTask() throws IOException {
         setupBuild("""
                 tasks.named('formatJava') {

@@ -2,11 +2,13 @@ package dev.javafmt.gradle.task;
 
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.problems.Problems;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
@@ -35,6 +37,9 @@ public abstract class JavaFmtTask extends DefaultTask {
     @Input
     @Optional
     public abstract Property<Boolean> getEnablePreview();
+
+    @Internal
+    public abstract DirectoryProperty getProjectDirectory();
 
     @Inject
     protected abstract Problems getProblems();

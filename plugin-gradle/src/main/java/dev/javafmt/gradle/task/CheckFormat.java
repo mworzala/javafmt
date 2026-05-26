@@ -33,7 +33,7 @@ public abstract class CheckFormat extends JavaFmtTask {
         var formatter = Formatter.create(Formatter.Config.defaults()
                 .withRelease(languageVersion.asInt())
                 .withPreview(enablePreview));
-        var projectDir = getProject().getProjectDir().toPath();
+        var projectDir = getProjectDirectory().get().getAsFile().toPath();
         var affected = new TreeSet<String>();
         var errors = new ArrayList<FormatError>();
 

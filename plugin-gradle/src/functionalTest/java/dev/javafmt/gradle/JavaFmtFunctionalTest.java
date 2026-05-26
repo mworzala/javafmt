@@ -49,7 +49,7 @@ public class JavaFmtFunctionalTest {
         BuildResult result = GradleRunner.create()
                 .withProjectDir(projectDir)
                 .withPluginClasspath()
-                .withArguments("formatJava", "--stacktrace")
+                .withArguments("formatJava", "--stacktrace", "--configuration-cache")
                 .build();
 
         assertEquals(TaskOutcome.SUCCESS, result.task(":formatJava").getOutcome());

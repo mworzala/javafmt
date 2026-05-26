@@ -47,9 +47,12 @@ abstract class FunctionalTestSupport {
     }
 
     protected GradleRunner runner(String... args) {
+        var allArgs = new String[args.length + 1];
+        allArgs[0] = "--configuration-cache";
+        System.arraycopy(args, 0, allArgs, 1, args.length);
         return GradleRunner.create()
                 .withProjectDir(projectDir)
                 .withPluginClasspath()
-                .withArguments(args);
+                .withArguments(allArgs);
     }
 }

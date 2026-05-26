@@ -36,7 +36,7 @@ public abstract class FormatJava extends JavaFmtTask {
         var formatter = Formatter.create(Formatter.Config.defaults()
                 .withRelease(languageVersion.asInt())
                 .withPreview(enablePreview));
-        var projectDir = getProject().getProjectDir().toPath();
+        var projectDir = getProjectDirectory().get().getAsFile().toPath();
         var errors = new ArrayList<FormatError>();
         var processed = 0;
 

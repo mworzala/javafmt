@@ -42,6 +42,7 @@ public class JavaFmtPlugin implements Plugin<Project> {
         var java = project.getExtensions().getByType(JavaPluginExtension.class);
         var sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
         var buildDir = project.getLayout().getBuildDirectory();
+        var projectDir = project.getLayout().getProjectDirectory();
 
         project.getTasks().register("formatJava", FormatJava.class, task -> {
             task.setDescription("Format Java source files");
@@ -50,6 +51,7 @@ public class JavaFmtPlugin implements Plugin<Project> {
             task.getLanguageVersion().set(java.getToolchain().getLanguageVersion());
             task.getEnablePreview().set(false);
             task.getStampFile().convention(buildDir.file("javafmt/format-stamp.txt"));
+            task.getProjectDirectory().convention(projectDir);
 
             wireSources(task, sourceSets);
         });
@@ -61,6 +63,7 @@ public class JavaFmtPlugin implements Plugin<Project> {
             task.getLanguageVersion().set(java.getToolchain().getLanguageVersion());
             task.getEnablePreview().set(false);
             task.getReportFile().convention(buildDir.file("javafmt/check-report.txt"));
+            task.getProjectDirectory().convention(projectDir);
 
             wireSources(task, sourceSets);
         });

@@ -862,17 +862,15 @@ final class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(IfStatement node) {
-        var parts = new ArrayList<Doc>();
-
-        parts.add(text("if ("));
         var expression = getProperty(node, IfStatement.EXPRESSION_PROPERTY);
         expression.accept(this);
-        parts.add(result);
-        parts.add(text(") "));
+        var condDoc = result;
 
         var thenStmt = getProperty(node, IfStatement.THEN_STATEMENT_PROPERTY);
-        thenStmt.accept(this);
-        parts.add(result);
+        var ifAndThen = headerWithBody(concat(text("if ("), condDoc, text(")")), thenStmt);
+
+        var parts = new ArrayList<Doc>();
+        parts.add(ifAndThen);
 
         var elseStmt = getProperty(node, IfStatement.ELSE_STATEMENT_PROPERTY);
         if (elseStmt != null) {
@@ -892,23 +890,40 @@ final class AstToDoc extends ASTVisitor {
         return false;
     }
 
+    /// Combines a statement header (e.g. `if (cond)`, `while (cond)`, `for (...)`)
+    /// with its body, preferring to break BEFORE the body rather than inside the
+    /// header when the whole construct doesn't fit on a line.
+    ///
+    /// For braced bodies (`Block`), `header { ... }` always glues because the
+    /// opening brace and the `)` belong on the same line by convention.
+    ///
+    /// For braceless single-statement bodies, the whole thing is wrapped in one
+    /// group with a soft `line()` between the header and the body. The printer
+    /// then picks, in priority order:
+    ///   1. flat — `header body;` on one line, if it fits;
+    ///   2. body break — `header\n    body;`, leaving the header intact;
+    ///   3. (last resort) the header's own inner groups break too, if the
+    ///      header alone is still too long for one line.
+    /// Without this group, the header's nested groups (e.g. an `instanceof` or
+    /// `&&` chain) would try to break first and produce a hybrid where the
+    /// header chops and the body stays glued to a now-broken `)`.
+    private Doc headerWithBody(Doc header, ASTNode body) {
+        body.accept(this);
+        var bodyDoc = result;
+        if (body instanceof Block) {
+            return concat(header, text(" "), bodyDoc);
+        }
+        return group(concat(header, indent(concat(line(), bodyDoc))));
+    }
+
     @Override
     public boolean visit(WhileStatement node) {
-        var parts = new ArrayList<Doc>();
-
-        parts.add(text("while ("));
-
         var expression = getProperty(node, WhileStatement.EXPRESSION_PROPERTY);
         expression.accept(this);
-        parts.add(result);
-
-        parts.add(text(") "));
+        var condDoc = result;
 
         var body = getProperty(node, WhileStatement.BODY_PROPERTY);
-        body.accept(this);
-        parts.add(result);
-
-        result = concat(parts);
+        result = headerWithBody(concat(text("while ("), condDoc, text(")")), body);
         return false;
     }
 
@@ -936,9 +951,9 @@ final class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(ForStatement node) {
-        var parts = new ArrayList<Doc>();
+        var headerParts = new ArrayList<Doc>();
 
-        parts.add(text("for ("));
+        headerParts.add(text("for ("));
 
         // Space only goes BEFORE a present clause: `for (init; cond; update)`,
         // `for (;; update)`, `for (init;;)`, `for (;;)`, etc.
@@ -949,62 +964,56 @@ final class AstToDoc extends ASTVisitor {
                 init.accept(this);
                 initDocs.add(result);
             }
-            parts.add(join(concat(text(","), space()), initDocs));
+            headerParts.add(join(concat(text(","), space()), initDocs));
         }
-        parts.add(text(";"));
+        headerParts.add(text(";"));
 
         var condition = getProperty(node, ForStatement.EXPRESSION_PROPERTY);
         if (condition != null) {
-            parts.add(space());
+            headerParts.add(space());
             condition.accept(this);
-            parts.add(result);
+            headerParts.add(result);
         }
-        parts.add(text(";"));
+        headerParts.add(text(";"));
 
         var updaters = getProperty(node, ForStatement.UPDATERS_PROPERTY);
         if (!updaters.isEmpty()) {
-            parts.add(space());
+            headerParts.add(space());
             var updateDocs = new ArrayList<Doc>();
             for (var updater : updaters) {
                 updater.accept(this);
                 updateDocs.add(result);
             }
-            parts.add(join(concat(text(","), space()), updateDocs));
+            headerParts.add(join(concat(text(","), space()), updateDocs));
         }
 
-        parts.add(text(") "));
+        headerParts.add(text(")"));
 
         var body = getProperty(node, ForStatement.BODY_PROPERTY);
-        body.accept(this);
-        parts.add(result);
-
-        result = concat(parts);
+        result = headerWithBody(concat(headerParts), body);
         return false;
     }
 
     @Override
     public boolean visit(EnhancedForStatement node) {
-        var parts = new ArrayList<Doc>();
+        var headerParts = new ArrayList<Doc>();
 
-        parts.add(text("for ("));
+        headerParts.add(text("for ("));
 
         var parameter = getProperty(node, EnhancedForStatement.PARAMETER_PROPERTY);
         parameter.accept(this);
-        parts.add(result);
+        headerParts.add(result);
 
-        parts.add(text(" : "));
+        headerParts.add(text(" : "));
 
         var expression = getProperty(node, EnhancedForStatement.EXPRESSION_PROPERTY);
         expression.accept(this);
-        parts.add(result);
+        headerParts.add(result);
 
-        parts.add(text(") "));
+        headerParts.add(text(")"));
 
         var body = getProperty(node, EnhancedForStatement.BODY_PROPERTY);
-        body.accept(this);
-        parts.add(result);
-
-        result = concat(parts);
+        result = headerWithBody(concat(headerParts), body);
         return false;
     }
 

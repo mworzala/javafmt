@@ -1,0 +1,147 @@
+class Example {
+    // Reported mapmaker case: a braceless `if` whose `(cond) body` doesn't fit.
+    // The formatter must break BEFORE the body rather than wrap inside the cond's
+    // `instanceof` — keeping the cond intact and producing a clean two-line layout.
+    void reportIfNotKnown(Object e, Object player) {
+        if (!(e instanceof SessionService.NoAvailableServerException)) ExceptionReporter.reportException(e, player);
+    }
+
+    // Cond fits alone on the if-line; body fits alone on the body-line; together
+    // they exceed 100 chars. Expected: body wraps, cond stays flat.
+    void shortCondLongCall(Object x) {
+        if (x.isReady()) processIncomingPayloadAlongWithExtraValidationStepsAndAuditingDataAfterwards(arg);
+    }
+
+    // Cond is the long thing (still under 100 with `if (...)`); body would fit on
+    // the if-line. Same rule — break is between `)` and body, not inside the cond.
+    void longCondShortBody(Object x, Object y, Object z) {
+        if (x.matchesSomething(y) && y.matchesSomethingElse(z) && z.readyEnoughForCondition()) doIt();
+    }
+
+    // Both cond and body too long to share a line, AND the cond by itself is too
+    // long for the if-line — both break. Cond chop-all + body on its own line.
+    void bothLong(Object x, Object y, Object z) {
+        if (x.firstReallyLongPredicateName(y) && y.secondReallyLongPredicateName() && z.thirdReallyLongPredicate()) reportEventToTheService(firstArgumentHere, secondArgumentHere, thirdArgumentHere);
+    }
+
+    // Whole if fits on one line — no break at all.
+    void allShort(Object x) {
+        if (x.ok()) doIt();
+    }
+
+    // Braced-then path is unaffected: `) {` always stays glued.
+    void bracedStillFine(Object x) {
+        if (x.isReady() && x.isLoaded()) {
+            doFirst();
+            doSecond();
+        }
+    }
+
+    // Braceless then with an else: the existing rule that `else` lives on its own
+    // line for braceless then-bodies is preserved. The then-body's own soft break
+    // is independent of the hard line before `else`.
+    void elseBranchUnaffected(Object x) {
+        if (x.ok()) doYes();
+        else doNo();
+    }
+
+    // Long then-body — then-body wraps; else still lives on its own line as today.
+    void elseWithLongThenBody(Object x) {
+        if (x.ok()) someOperationOnTheInputThatGenuinelyExceedsTheBudgetWhenSharedWithTheIf(arg1, arg2);
+        else doNo();
+    }
+
+    // While loop with the same shape.
+    void whileLoop(Object iter) {
+        while (iter.hasNext() && iter.peek() instanceof SomeReasonablyLongTypeName) consumeOne(iter);
+    }
+
+    // Classic for with a braceless body that doesn't fit alongside the header.
+    void forLoop() {
+        for (int index = 0; index < theCollectionWithASomewhatLongName.size(); index++) processElement(index);
+    }
+
+    // Enhanced for with a long iterable expression and a braceless body.
+    void enhancedFor() {
+        for (var element : theProducerObject.someExtendedAccessor().itemsInCollection()) process(element);
+    }
+}
+---
+class Example {
+    // Reported mapmaker case: a braceless `if` whose `(cond) body` doesn't fit.
+    // The formatter must break BEFORE the body rather than wrap inside the cond's
+    // `instanceof` — keeping the cond intact and producing a clean two-line layout.
+    void reportIfNotKnown(Object e, Object player) {
+        if (!(e instanceof SessionService.NoAvailableServerException))
+            ExceptionReporter.reportException(e, player);
+    }
+
+    // Cond fits alone on the if-line; body fits alone on the body-line; together
+    // they exceed 100 chars. Expected: body wraps, cond stays flat.
+    void shortCondLongCall(Object x) {
+        if (x.isReady())
+            processIncomingPayloadAlongWithExtraValidationStepsAndAuditingDataAfterwards(arg);
+    }
+
+    // Cond is the long thing (still under 100 with `if (...)`); body would fit on
+    // the if-line. Same rule — break is between `)` and body, not inside the cond.
+    void longCondShortBody(Object x, Object y, Object z) {
+        if (x.matchesSomething(y) && y.matchesSomethingElse(z) && z.readyEnoughForCondition())
+            doIt();
+    }
+
+    // Both cond and body too long to share a line, AND the cond by itself is too
+    // long for the if-line — both break. Cond chop-all + body on its own line.
+    void bothLong(Object x, Object y, Object z) {
+        if (x.firstReallyLongPredicateName(y)
+            && y.secondReallyLongPredicateName()
+            && z.thirdReallyLongPredicate())
+            reportEventToTheService(firstArgumentHere, secondArgumentHere, thirdArgumentHere);
+    }
+
+    // Whole if fits on one line — no break at all.
+    void allShort(Object x) {
+        if (x.ok()) doIt();
+    }
+
+    // Braced-then path is unaffected: `) {` always stays glued.
+    void bracedStillFine(Object x) {
+        if (x.isReady() && x.isLoaded()) {
+            doFirst();
+            doSecond();
+        }
+    }
+
+    // Braceless then with an else: the existing rule that `else` lives on its own
+    // line for braceless then-bodies is preserved. The then-body's own soft break
+    // is independent of the hard line before `else`.
+    void elseBranchUnaffected(Object x) {
+        if (x.ok()) doYes();
+        else doNo();
+    }
+
+    // Long then-body — then-body wraps; else still lives on its own line as today.
+    void elseWithLongThenBody(Object x) {
+        if (x.ok())
+            someOperationOnTheInputThatGenuinelyExceedsTheBudgetWhenSharedWithTheIf(arg1, arg2);
+        else doNo();
+    }
+
+    // While loop with the same shape.
+    void whileLoop(Object iter) {
+        while (iter.hasNext() && iter.peek() instanceof SomeReasonablyLongTypeName)
+            consumeOne(iter);
+    }
+
+    // Classic for with a braceless body that doesn't fit alongside the header.
+    void forLoop() {
+        for (int index = 0; index < theCollectionWithASomewhatLongName.size(); index++)
+            processElement(index);
+    }
+
+    // Enhanced for with a long iterable expression and a braceless body.
+    void enhancedFor() {
+        for (var element : theProducerObject.someExtendedAccessor().itemsInCollection())
+            process(element);
+    }
+}

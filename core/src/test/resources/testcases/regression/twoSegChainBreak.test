@@ -1,0 +1,82 @@
+class Example {
+    // Reported case: a 2-segment chain on a qualified-this root where the
+    // whole chain doesn't fit. Previously per-call formatting let the first
+    // seg's args wrap, producing the orphaned `).method(` shape. Now the
+    // chain breaks at the `.` between segments, leaving the cond flat.
+    void qualifiedThisRoot(Object player, Object hand, boolean isLeftHand) {
+        BaseNpcEntity.this.getTag(NpcHandler.TAG).handlePlayerInteract(player, BaseNpcEntity.this, hand, isLeftHand);
+    }
+
+    // 2-seg chain on a plain identifier root (SimpleName) — same rule.
+    void simpleNameRoot(Object first, Object second, Object third) {
+        thing.getThing(SOMETHING.LONG_CONSTANT_NAME).handleEvent(first, second, third);
+    }
+
+    // 2-seg chain on a QualifiedName root — same rule.
+    void qualifiedNameRoot(Object first, Object second, Object third) {
+        Some.Inner.Thing.getThing(SomeKind.IMPORTANT_KEY).handleEvent(first, second, third);
+    }
+
+    // First seg with empty args: chain stays per-call. The clean shape is
+    // `obj.first().second(\n  arg\n)` — chain-breaking here would only add
+    // a line for no gain, so we deliberately don't.
+    void emptyFirstSegArgs() {
+        process.packetListener().setPlayListener(ClientPacket.class, SomeListener::handle, AnotherArgument.value);
+    }
+
+    // Short 2-seg chain fits flat — no break at all.
+    void fitsFlat() {
+        var x = list.stream().collect(Collectors.toList());
+    }
+
+    // 2-seg chain inside method-call args — the outer call wraps its arg, the
+    // inner 2-seg chain still fits flat on its wrapped line so it stays flat.
+    void nestedInArgs() {
+        registerHandler(thing.getKey(REGISTRY).bindWith(SomeReallyLongHandlerSourceName.LISTENER_INSTANCE));
+    }
+}
+---
+class Example {
+    // Reported case: a 2-segment chain on a qualified-this root where the
+    // whole chain doesn't fit. Previously per-call formatting let the first
+    // seg's args wrap, producing the orphaned `).method(` shape. Now the
+    // chain breaks at the `.` between segments, leaving the cond flat.
+    void qualifiedThisRoot(Object player, Object hand, boolean isLeftHand) {
+        BaseNpcEntity.this.getTag(NpcHandler.TAG)
+            .handlePlayerInteract(player, BaseNpcEntity.this, hand, isLeftHand);
+    }
+
+    // 2-seg chain on a plain identifier root (SimpleName) — same rule.
+    void simpleNameRoot(Object first, Object second, Object third) {
+        thing.getThing(SOMETHING.LONG_CONSTANT_NAME).handleEvent(first, second, third);
+    }
+
+    // 2-seg chain on a QualifiedName root — same rule.
+    void qualifiedNameRoot(Object first, Object second, Object third) {
+        Some.Inner.Thing.getThing(SomeKind.IMPORTANT_KEY).handleEvent(first, second, third);
+    }
+
+    // First seg with empty args: chain stays per-call. The clean shape is
+    // `obj.first().second(\n  arg\n)` — chain-breaking here would only add
+    // a line for no gain, so we deliberately don't.
+    void emptyFirstSegArgs() {
+        process.packetListener().setPlayListener(
+            ClientPacket.class,
+            SomeListener::handle,
+            AnotherArgument.value
+        );
+    }
+
+    // Short 2-seg chain fits flat — no break at all.
+    void fitsFlat() {
+        var x = list.stream().collect(Collectors.toList());
+    }
+
+    // 2-seg chain inside method-call args — the outer call wraps its arg, the
+    // inner 2-seg chain still fits flat on its wrapped line so it stays flat.
+    void nestedInArgs() {
+        registerHandler(
+            thing.getKey(REGISTRY).bindWith(SomeReallyLongHandlerSourceName.LISTENER_INSTANCE)
+        );
+    }
+}

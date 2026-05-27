@@ -1804,7 +1804,27 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             return false;
         }
 
-        // Single call or 2-call chain: use original per-call formatting
+        // 2-segment chains: only route through chain-break logic when the first
+        // segment has non-empty args. Without this, per-call formatting lets the
+        // first seg's args group wrap independently, producing the orphaned shape
+        //   root.firstSeg(
+        //       arg
+        //   ).secondSeg(...);          <-- `).secondSeg(` reads as junk
+        // The chain-break path instead gives `root.firstSeg(arg)\n  .secondSeg(...)`.
+        //
+        // If the first seg has NO args, the orphan can't arise — per-call format
+        // produces the perfectly fine `root.firstSeg().secondSeg(\n  arg\n)` — so
+        // we leave that case alone rather than gratuitously add a chain break.
+        if (chain.size() == 2) {
+            var firstSeg = chain.getFirst();
+            var firstSegArgs = getProperty(firstSeg, MethodInvocation.ARGUMENTS_PROPERTY);
+            if (!firstSegArgs.isEmpty()) {
+                visitMethodChain(chain);
+                return false;
+            }
+        }
+
+        // Single call or 2-call with empty first-seg args: use per-call formatting
         var parts = new ArrayList<Doc>();
 
         var expression = getProperty(node, MethodInvocation.EXPRESSION_PROPERTY);
@@ -1874,8 +1894,16 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         // first segment stays with the root.
         var firstCall = chain.get(startIndex);
         var firstArgs = getProperty(firstCall, MethodInvocation.ARGUMENTS_PROPERTY);
+        // Treat short, scope-shaped prefixes (identifiers, `pkg.A.b`, `this`,
+        // `OuterClass.this`, `super`) as "name-like" so that when a chain breaks,
+        // the first segment stays glued to the root instead of root sitting alone
+        // on its own line. `BaseNpcEntity.this.getTag(arg).handle(...)` should
+        // partial-break to `BaseNpcEntity.this.getTag(arg)\n  .handle(...)`, not
+        // full-break across three lines.
         boolean rootIsName = rootExpr instanceof SimpleName
-                || rootExpr instanceof QualifiedName;
+                || rootExpr instanceof QualifiedName
+                || rootExpr instanceof ThisExpression
+                || rootExpr instanceof SuperFieldAccess;
         boolean firstSegmentSimple = firstArgs.size() <= 1
                 || rootIsName
                 || rootExpr == null;

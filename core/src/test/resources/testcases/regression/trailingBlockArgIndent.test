@@ -72,9 +72,8 @@ class Example {
             NpcHandler.TAG,
             (player, npc, hand, isLeftHand) -> {
                 if (!BaseNpcEntity.this.hasTag(NpcHandler.TAG)) return;
-                BaseNpcEntity.this.getTag(
-                    NpcHandler.TAG
-                ).handlePlayerInteract(player, BaseNpcEntity.this, hand, isLeftHand);
+                BaseNpcEntity.this.getTag(NpcHandler.TAG)
+                    .handlePlayerInteract(player, BaseNpcEntity.this, hand, isLeftHand);
             }
         );
     }

@@ -65,6 +65,13 @@ final class DocPrinter {
                     }
                 }
 
+                case Doc.BoundaryLine ignored -> {
+                    // Renders identically to SoftLine — the difference is only in fits().
+                    if (!frame.flat()) {
+                        emitNewline(frame.indent());
+                    }
+                }
+
                 case Doc.HardLine h -> {
                     emitNewline(frame.indent());
                 }
@@ -115,6 +122,12 @@ final class DocPrinter {
      * the group cannot render flat. Phase 2 walks the pending stack in each frame's
      * actual mode; HardLine or a break-mode line ends the current line and we fit.
      * Nested groups in either phase are measured as flat (Prettier MODE_FLAT propagation).
+     *
+     * BoundaryLine is the exception: in phase 2 it ALWAYS ends the line, even when seen
+     * inside a subgroup that's being measured flat. That's its whole reason for existing —
+     * exposing a break point through a subgroup boundary so e.g. an arg-wrap group inside
+     * a chain's root can see "the chain will break before that long segment, so my line
+     * really does end here" instead of measuring the entire chain as if it were flat.
      */
     private boolean fits(Frame candidate, Deque<Frame> rest) {
         int remaining = maxWidth - (pendingIndent >= 0 ? pendingIndent : currentLineWidth);
@@ -128,6 +141,7 @@ final class DocPrinter {
                 case Doc.Text t -> remaining -= t.value().length();
                 case Doc.Line ignored -> remaining -= 1;
                 case Doc.SoftLine ignored -> { /* zero-width when flat */ }
+                case Doc.BoundaryLine ignored -> { /* zero-width when flat */ }
                 case Doc.HardLine h -> { return false; }
                 case Doc.Indent i -> work.push(new Frame(f.indent() + indentStep, true, i.doc()));
                 case Doc.Group g -> work.push(new Frame(f.indent(), true, g.doc()));
@@ -151,6 +165,7 @@ final class DocPrinter {
                 case Doc.SoftLine ignored -> {
                     if (!f.flat()) return true;
                 }
+                case Doc.BoundaryLine ignored -> { return true; }
                 case Doc.HardLine h -> { return true; }
                 case Doc.Indent i -> work.push(new Frame(f.indent() + indentStep, f.flat(), i.doc()));
                 case Doc.Group g -> work.push(new Frame(f.indent(), true, g.doc()));

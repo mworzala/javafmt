@@ -1845,13 +1845,30 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         return false;
     }
 
-    /**
-     * Format a method chain of 3+ calls with "break all or none" semantics.
-     * Uses conditionalGroup with two alternatives:
-     * Alt 1 (flat): root.s1.s2.s3
-     * Alt 2 (broken): root.s1\n    .s2\n    .s3
-     * First segment stays with root; remaining segments break together.
-     */
+    /// Formats a method chain (`root.seg1(...).seg2(...)...`) with three modes
+    /// chosen by ACTUAL line widths, not just total flat width:
+    ///
+    ///   flat:                     root.seg1.seg2.seg3
+    ///   partial (root + seg1):    root.seg1
+    ///                                 .seg2
+    ///                                 .seg3
+    ///   full (each on own line):  root
+    ///                                 .seg1
+    ///                                 .seg2
+    ///                                 .seg3
+    ///
+    /// Built as nested groups rather than a conditionalGroup with [flat,
+    /// partial, full] alternatives. The conditionalGroup approach measured all
+    /// three alts flat — which collapses them to the same width since softLine
+    /// is 0-width in flat mode — so it could never actually distinguish partial
+    /// from full and always fell to the LAST listed alt. That picked partial for
+    /// name-like roots even when partial would force the first segment's args
+    /// to wrap (e.g. `EventNode.type(longargs).addListener(...)`).
+    ///
+    /// The nested-groups structure here lets the inner group's fits check
+    /// detect "root + firstSeg(args) overflows the current line" and break the
+    /// first segment off, producing the full-break shape that the user actually
+    /// wants in that case — while still preferring partial when it does fit.
     private void visitMethodChain(List<MethodInvocation> chain) {
         var innermost = chain.getFirst();
         var rootExpr = getProperty(innermost, MethodInvocation.EXPRESSION_PROPERTY);
@@ -1872,70 +1889,45 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             segDocs.add(formatMethodCallWithDot(chain.get(i)));
         }
 
-        // Alt 1: everything flat
-        var flatParts = new ArrayList<Doc>();
-        flatParts.add(rootDoc);
-        flatParts.addAll(segDocs);
-        var flatAlt = concat(flatParts);
-
-        // Alt 3: everything breaks, including first segment
-        var fullBreakParts = new ArrayList<Doc>();
-        fullBreakParts.add(rootDoc);
-        var indentAllParts = new ArrayList<Doc>();
-        for (var segDoc : segDocs) {
-            indentAllParts.add(softLine());
-            indentAllParts.add(segDoc);
+        if (segDocs.isEmpty()) {
+            // Degenerate case: e.g. chain.size() == 1 with rootExpr == null.
+            // Callers normally gate on chain.size() >= 2 so this shouldn't fire,
+            // but defend anyway rather than emit an empty break-group.
+            result = rootDoc;
+            return;
         }
-        fullBreakParts.add(indent(concat(indentAllParts)));
-        var fullBreakAlt = concat(fullBreakParts);
 
-        // Check if the first call in the chain has "simple" arguments
-        // (0 or 1 args). If so, offer a partial break alt where the
-        // first segment stays with the root.
-        var firstCall = chain.get(startIndex);
-        var firstArgs = getProperty(firstCall, MethodInvocation.ARGUMENTS_PROPERTY);
-        // Treat short, scope-shaped prefixes (identifiers, `pkg.A.b`, `this`,
-        // `OuterClass.this`, `super`) as "name-like" so that when a chain breaks,
-        // the first segment stays glued to the root instead of root sitting alone
-        // on its own line. `BaseNpcEntity.this.getTag(arg).handle(...)` should
-        // partial-break to `BaseNpcEntity.this.getTag(arg)\n  .handle(...)`, not
-        // full-break across three lines.
-        boolean rootIsName = rootExpr instanceof SimpleName
-                || rootExpr instanceof QualifiedName
-                || rootExpr instanceof ThisExpression
-                || rootExpr instanceof SuperFieldAccess;
-        boolean firstSegmentSimple = firstArgs.size() <= 1
-                || rootIsName
-                || rootExpr == null;
+        // Inner group around the first segment. When the outer group breaks,
+        // this inner group independently decides whether `root.firstSeg(args)`
+        // fits on the current line:
+        //   inner fits   → boundaryLine collapses to empty → first seg glued to root
+        //   inner breaks → boundaryLine becomes newline    → first seg on its own
+        //                                                     indented line
+        //
+        // boundaryLine (vs softLine) so that enclosing fits checks — notably the
+        // root's own args-wrap group when the root is itself a method call like
+        // `eventNode(args)` — can SEE this break point through the inner group
+        // wall, and don't incorrectly conclude that the entire chain is on the
+        // current line and start wrapping their own args.
+        var firstSegGroup = group(indent(concat(boundaryLine(), segDocs.getFirst())));
 
-        if (firstSegmentSimple && segDocs.size() > 1) {
-            var partialBreakParts = new ArrayList<Doc>();
-            partialBreakParts.add(rootDoc);
-            partialBreakParts.add(segDocs.getFirst());
-            var indentRestParts = new ArrayList<Doc>();
+        var outerParts = new ArrayList<Doc>();
+        outerParts.add(rootDoc);
+        outerParts.add(firstSegGroup);
+
+        if (segDocs.size() > 1) {
+            // Remaining segments always break together with the outer group —
+            // there's no scenario where we'd want them on the same line as the
+            // first segment if the first segment had to break to its own line.
+            var restParts = new ArrayList<Doc>();
             for (int i = 1; i < segDocs.size(); i++) {
-                indentRestParts.add(softLine());
-                indentRestParts.add(segDocs.get(i));
+                restParts.add(softLine());
+                restParts.add(segDocs.get(i));
             }
-            partialBreakParts.add(indent(concat(indentRestParts)));
-            var partialBreakAlt = concat(partialBreakParts);
-
-            if (rootIsName) {
-                // Name roots ALWAYS keep first segment glued — never full break
-                result = conditionalGroup(List.of(flatAlt, partialBreakAlt));
-            } else {
-                result = conditionalGroup(List.of(flatAlt, partialBreakAlt, fullBreakAlt));
-            }
-        } else if (segDocs.size() == 1 && rootIsName) {
-            // Single segment after a name root — just flat or keep together
-            var partialBreakParts = new ArrayList<Doc>();
-            partialBreakParts.add(rootDoc);
-            partialBreakParts.add(segDocs.getFirst());
-            var partialBreakAlt = concat(partialBreakParts);
-            result = conditionalGroup(List.of(flatAlt, partialBreakAlt));
-        } else {
-            result = conditionalGroup(List.of(flatAlt, fullBreakAlt));
+            outerParts.add(indent(concat(restParts)));
         }
+
+        result = group(concat(outerParts));
     }
 
     private void collectMethodChain(MethodInvocation node, List<MethodInvocation> chain) {

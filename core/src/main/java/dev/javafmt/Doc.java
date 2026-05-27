@@ -11,6 +11,21 @@ sealed interface Doc {
     /** Empty when the enclosing group fits flat; newline when broken. */
     record SoftLine() implements Doc {}
 
+    /// Renders identically to {@link SoftLine} — empty when the enclosing group
+    /// fits flat, newline when broken. The difference is in fit measurement:
+    /// when an ENCLOSING group's fits check walks past this node (phase 2 of
+    /// `fits`), it always terminates the line, regardless of whether the
+    /// surrounding subgroup is being measured flat.
+    ///
+    /// Use sparingly. The intended (and only current) use is the method-chain
+    /// pretty-printer, which wraps its first segment in a nested group so that
+    /// the partial-vs-full break decision is made by ACTUAL line widths. That
+    /// inner softLine MUST be visible as a break point to the surrounding
+    /// fits checks (e.g. the args group of the root), otherwise the root's
+    /// args incorrectly see the entire rest of the chain on its line and
+    /// wrap themselves.
+    record BoundaryLine() implements Doc {}
+
     /** Always a newline, regardless of grouping. */
     record HardLine() implements Doc {}
 
@@ -43,6 +58,7 @@ sealed interface Doc {
     static Doc text(String s)           { return new Text(s); }
     static Doc line()                   { return new Line(); }
     static Doc softLine()               { return new SoftLine(); }
+    static Doc boundaryLine()           { return new BoundaryLine(); }
     static Doc hardLine()               { return new HardLine(); }
     static Doc indent(Doc d)            { return new Indent(d); }
     static Doc group(Doc d)             { return new Group(d); }

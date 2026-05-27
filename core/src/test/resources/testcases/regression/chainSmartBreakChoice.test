@@ -1,0 +1,70 @@
+class Example {
+    // Reported case: a chain where `root.firstSeg(args)` doesn't fit on the
+    // current line because the assignment prefix is wide and firstSeg's args
+    // are long. Partial-break would force firstSeg's args to wrap (the bad
+    // `).addListener(` orphan shape we'd otherwise produce). Full-break wins:
+    // each segment on its own line, none with wrapped args.
+    EventNode<InstanceEvent> EVENT_NODE = EventNode.type("mapmaker:hub/npc_handler", EventFilter.INSTANCE).addListener(PlayerEntityInteractEvent.class, event -> { doSomething(event); });
+
+    // Companion case: same root and chain structure but firstSeg's args fit
+    // on the partial-break line. Partial-break should be chosen (not full).
+    void shortFirstSegArgs() {
+        BaseNpcEntity.this.getTag(NpcHandler.TAG).handlePlayerInteract(event.getPlayer(), npc, event.getHand(), false);
+    }
+
+    // 3+ chain with rootless first segment (`eventNode(...)`): even though the
+    // chain breaks, the root's own args (`eventNode(ParkourState.AnyPlaying.class)`)
+    // must stay on one line — they would NOT have wrapped if rendered solo.
+    // The chain break point inside the inner segment group must be visible to
+    // the root's args-wrap-group fits check.
+    void rootIsMethodCall() {
+        eventNode(ParkourState.AnyPlaying.class).addListener(PlayerMoveEvent.class, event -> handleMove(event.getPlayer(), event.getNewPosition())).addListener(PlayerTickEvent.class, this::handleTick);
+    }
+
+    // Chain that fits flat — no break.
+    void fitsFlat() {
+        var x = list.stream().collect(Collectors.toList());
+    }
+}
+---
+class Example {
+    // Reported case: a chain where `root.firstSeg(args)` doesn't fit on the
+    // current line because the assignment prefix is wide and firstSeg's args
+    // are long. Partial-break would force firstSeg's args to wrap (the bad
+    // `).addListener(` orphan shape we'd otherwise produce). Full-break wins:
+    // each segment on its own line, none with wrapped args.
+    EventNode<InstanceEvent> EVENT_NODE = EventNode
+        .type("mapmaker:hub/npc_handler", EventFilter.INSTANCE)
+        .addListener(
+            PlayerEntityInteractEvent.class,
+            event -> {
+                doSomething(event);
+            }
+        );
+
+    // Companion case: same root and chain structure but firstSeg's args fit
+    // on the partial-break line. Partial-break should be chosen (not full).
+    void shortFirstSegArgs() {
+        BaseNpcEntity.this.getTag(NpcHandler.TAG)
+            .handlePlayerInteract(event.getPlayer(), npc, event.getHand(), false);
+    }
+
+    // 3+ chain with rootless first segment (`eventNode(...)`): even though the
+    // chain breaks, the root's own args (`eventNode(ParkourState.AnyPlaying.class)`)
+    // must stay on one line — they would NOT have wrapped if rendered solo.
+    // The chain break point inside the inner segment group must be visible to
+    // the root's args-wrap-group fits check.
+    void rootIsMethodCall() {
+        eventNode(ParkourState.AnyPlaying.class)
+            .addListener(
+                PlayerMoveEvent.class,
+                event -> handleMove(event.getPlayer(), event.getNewPosition())
+            )
+            .addListener(PlayerTickEvent.class, this::handleTick);
+    }
+
+    // Chain that fits flat — no break.
+    void fitsFlat() {
+        var x = list.stream().collect(Collectors.toList());
+    }
+}

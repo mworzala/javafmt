@@ -86,7 +86,7 @@ final class DocPrinter {
                     var alts = cg.alternatives();
                     boolean found = false;
                     for (Doc alt : alts) {
-                        if (fits(new Frame(frame.indent(), true, alt), stack)) {
+                        if (fitsFirstLine(new Frame(frame.indent(), true, alt), stack)) {
                             stack.push(new Frame(frame.indent(), true, alt));
                             found = true;
                             break;
@@ -180,5 +180,63 @@ final class DocPrinter {
         for (int i = parts.size() - 1; i >= 0; i--) {
             work.push(new Frame(indent, flat, parts.get(i)));
         }
+    }
+
+    /**
+     * Like {@link #fits}, but accepts a candidate that contains HardLines: phase 1 treats
+     * the first HardLine as "first line ends here" and succeeds if the accumulated width
+     * has stayed within budget. Used by ConditionalGroup so that an alternative whose
+     * intended rendering is multi-line (e.g. a call whose last arg is a block-bodied
+     * lambda) can be chosen based on whether its FIRST line fits — the "trailing lambda"
+     * idiom `call(a, b, x -> { ... })` instead of wrapping every arg.
+     *
+     * Phase 2 logic is identical to fits — break-mode line markers in the surrounding
+     * stack always end the line successfully.
+     */
+    private boolean fitsFirstLine(Frame candidate, Deque<Frame> rest) {
+        int remaining = maxWidth - (pendingIndent >= 0 ? pendingIndent : currentLineWidth);
+
+        Deque<Frame> work = new ArrayDeque<>();
+        work.push(candidate);
+        while (!work.isEmpty()) {
+            if (remaining < 0) return false;
+            Frame f = work.pop();
+            switch (f.doc()) {
+                case Doc.Text t -> remaining -= t.value().length();
+                case Doc.Line ignored -> remaining -= 1;
+                case Doc.SoftLine ignored -> { /* zero-width when flat */ }
+                case Doc.BoundaryLine ignored -> { /* zero-width when flat */ }
+                case Doc.HardLine h -> { return true; }  // First line ends here — fit so far is OK.
+                case Doc.Indent i -> work.push(new Frame(f.indent() + indentStep, true, i.doc()));
+                case Doc.Group g -> work.push(new Frame(f.indent(), true, g.doc()));
+                case Doc.ConditionalGroup cg -> work.push(new Frame(f.indent(), true, cg.alternatives().getFirst()));
+                case Doc.Concat c -> pushReversed(work, f.indent(), true, c.parts());
+            }
+        }
+
+        var snapshot = rest.toArray(Frame[]::new);
+        for (int i = snapshot.length - 1; i >= 0; i--) work.push(snapshot[i]);
+
+        while (!work.isEmpty()) {
+            if (remaining < 0) return false;
+            Frame f = work.pop();
+            switch (f.doc()) {
+                case Doc.Text t -> remaining -= t.value().length();
+                case Doc.Line ignored -> {
+                    if (f.flat()) remaining -= 1;
+                    else return true;
+                }
+                case Doc.SoftLine ignored -> {
+                    if (!f.flat()) return true;
+                }
+                case Doc.BoundaryLine ignored -> { return true; }
+                case Doc.HardLine h -> { return true; }
+                case Doc.Indent i -> work.push(new Frame(f.indent() + indentStep, f.flat(), i.doc()));
+                case Doc.Group g -> work.push(new Frame(f.indent(), true, g.doc()));
+                case Doc.ConditionalGroup cg -> work.push(new Frame(f.indent(), f.flat(), cg.alternatives().getFirst()));
+                case Doc.Concat c -> pushReversed(work, f.indent(), f.flat(), c.parts());
+            }
+        }
+        return remaining >= 0;
     }
 }

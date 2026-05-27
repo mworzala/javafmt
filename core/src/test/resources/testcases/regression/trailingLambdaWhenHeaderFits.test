@@ -1,0 +1,63 @@
+class Example {
+    // Reported case: when `call(a, b, c, params -> {` fits on a single line, the
+    // formatter should use the trailing-lambda idiom rather than wrapping every
+    // argument. The whole call would be too wide flat (the block body contains
+    // hardlines), but its FIRST line — up to the lambda's `{` — does fit, and
+    // that's the criterion ConditionalGroup now uses.
+    void updateClickTask(Object player) {
+        player.updateTag(CLICK_TASK, previous -> {
+            if (previous != null && previous.isAlive()) return previous;
+            return FutureUtil.createVirtual(() -> doSomething());
+        });
+    }
+
+    // First line fits → trailing-lambda form is chosen, regardless of body length.
+    void shortHeader() {
+        run(arg, () -> {
+            doFirst();
+            doSecond();
+            doThird();
+        });
+    }
+
+    // First line DOESN'T fit (header alone exceeds budget) → wrap-all fallback.
+    void longHeader() {
+        invokeWithReallyExtremelyLongName(firstLongArgumentNameHere, secondLongArgumentNameHere, () -> {
+            doSomething();
+        });
+    }
+}
+---
+class Example {
+    // Reported case: when `call(a, b, c, params -> {` fits on a single line, the
+    // formatter should use the trailing-lambda idiom rather than wrapping every
+    // argument. The whole call would be too wide flat (the block body contains
+    // hardlines), but its FIRST line — up to the lambda's `{` — does fit, and
+    // that's the criterion ConditionalGroup now uses.
+    void updateClickTask(Object player) {
+        player.updateTag(CLICK_TASK, previous -> {
+            if (previous != null && previous.isAlive()) return previous;
+            return FutureUtil.createVirtual(() -> doSomething());
+        });
+    }
+
+    // First line fits → trailing-lambda form is chosen, regardless of body length.
+    void shortHeader() {
+        run(arg, () -> {
+            doFirst();
+            doSecond();
+            doThird();
+        });
+    }
+
+    // First line DOESN'T fit (header alone exceeds budget) → wrap-all fallback.
+    void longHeader() {
+        invokeWithReallyExtremelyLongName(
+            firstLongArgumentNameHere,
+            secondLongArgumentNameHere,
+            () -> {
+                doSomething();
+            }
+        );
+    }
+}

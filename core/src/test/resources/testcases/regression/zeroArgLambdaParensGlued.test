@@ -1,0 +1,54 @@
+class Example {
+    // A zero-arg lambda's `()` is a single token — under no circumstance
+    // should the enclosing call's break-mode insert a newline between the
+    // `(` and `)`. Previously, the params group routed through the same
+    // wrap-with-softLines path used for 1+-param lambdas, producing
+    //     (
+    //
+    //     ) -> body
+    // whenever any enclosing group broke.
+    void example(Object host, Object FutureUtil) {
+        host.onRightClick(() -> host.pushView(ExtraPanels.confirm("Remove " + displayName.getUsername() + "?", () -> FutureUtil.submitVirtual(() -> removeMapBuilder(builder.id())))));
+    }
+
+    // Same rule applies when the call is a method chain.
+    void exampleChain(Object api) {
+        api.subscribe(() -> handler.run()).fireAndForget(() -> cleanup());
+    }
+
+    // And when the zero-arg lambda is the only argument.
+    void exampleOnlyArg() {
+        thread.run(() -> performWorkInABlockingFashionAcrossMultipleSystemBoundariesNow());
+    }
+}
+---
+class Example {
+    // A zero-arg lambda's `()` is a single token — under no circumstance
+    // should the enclosing call's break-mode insert a newline between the
+    // `(` and `)`. Previously, the params group routed through the same
+    // wrap-with-softLines path used for 1+-param lambdas, producing
+    //     (
+    //
+    //     ) -> body
+    // whenever any enclosing group broke.
+    void example(Object host, Object FutureUtil) {
+        host.onRightClick(
+            () -> host.pushView(
+                ExtraPanels.confirm(
+                    "Remove " + displayName.getUsername() + "?",
+                    () -> FutureUtil.submitVirtual(() -> removeMapBuilder(builder.id()))
+                )
+            )
+        );
+    }
+
+    // Same rule applies when the call is a method chain.
+    void exampleChain(Object api) {
+        api.subscribe(() -> handler.run()).fireAndForget(() -> cleanup());
+    }
+
+    // And when the zero-arg lambda is the only argument.
+    void exampleOnlyArg() {
+        thread.run(() -> performWorkInABlockingFashionAcrossMultipleSystemBoundariesNow());
+    }
+}

@@ -1977,24 +1977,39 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
                 parts.add(argDocs.getFirst());
                 parts.add(text(")"));
             } else if (lastArgIsBlock) {
-                // Trailing-block call (lambda body, switch expr, anonymous class):
-                //   foo(
-                //       arg1,
-                //       arg2,
-                //       () -> {
-                //           bodyStmt;       <-- indented +1 relative to the lambda's `{`
-                //       }                   <-- `}` at base+4
-                //   );                      <-- `)` on its own line at base+0
+                // Trailing-block call (lambda body, switch expr, anonymous class).
+                // Two acceptable shapes — picked by the ConditionalGroup chooser
+                // using `fitsFirstLine` (i.e. does the first line of the alt — up
+                // to the block's first HardLine — fit?):
                 //
-                // Last arg lives INSIDE the indent so its block contents render at
-                // base+8 and the block's closing brace at base+4. A softLine() AFTER
-                // the indent puts the call's `)` at base+0 — matching every other
-                // wrapped multi-arg call so a trailing block isn't a special case.
+                //   trailing-lambda (preferred when its first line fits):
+                //       foo(arg1, arg2, () -> {
+                //           bodyStmt;
+                //       });
+                //
+                //   wrap-all (used when the trailing-lambda first line is too long):
+                //       foo(
+                //           arg1,
+                //           arg2,
+                //           () -> {
+                //               bodyStmt;
+                //           }
+                //       );
+                //
+                // Wrap-all keeps the last arg INSIDE the indent so the block contents
+                // render at base+8 and the block's closing brace at base+4. A
+                // softLine() AFTER the indent puts the call's `)` at base+0 —
+                // matching every other wrapped multi-arg call.
                 //
                 // (The single-arg lambda case `foo(() -> { ... })` is handled above
                 // and intentionally glues `});` together — that's the conventional
                 // trailing-call idiom for Stream-style APIs and we keep it.)
-                parts.add(group(concat(
+                var trailingLambdaAlt = concat(
+                        text("("),
+                        join(concat(text(","), space()), argDocs),
+                        text(")")
+                );
+                var wrapAllAlt = concat(
                         text("("),
                         indent(concat(
                                 softLine(),
@@ -2005,7 +2020,8 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
                         )),
                         softLine(),
                         text(")")
-                )));
+                );
+                parts.add(conditionalGroup(List.of(trailingLambdaAlt, wrapAllAlt)));
             } else {
                 var tupleSizes = computeTupleGroupSizes(arguments);
                 if (tupleSizes != null) {
@@ -2311,14 +2327,22 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             param.accept(this);
             paramsDoc.add(result);
         }
-        boolean skipParens = parameters.size() == 1 && parameters.getFirst() instanceof VariableDeclarationFragment;
-        parts.add(group(concat(
-                skipParens ? paramsDoc.getFirst() : concat(text("("), indent(concat(
-                        softLine(),
-                        join(concat(text(","), line()), paramsDoc)
-                )), softLine(), text(")")),
-                text(" -> ")
-        )));
+        Doc paramListDoc;
+        if (parameters.isEmpty()) {
+            // `()` for a zero-arg lambda is always a single token. Routing it
+            // through the wrap-with-softLines path used for one-or-more params
+            // produced an empty `(\n)` whenever the enclosing group broke —
+            // a `(` on one line, blank indent, `)` on the next.
+            paramListDoc = text("()");
+        } else if (parameters.size() == 1 && parameters.getFirst() instanceof VariableDeclarationFragment) {
+            paramListDoc = paramsDoc.getFirst();
+        } else {
+            paramListDoc = concat(text("("), indent(concat(
+                    softLine(),
+                    join(concat(text(","), line()), paramsDoc)
+            )), softLine(), text(")"));
+        }
+        parts.add(group(concat(paramListDoc, text(" -> "))));
 
         var body = getProperty(node, LambdaExpression.BODY_PROPERTY);
         body.accept(this);

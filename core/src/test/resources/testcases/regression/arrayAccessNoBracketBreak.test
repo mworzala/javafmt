@@ -1,0 +1,26 @@
+class Example {
+    // An array access `arr[idx]` in a chain whose total doesn't fit must
+    // NOT wrap inside the brackets — that would produce the orphan shape:
+    //     edgeEntities[
+    //         4
+    //         ].getEntityMeta().setItemStack(...);
+    // The args of the trailing call wrap instead; the access stays glued.
+    void example() {
+        edgeEntities[4].getEntityMeta().setItemStack(ItemStack.of(Material.STICK).with(DataComponents.ITEM_MODEL, BadSprite.require("hub/5x5/blossom_itmg").model()));
+    }
+}
+---
+class Example {
+    // An array access `arr[idx]` in a chain whose total doesn't fit must
+    // NOT wrap inside the brackets — that would produce the orphan shape:
+    //     edgeEntities[
+    //         4
+    //         ].getEntityMeta().setItemStack(...);
+    // The args of the trailing call wrap instead; the access stays glued.
+    void example() {
+        edgeEntities[4].getEntityMeta().setItemStack(
+            ItemStack.of(Material.STICK)
+                .with(DataComponents.ITEM_MODEL, BadSprite.require("hub/5x5/blossom_itmg").model())
+        );
+    }
+}

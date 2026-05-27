@@ -1,0 +1,21 @@
+class Example {
+    // Long lambda body in a field initializer. The InfixExpression's
+    // continuation lines must indent at +4 from the class-member indent
+    // (so column 8 here), NOT to wherever the lambda's body column
+    // happens to be in line 1 — a previous shape we want to lock out.
+    private static final Predicate<@Nullable Material> ICON_SEARCH_PREDICATE = material -> material != null && material != Material.AIR && material != Material.SCULK_SENSOR && material != Material.CALIBRATED_SCULK_SENSOR && material != Material.RECOVERY_COMPASS && !material.name().endsWith("glass_pane");
+}
+---
+class Example {
+    // Long lambda body in a field initializer. The InfixExpression's
+    // continuation lines must indent at +4 from the class-member indent
+    // (so column 8 here), NOT to wherever the lambda's body column
+    // happens to be in line 1 — a previous shape we want to lock out.
+    private static final Predicate<@Nullable Material> ICON_SEARCH_PREDICATE = material -> material
+        != null
+        && material != Material.AIR
+        && material != Material.SCULK_SENSOR
+        && material != Material.CALIBRATED_SCULK_SENSOR
+        && material != Material.RECOVERY_COMPASS
+        && !material.name().endsWith("glass_pane");
+}

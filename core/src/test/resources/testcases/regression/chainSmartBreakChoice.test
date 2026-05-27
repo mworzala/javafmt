@@ -35,12 +35,9 @@ class Example {
     // each segment on its own line, none with wrapped args.
     EventNode<InstanceEvent> EVENT_NODE = EventNode
         .type("mapmaker:hub/npc_handler", EventFilter.INSTANCE)
-        .addListener(
-            PlayerEntityInteractEvent.class,
-            event -> {
-                doSomething(event);
-            }
-        );
+        .addListener(PlayerEntityInteractEvent.class, event -> {
+            doSomething(event);
+        });
 
     // Companion case: same root and chain structure but firstSeg's args fit
     // on the partial-break line. Partial-break should be chosen (not full).

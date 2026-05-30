@@ -1328,6 +1328,7 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
         var stmtParts = new ArrayList<Doc>();
         Statement prevStmt = null;
+        boolean prevTrailingLine = false;
         for (var stmt : statements) {
             var leading = comments != null ? comments.leading(stmt) : List.<Comment>of();
             for (var lc : leading) {
@@ -1340,8 +1341,12 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
             stmt.accept(this);
             Doc stmtDoc;
+            // A labeled rule's body normally joins on the same line (`case X -> body`), but a
+            // line comment trailing the `->` (`case X -> // note`) would swallow the joined
+            // body — so in that case the body drops to its own line instead.
             boolean joinToRule = leading.isEmpty()
-                    && prevStmt instanceof SwitchCase sc && sc.isSwitchLabeledRule();
+                    && prevStmt instanceof SwitchCase sc && sc.isSwitchLabeledRule()
+                    && !prevTrailingLine;
             if (joinToRule) {
                 stmtDoc = concat(space(), result);
             } else {
@@ -1349,14 +1354,17 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
                 if (!(stmt instanceof SwitchCase)) stmtDoc = indent(stmtDoc);
             }
 
+            boolean trailingLine = false;
             if (comments != null) {
                 for (var tc : comments.trailing(stmt)) {
                     stmtDoc = concat(stmtDoc, text(" "), renderComment(tc));
+                    if (tc instanceof LineComment) trailingLine = true;
                 }
             }
 
             stmtParts.add(stmtDoc);
             prevStmt = (Statement) stmt;
+            prevTrailingLine = trailingLine;
         }
 
         // Comments after the last statement (before the closing brace) attach as dangling.
@@ -1979,6 +1987,7 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         var stmtParts = new ArrayList<Doc>();
         var statements = getProperty(node, SwitchExpression.STATEMENTS_PROPERTY);
         Statement prevStmt = null;
+        boolean prevTrailingLine = false;
         for (var statement : statements) {
             var leading = comments != null ? comments.leading(statement) : List.<Comment>of();
             for (var lc : leading) {
@@ -1991,8 +2000,12 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
             statement.accept(this);
             Doc stmtDoc;
+            // A labeled rule's body normally joins on the same line (`case X -> body`), but a
+            // line comment trailing the `->` (`case X -> // note`) would swallow the joined
+            // body — so in that case the body drops to its own line instead.
             boolean joinToRule = leading.isEmpty()
-                    && prevStmt instanceof SwitchCase sc && sc.isSwitchLabeledRule();
+                    && prevStmt instanceof SwitchCase sc && sc.isSwitchLabeledRule()
+                    && !prevTrailingLine;
             if (joinToRule) {
                 stmtDoc = concat(space(), result);
             } else {
@@ -2000,14 +2013,17 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
                 if (!(statement instanceof SwitchCase)) stmtDoc = indent(stmtDoc);
             }
 
+            boolean trailingLine = false;
             if (comments != null) {
                 for (var tc : comments.trailing(statement)) {
                     stmtDoc = concat(stmtDoc, text(" "), renderComment(tc));
+                    if (tc instanceof LineComment) trailingLine = true;
                 }
             }
 
             stmtParts.add(stmtDoc);
             prevStmt = (Statement) statement;
+            prevTrailingLine = trailingLine;
         }
 
         // Comments after the last statement (before the closing brace) attach as dangling.

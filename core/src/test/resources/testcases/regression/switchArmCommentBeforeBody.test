@@ -1,0 +1,19 @@
+class A {
+    Object parse(Token tok) {
+        return switch (tok.type()) {
+            case NUMBER -> //noinspection DataFlowIssue
+                topLevel ? weightOrBlockId() : legacyBlock(lexer.next());
+            default -> error();
+        };
+    }
+}
+---
+class A {
+    Object parse(Token tok) {
+        return switch (tok.type()) {
+            case NUMBER -> //noinspection DataFlowIssue
+                topLevel ? weightOrBlockId() : legacyBlock(lexer.next());
+            default -> error();
+        };
+    }
+}

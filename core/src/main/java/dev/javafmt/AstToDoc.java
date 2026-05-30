@@ -1297,7 +1297,11 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         for (var stmt : statements) {
             var leading = comments != null ? comments.leading(stmt) : List.<Comment>of();
             for (var lc : leading) {
-                stmtParts.add(indent(concat(hardLine(), renderComment(lc))));
+                // A comment leading a case/default aligns with it (no extra indent); one
+                // leading a body statement is indented like the body.
+                Doc lcDoc = concat(hardLine(), renderComment(lc));
+                if (!(stmt instanceof SwitchCase)) lcDoc = indent(lcDoc);
+                stmtParts.add(lcDoc);
             }
 
             stmt.accept(this);
@@ -1935,21 +1939,48 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
         parts.add(text(") {"));
 
+        // Statements carry comments exactly as in a switch statement (see visit(SwitchStatement)):
+        // an own-line comment before a case/body is leading, one after it is trailing, and a
+        // comment before the closing brace is dangling.
         var stmtParts = new ArrayList<Doc>();
         var statements = getProperty(node, SwitchExpression.STATEMENTS_PROPERTY);
-        for (int i = 0; i < statements.size(); i++) {
-            var statement = statements.get(i);
-            statement.accept(this);
-
-            if (i > 0 && statements.get(i - 1) instanceof SwitchCase sc && sc.isSwitchLabeledRule()) {
-                result = concat(space(), result);
-            } else {
-                result = concat(hardLine(), result);
-                if (!(statement instanceof SwitchCase))
-                    result = indent(result);
+        Statement prevStmt = null;
+        for (var statement : statements) {
+            var leading = comments != null ? comments.leading(statement) : List.<Comment>of();
+            for (var lc : leading) {
+                // A comment leading a case/default aligns with it (no extra indent); one
+                // leading a body statement is indented like the body.
+                Doc lcDoc = concat(hardLine(), renderComment(lc));
+                if (!(statement instanceof SwitchCase)) lcDoc = indent(lcDoc);
+                stmtParts.add(lcDoc);
             }
 
-            stmtParts.add(result);
+            statement.accept(this);
+            Doc stmtDoc;
+            boolean joinToRule = leading.isEmpty()
+                    && prevStmt instanceof SwitchCase sc && sc.isSwitchLabeledRule();
+            if (joinToRule) {
+                stmtDoc = concat(space(), result);
+            } else {
+                stmtDoc = concat(hardLine(), result);
+                if (!(statement instanceof SwitchCase)) stmtDoc = indent(stmtDoc);
+            }
+
+            if (comments != null) {
+                for (var tc : comments.trailing(statement)) {
+                    stmtDoc = concat(stmtDoc, text(" "), renderComment(tc));
+                }
+            }
+
+            stmtParts.add(stmtDoc);
+            prevStmt = (Statement) statement;
+        }
+
+        // Comments after the last statement (before the closing brace) attach as dangling.
+        if (comments != null) {
+            for (var dc : comments.dangling(node)) {
+                stmtParts.add(indent(concat(hardLine(), renderComment(dc))));
+            }
         }
 
         parts.add(indent(concat(stmtParts)));

@@ -32,7 +32,13 @@ public class CorpusTest {
     private static final Path CORPUS_DIR = Path.of(
             System.getProperty("javafmt.corpus.dir", "build/corpus"));
 
-    private static final Set<String> IGNORE = loadIgnore();
+    private static final Set<String> IGNORE = loadIgnore("/corpus-ignore.txt");
+
+    /// Files with a known comment-loss bug in some expression/modifier context. The
+    /// comment-preservation check is skipped for these (AST-equivalence and idempotence
+    /// still run); a file NOT listed that drops a comment fails the build. This is the
+    /// backlog — shrink it by fixing a context and deleting the files it covers.
+    private static final Set<String> COMMENT_LOSS_IGNORE = loadIgnore("/comment-loss-ignore.txt");
 
     static Stream<Path> corpusFiles() throws IOException {
         if (!Files.isDirectory(CORPUS_DIR)) {
@@ -73,6 +79,9 @@ public class CorpusTest {
                 } catch (AstEquivalence.Mismatch m) {
                     fail("AST diverged after formatting: " + m.getMessage());
                 }
+                if (!COMMENT_LOSS_IGNORE.contains(relativeId(file))) {
+                    CommentPreservation.assertPreserved(file.toString(), source, formatted, original, reparsed);
+                }
             }
             case Formatter.Result.SyntaxError(var problems) -> fail("formatter rejected valid input: " + problems);
             case Formatter.Result.Failure(var error) -> fail("formatter threw: " + error);
@@ -108,9 +117,9 @@ public class CorpusTest {
         return CORPUS_DIR.relativize(p).toString().replace('\\', '/');
     }
 
-    private static Set<String> loadIgnore() {
+    private static Set<String> loadIgnore(String resource) {
         var ignore = new HashSet<String>();
-        try (var in = CorpusTest.class.getResourceAsStream("/corpus-ignore.txt")) {
+        try (var in = CorpusTest.class.getResourceAsStream(resource)) {
             if (in == null) return ignore;
             for (var raw : new String(in.readAllBytes()).split("\n")) {
                 var line = raw.strip();

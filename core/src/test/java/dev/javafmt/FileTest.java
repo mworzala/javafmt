@@ -36,12 +36,15 @@ public class FileTest {
         var actual = formatSource(input);
         assertEquals(expected, actual);
 
+        // No curated case may drop or duplicate a comment.
+        CommentPreservation.assertPreserved(testFile.toString(), input, actual, parse(input), parse(actual));
+
         // Idempotence: formatting the expected output again must be a no-op.
         var reformatted = formatSource(expected);
         assertEquals(expected, reformatted, "formatter is not idempotent for " + testFile);
     }
 
-    private static String formatSource(String source) {
+    private static org.eclipse.jdt.core.dom.CompilationUnit parse(String source) {
         var parser = ASTParser.newParser(AST.getJLSLatest());
         parser.setSource(source.toCharArray());
         parser.setKind(ASTParser.K_COMPILATION_UNIT);
@@ -49,7 +52,11 @@ public class FileTest {
         options.put(JavaCore.COMPILER_SOURCE, "25");
         options.put(JavaCore.COMPILER_COMPLIANCE, "25");
         parser.setCompilerOptions(options);
-        var ast = (org.eclipse.jdt.core.dom.CompilationUnit) parser.createAST(null);
+        return (org.eclipse.jdt.core.dom.CompilationUnit) parser.createAST(null);
+    }
+
+    private static String formatSource(String source) {
+        var ast = parse(source);
 
         var commentMap = CommentMap.build(ast, source);
         var a2d = new AstToDoc(source, commentMap);

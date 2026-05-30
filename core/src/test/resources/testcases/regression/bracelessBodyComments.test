@@ -1,0 +1,23 @@
+class A {
+    Block below(Block blockBelow) {
+        if (blockBelow.id() == this.block.id())
+            // If below has facing, use that.
+            return this.block.withProperty(PROP_FACING, blockBelow.getProperty(PROP_FACING));
+
+        if (entity.isDead()) // Can't attack dead entities
+            return null;
+        return blockBelow;
+    }
+}
+---
+class A {
+    Block below(Block blockBelow) {
+        if (blockBelow.id() == this.block.id())
+            // If below has facing, use that.
+            return this.block.withProperty(PROP_FACING, blockBelow.getProperty(PROP_FACING));
+
+        if (entity.isDead()) // Can't attack dead entities
+            return null;
+        return blockBelow;
+    }
+}

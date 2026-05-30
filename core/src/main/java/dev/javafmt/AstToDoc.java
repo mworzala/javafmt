@@ -309,7 +309,11 @@ final class AstToDoc extends ASTVisitor {
             // comment after `(` attaches to the record name, one before `)` is dangling,
             // and a component carries its own comments (`int a, // note`).
             var afterOpen = comments != null ? comments.trailing(node.getName()) : List.<Comment>of();
-            var beforeClose = comments != null ? comments.dangling(node) : List.<Comment>of();
+            // dangling(node) lumps a header-paren comment together with comments inside the
+            // body braces — a record's body declarations hang directly off the node, with no
+            // Block to enclose them. Keep only the ones before the body's `{` for the header;
+            // the rest are emitted by visitBodyDeclarations, so they aren't duplicated.
+            var beforeClose = recordHeaderDangling(node, components);
 
             var componentDocs = new ArrayList<Doc>();
             for (var component : components) {
@@ -340,6 +344,36 @@ final class AstToDoc extends ASTVisitor {
 
         result = concat(parts);
         return false;
+    }
+
+    /// Dangling comments of a record that belong to the header — i.e. those before the body's
+    /// opening `{`. A record's body declarations attach directly to the RecordDeclaration (no
+    /// enclosing Block), so {@code comments.dangling(node)} conflates comments inside the body
+    /// braces with a comment before the header's `)`. Splitting on the brace position keeps the
+    /// header from re-emitting (and thus duplicating) the body's dangling comments.
+    private List<Comment> recordHeaderDangling(RecordDeclaration node, List<ASTNode> components) {
+        if (comments == null) return List.of();
+        var dangling = comments.dangling(node);
+        if (dangling.isEmpty()) return dangling;
+
+        int headerEnd = node.getName().getStartPosition() + node.getName().getLength();
+        for (var tp : getProperty(node, RecordDeclaration.TYPE_PARAMETERS_PROPERTY)) {
+            headerEnd = Math.max(headerEnd, tp.getStartPosition() + tp.getLength());
+        }
+        for (var comp : components) {
+            headerEnd = Math.max(headerEnd, comp.getStartPosition() + comp.getLength());
+        }
+        for (var si : getProperty(node, RecordDeclaration.SUPER_INTERFACE_TYPES_PROPERTY)) {
+            headerEnd = Math.max(headerEnd, si.getStartPosition() + si.getLength());
+        }
+        int bodyBrace = source.indexOf('{', headerEnd);
+        if (bodyBrace < 0) return dangling;
+
+        var header = new ArrayList<Comment>();
+        for (var c : dangling) {
+            if (c.getStartPosition() < bodyBrace) header.add(c);
+        }
+        return header;
     }
 
     @Override

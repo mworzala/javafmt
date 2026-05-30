@@ -1,0 +1,19 @@
+class Outer {
+    void top(Outer this) {}
+
+    class Inner {
+        int value(Outer Outer.this, int scale) {
+            return scale;
+        }
+    }
+}
+---
+class Outer {
+    void top(Outer this) {}
+
+    class Inner {
+        int value(Outer Outer.this, int scale) {
+            return scale;
+        }
+    }
+}

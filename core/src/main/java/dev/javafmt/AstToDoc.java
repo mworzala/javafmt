@@ -260,11 +260,10 @@ final class AstToDoc extends ASTVisitor {
     public boolean visit(ImplicitTypeDeclaration node) {
         var parts = new ArrayList<Doc>();
 
-        // TODO: how are any of the following present on an implicit class?
-        // todo MODIFIERS2_PROPERTY
-        // todo JAVADOC_PROPERTY
-        // todo NAME_PROPERTY
-
+        // An implicit (unnamed) class has no declaration in source: its NAME is synthesized
+        // (zero-length, position 0) and MODIFIERS2/JAVADOC are always empty/null — a doc
+        // comment before the first member attaches to that member, not the class. So there is
+        // no metadata to render; emitting the synthetic name would inject a spurious token.
         visitBodyDeclarations(parts, node, ImplicitTypeDeclaration.BODY_DECLARATIONS_PROPERTY, false);
 
         result = concat(parts);
@@ -666,7 +665,8 @@ final class AstToDoc extends ASTVisitor {
         parts.add(space());
         parts.add(text(node.getName().getIdentifier()));
 
-        // todo ChildListPropertyDescriptor EXTRA_DIMENSIONS2_PROPERTY
+        // C-style trailing dimensions on a parameter (`void m(int a[])`).
+        appendExtraDimensions(parts, node, SingleVariableDeclaration.EXTRA_DIMENSIONS2_PROPERTY);
 
         // This is currently never used in java
         var initializer = getProperty(node, SingleVariableDeclaration.INITIALIZER_PROPERTY);
@@ -755,9 +755,6 @@ final class AstToDoc extends ASTVisitor {
         emitTypeLeadingComments(parts, node.getName(), atLineStart);
         parts.add(text(node.getName().getIdentifier()));
 
-        // todo EXTRA_DIMENSIONS_PROPERTY
-        // todo EXTRA_DIMENSIONS2_PROPERTY
-
         // A compact canonical constructor (`Range { ... }`) has no parameter list at all —
         // its parameters are implied by the record header — so skip the parens entirely.
         if (!node.isCompactConstructor()) {
@@ -767,32 +764,38 @@ final class AstToDoc extends ASTVisitor {
             var params = getProperty(node, MethodDeclaration.PARAMETERS_PROPERTY);
             var afterOpen = comments != null ? comments.trailing(node.getName()) : List.<Comment>of();
             var beforeClose = comments != null ? comments.dangling(node) : List.<Comment>of();
-            if (params.isEmpty()) {
+
+            // An explicit receiver parameter (`void m(Outer Outer.this)`) is the first thing
+            // inside the parens but is not part of PARAMETERS; render it as a leading entry.
+            var receiverDoc = receiverParamDoc(node);
+
+            var paramDocs = new ArrayList<Doc>();
+            if (receiverDoc != null) paramDocs.add(receiverDoc);
+            for (var param : params) {
+                param.accept(this);
+                paramDocs.add(result);
+            }
+
+            if (paramDocs.isEmpty()) {
                 formatArguments(parts, List.of(), afterOpen, beforeClose);
+            } else if (receiverDoc == null
+                    && (!afterOpen.isEmpty() || !beforeClose.isEmpty() || argumentsHaveComments(params))) {
+                parts.add(argsWithComments(params, paramDocs, afterOpen, beforeClose));
             } else {
-                var paramDocs = new ArrayList<Doc>();
-                for (var param : params) {
-                    param.accept(this);
-                    paramDocs.add(result);
-                }
-                if (!afterOpen.isEmpty() || !beforeClose.isEmpty() || argumentsHaveComments(params)) {
-                    parts.add(argsWithComments(params, paramDocs, afterOpen, beforeClose));
-                } else {
-                    parts.add(group(concat(
-                            text("("),
-                            indent(concat(
-                                    softLine(),
-                                    join(concat(text(","), line()), paramDocs)
-                            )),
-                            softLine(),
-                            text(")")
-                    )));
-                }
+                parts.add(group(concat(
+                        text("("),
+                        indent(concat(
+                                softLine(),
+                                join(concat(text(","), line()), paramDocs)
+                        )),
+                        softLine(),
+                        text(")")
+                )));
             }
         }
 
-        // todo RECEIVER_TYPE_PROPERTY
-        // todo RECEIVER_QUALIFIER_PROPERTY
+        // C-style trailing dimensions on the return type (`int m()[]`), after the parens.
+        appendExtraDimensions(parts, node, MethodDeclaration.EXTRA_DIMENSIONS2_PROPERTY);
 
         var thrownTypes = getProperty(node, MethodDeclaration.THROWN_EXCEPTION_TYPES_PROPERTY);
         if (!thrownTypes.isEmpty()) {
@@ -823,6 +826,38 @@ final class AstToDoc extends ASTVisitor {
 
         result = concat(parts);
         return false;
+    }
+
+    /// Append C-style trailing array dimensions that sit after a variable name, parameter, or
+    /// a method's parameter list (`int a[]`, `void m(int a[])`, `int m()[]`). Each Dimension
+    /// renders as `[]` (carrying any type annotations); an annotated dimension gets a leading
+    /// space so `a @Foo []` reads correctly, while the common unannotated `a[]` stays glued.
+    private void appendExtraDimensions(List<Doc> parts, ASTNode node, ChildListPropertyDescriptor property) {
+        for (var dim : getProperty(node, property)) {
+            if (!getProperty(dim, Dimension.ANNOTATIONS_PROPERTY).isEmpty()) parts.add(space());
+            dim.accept(this);
+            parts.add(result);
+        }
+    }
+
+    /// Render an explicit receiver parameter (`Outer Outer.this`, or `Foo this` for a
+    /// top-level method) that leads the parameter list, or null when the method has none.
+    /// The qualifier is present only for an inner-class receiver.
+    private Doc receiverParamDoc(MethodDeclaration node) {
+        var receiverType = getProperty(node, MethodDeclaration.RECEIVER_TYPE_PROPERTY);
+        if (receiverType == null) return null;
+        var parts = new ArrayList<Doc>();
+        receiverType.accept(this);
+        parts.add(result);
+        parts.add(space());
+        var qualifier = getProperty(node, MethodDeclaration.RECEIVER_QUALIFIER_PROPERTY);
+        if (qualifier != null) {
+            qualifier.accept(this);
+            parts.add(result);
+            parts.add(text("."));
+        }
+        parts.add(text("this"));
+        return concat(parts);
     }
 
     /// Returns whether rendering ended at the start of a line (true when there are no
@@ -915,9 +950,8 @@ final class AstToDoc extends ASTVisitor {
     public boolean visit(TypeParameter node) {
         var parts = new ArrayList<Doc>();
 
+        // A type parameter's only modifiers are annotations (`<@NonNull T>`).
         visitAnnotations(parts, node, TypeParameter.MODIFIERS_PROPERTY, false);
-
-        // todo MODIFIERS_PROPERTY (annotations on type params)
 
         parts.add(text(node.getName().getIdentifier()));
 
@@ -1398,7 +1432,11 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
     @Override
     public boolean visit(VariableDeclarationFragment node) {
-        var name = text(node.getName().getIdentifier());
+        // C-style trailing dimensions stay glued to the name (`int a[], b[][]`).
+        var nameParts = new ArrayList<Doc>();
+        nameParts.add(text(node.getName().getIdentifier()));
+        appendExtraDimensions(nameParts, node, VariableDeclarationFragment.EXTRA_DIMENSIONS2_PROPERTY);
+        var name = concat(nameParts);
         var init = node.getInitializer();
         if (init == null) {
             result = name;

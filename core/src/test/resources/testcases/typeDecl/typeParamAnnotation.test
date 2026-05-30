@@ -1,0 +1,11 @@
+class Box<@Nullable T extends Number> {
+    <@Nullable U> U pick(U value) {
+        return value;
+    }
+}
+---
+class Box<@Nullable T extends Number> {
+    <@Nullable U> U pick(U value) {
+        return value;
+    }
+}

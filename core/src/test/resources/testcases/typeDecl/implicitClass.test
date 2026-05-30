@@ -1,0 +1,15 @@
+private int counter = 0;
+
+/** Increments and prints the counter. */
+void main() {
+    counter++;
+    System.out.println(counter);
+}
+---
+private int counter = 0;
+
+/** Increments and prints the counter. */
+void main() {
+    counter++;
+    System.out.println(counter);
+}

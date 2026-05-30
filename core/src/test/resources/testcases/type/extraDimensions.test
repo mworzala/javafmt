@@ -1,0 +1,15 @@
+class C {
+    int   a[], b[][];
+    static final String[] EMPTY = {};
+    String m(int x[])[] {
+        return null;
+    }
+}
+---
+class C {
+    int a[], b[][];
+    static final String[] EMPTY = {};
+    String m(int x[])[] {
+        return null;
+    }
+}

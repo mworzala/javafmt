@@ -1,0 +1,11 @@
+class Example {
+    void handle(@MagicConstant(flagsFromClass = Permission.class) @JsonAdapter(UnsignedLongAdapter.class) long permissions) {}
+}
+---
+class Example {
+    void handle(
+        @MagicConstant(flagsFromClass = Permission.class)
+        @JsonAdapter(UnsignedLongAdapter.class)
+        long permissions
+    ) {}
+}

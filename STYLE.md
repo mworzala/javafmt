@@ -685,6 +685,33 @@ The formatter distinguishes the two cases by where the annotation appears: an
 annotation that comes after a keyword modifier (`private`, `static`, etc.) is treated
 as type-use; one that comes before any keyword modifiers is treated as declarational.
 
+**Parameters and record components** are the exception to "declaration annotations go
+on their own line": their leading annotations stay inline with the declaration while it
+fits on one line, the same as a type-use annotation:
+
+```java
+public record Argument(Type type, String name, @Nullable List<String> choices) {}
+
+void g(@NotNull String a, @Nullable @Deprecated String b) {}
+```
+
+When the declaration is too wide to fit on its line, each leading annotation breaks onto
+its own line — rather than splitting inside an annotation's own argument list:
+
+```java
+public record Command(
+    String name,
+    @Nullable String description,
+    @MagicConstant(flagsFromClass = Permission.class)
+    @JsonAdapter(UnsignedLongAdapter.class)
+    long permissions,
+    List<Argument> arguments
+) {}
+```
+
+A type-use annotation that sits after a keyword modifier (`final @Nullable String s`)
+still stays glued to its type.
+
 ---
 
 ## Comments

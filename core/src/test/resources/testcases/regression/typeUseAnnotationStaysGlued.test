@@ -1,0 +1,19 @@
+class Example {
+    private final @Nullable String x;
+
+    private static @Nullable String compute() {
+        return null;
+    }
+
+    void g(final @Nullable String s) {}
+}
+---
+class Example {
+    private final @Nullable String x;
+
+    private static @Nullable String compute() {
+        return null;
+    }
+
+    void g(final @Nullable String s) {}
+}

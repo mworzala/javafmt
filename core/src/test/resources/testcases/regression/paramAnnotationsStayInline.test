@@ -1,0 +1,14 @@
+class Example {
+    void f(@NotNull String a, @Nullable @Deprecated String b) {}
+
+    void g(
+        @MagicConstant(flagsFromClass = Permission.class) long permissions,
+        String name
+    ) {}
+}
+---
+class Example {
+    void f(@NotNull String a, @Nullable @Deprecated String b) {}
+
+    void g(@MagicConstant(flagsFromClass = Permission.class) long permissions, String name) {}
+}

@@ -1152,7 +1152,7 @@ final class AstToDoc extends ASTVisitor {
         var condDoc = result;
 
         var thenStmt = getProperty(node, IfStatement.THEN_STATEMENT_PROPERTY);
-        var ifAndThen = headerWithBody(concat(text("if ("), condDoc, text(")")), thenStmt);
+        var ifAndThen = headerWithBody(concat(text("if ("), condDoc, text(")")), expression, thenStmt);
 
         var parts = new ArrayList<Doc>();
         parts.add(ifAndThen);
@@ -1203,12 +1203,41 @@ final class AstToDoc extends ASTVisitor {
     /// `&&` chain) would try to break first and produce a hybrid where the
     /// header chops and the body stays glued to a now-broken `)`.
     private Doc headerWithBody(Doc header, ASTNode body) {
+        return headerWithBody(header, null, body);
+    }
+
+    /// @param headerNode the node whose trailing comment sits between the header and the body
+    ///                   (e.g. the condition of an `if`/`while`), or null if none applies.
+    private Doc headerWithBody(Doc header, ASTNode headerNode, ASTNode body) {
         body.accept(this);
         var bodyDoc = result;
         if (body instanceof Block) {
             return concat(header, text(" "), bodyDoc);
         }
-        return group(concat(header, indent(concat(line(), bodyDoc))));
+
+        // A braceless body can carry comments in the gap after the `)`: a trailing comment on
+        // the condition (`if (cond) // note`) stays on the header line, and an own-line
+        // comment before the body (`if (cond)\n // note\n stmt;`) sits on its own line above
+        // it. Either forces the body onto its own line — a line comment must end its line.
+        var headerTrailing = (comments != null && headerNode != null)
+                ? comments.trailing(headerNode) : List.<Comment>of();
+        var bodyLeading = comments != null ? comments.leading(body) : List.<Comment>of();
+
+        Doc head = header;
+        for (var tc : headerTrailing) head = concat(head, text(" "), renderComment(tc));
+
+        if (headerTrailing.isEmpty() && bodyLeading.isEmpty()) {
+            return group(concat(head, indent(concat(line(), bodyDoc))));
+        }
+
+        var inner = new ArrayList<Doc>();
+        for (var lc : bodyLeading) {
+            inner.add(hardLine());
+            inner.add(renderComment(lc));
+        }
+        inner.add(hardLine());
+        inner.add(bodyDoc);
+        return concat(head, indent(concat(inner)));
     }
 
     @Override
@@ -1218,7 +1247,7 @@ final class AstToDoc extends ASTVisitor {
         var condDoc = result;
 
         var body = getProperty(node, WhileStatement.BODY_PROPERTY);
-        result = headerWithBody(concat(text("while ("), condDoc, text(")")), body);
+        result = headerWithBody(concat(text("while ("), condDoc, text(")")), expression, body);
         return false;
     }
 

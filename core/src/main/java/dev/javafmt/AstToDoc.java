@@ -252,11 +252,22 @@ final class AstToDoc extends ASTVisitor {
             parts.add(space());
         }
 
-        visitSuperInterfaces(parts, node, TypeDeclaration.SUPER_INTERFACE_TYPES_PROPERTY);
+        // A comment written after the body's `{` on the header line attaches to the last
+        // header node (name / superclass / interface / permit) as trailing; collect those so
+        // visitSuperInterfaces skips them and visitBodyDeclarations glues them to the `{`.
+        var headerNodes = new ArrayList<ASTNode>();
+        headerNodes.add(node.getName());
+        headerNodes.addAll(getProperty(node, TypeDeclaration.TYPE_PARAMETERS_PROPERTY));
+        if (superclass != null) headerNodes.add(superclass);
+        headerNodes.addAll(getProperty(node, TypeDeclaration.SUPER_INTERFACE_TYPES_PROPERTY));
+        headerNodes.addAll(getProperty(node, TypeDeclaration.PERMITS_TYPES_PROPERTY));
+        var braceTrailing = braceTrailingComments(headerNodes);
+
+        visitSuperInterfaces(parts, node, TypeDeclaration.SUPER_INTERFACE_TYPES_PROPERTY, braceTrailing);
 
         visitPermits(parts, node, TypeDeclaration.PERMITS_TYPES_PROPERTY);
 
-        visitBodyDeclarations(parts, node, TypeDeclaration.BODY_DECLARATIONS_PROPERTY, true);
+        visitBodyDeclarations(parts, node, TypeDeclaration.BODY_DECLARATIONS_PROPERTY, true, braceTrailing);
 
         result = concat(parts);
         return false;
@@ -561,6 +572,11 @@ final class AstToDoc extends ASTVisitor {
     }
 
     private void visitSuperInterfaces(List<Doc> parts, ASTNode node, ChildListPropertyDescriptor property) {
+        visitSuperInterfaces(parts, node, property, List.of());
+    }
+
+    private void visitSuperInterfaces(List<Doc> parts, ASTNode node, ChildListPropertyDescriptor property,
+            List<Comment> braceTrailing) {
         var interfaces = getProperty(node, property);
         if (interfaces.isEmpty()) return;
 
@@ -574,8 +590,11 @@ final class AstToDoc extends ASTVisitor {
         }
         // Comments among the interface list (section markers like `// Lifecycle Callbacks`,
         // or a comment before the keyword) attach as leading comments of the interfaces and
-        // would otherwise be dropped. Render one per line, emitting them.
-        if (elementsHaveComments(interfaces)) {
+        // would otherwise be dropped. Render one per line, emitting them. A comment that
+        // actually sits after the body's `{` (`implements Foo { // note`) attaches to the
+        // last interface as trailing but belongs on the brace — it's in braceTrailing and is
+        // emitted there, so it's excluded here.
+        if (interfaceListHasComments(interfaces, braceTrailing)) {
             var inner = new ArrayList<Doc>();
             int n = interfaces.size();
             for (int i = 0; i < n; i++) {
@@ -588,6 +607,7 @@ final class AstToDoc extends ASTVisitor {
                 inner.add(ifaceDocs.get(i));
                 if (i < n - 1) inner.add(text(","));
                 for (var tc : comments.trailing(iface)) {
+                    if (braceTrailing.contains(tc)) continue;
                     inner.add(text(" "));
                     inner.add(renderComment(tc));
                 }
@@ -621,15 +641,31 @@ final class AstToDoc extends ASTVisitor {
             ChildListPropertyDescriptor property,
             boolean withBraces
     ) {
+        visitBodyDeclarations(parts, node, property, withBraces, List.of());
+    }
+
+    /// @param openBraceTrailing comments written after the opening `{` on the same line
+    ///        (`class X { // note`); rendered glued to the brace.
+    private void visitBodyDeclarations(
+            List<Doc> parts,
+            ASTNode node,
+            ChildListPropertyDescriptor property,
+            boolean withBraces,
+            List<Comment> openBraceTrailing
+    ) {
         var body = getProperty(node, property);
         var dangling = comments != null ? comments.dangling(node) : List.<Comment>of();
 
-        if (body.isEmpty() && dangling.isEmpty()) {
+        if (body.isEmpty() && dangling.isEmpty() && openBraceTrailing.isEmpty()) {
             if (withBraces) parts.add(text("{}"));
             return;
         }
 
-        if (withBraces) parts.add(text("{"));
+        if (withBraces) {
+            Doc openBrace = text("{");
+            for (var c : openBraceTrailing) openBrace = concat(openBrace, text(" "), renderComment(c));
+            parts.add(openBrace);
+        }
 
         // First thing to be rendered after the open brace — used to preserve a blank line
         // that existed between `{` and the first body content in the source. Accounts for
@@ -3246,6 +3282,39 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             if (!comments.leading(e).isEmpty() || !comments.trailing(e).isEmpty()) return true;
         }
         return false;
+    }
+
+    /// Like {@link #elementsHaveComments} but ignores comments that belong on the body brace
+    /// (so a lone `implements Foo { // note` doesn't force the interface list to break).
+    private boolean interfaceListHasComments(List<ASTNode> elems, List<Comment> braceTrailing) {
+        if (comments == null) return false;
+        for (var e : elems) {
+            if (!comments.leading(e).isEmpty()) return true;
+            for (var tc : comments.trailing(e)) {
+                if (!braceTrailing.contains(tc)) return true;
+            }
+        }
+        return false;
+    }
+
+    /// A comment written after a type body's opening brace on the same line (`class X { // c`,
+    /// `... implements Foo { // c`) attaches to the nearest preceding header node (the name or
+    /// last interface) as a trailing comment, since `{` isn't an AST node. Returns such
+    /// comments — those whose position is past the body brace — so they can be rendered glued
+    /// to the `{` instead of being dropped or, worse, swallowing the brace on a line comment.
+    private List<Comment> braceTrailingComments(List<ASTNode> headerNodes) {
+        if (comments == null || headerNodes.isEmpty()) return List.of();
+        int headerEnd = 0;
+        for (var n : headerNodes) headerEnd = Math.max(headerEnd, n.getStartPosition() + n.getLength());
+        int bracePos = source.indexOf('{', headerEnd);
+        if (bracePos < 0) return List.of();
+        var res = new ArrayList<Comment>();
+        for (var n : headerNodes) {
+            for (var tc : comments.trailing(n)) {
+                if (tc.getStartPosition() > bracePos) res.add(tc);
+            }
+        }
+        return res;
     }
 
     /// Render try-with-resources `(r1; r2; ...)` one per line when a resource carries a

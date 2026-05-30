@@ -1,0 +1,15 @@
+public class PathData implements Viewable { //todo maybe should be Viewable?
+    private final String id;
+}
+
+class WithName { // a comment after the brace
+    int a;
+}
+---
+public class PathData implements Viewable { //todo maybe should be Viewable?
+    private final String id;
+}
+
+class WithName { // a comment after the brace
+    int a;
+}

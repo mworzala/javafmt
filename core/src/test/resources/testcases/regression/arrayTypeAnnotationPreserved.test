@@ -1,0 +1,25 @@
+interface MapClient {
+    default byte @Nullable [] getMapFile(String mapId, String path) {
+        return null;
+    }
+
+    void varargs(String @Nullable ... args);
+}
+
+class Holder {
+    String @Nullable [] field;
+    int @Nullable [] @NonNull [] matrix;
+}
+---
+interface MapClient {
+    default byte @Nullable [] getMapFile(String mapId, String path) {
+        return null;
+    }
+
+    void varargs(String @Nullable ... args);
+}
+
+class Holder {
+    String @Nullable [] field;
+    int @Nullable [] @NonNull [] matrix;
+}

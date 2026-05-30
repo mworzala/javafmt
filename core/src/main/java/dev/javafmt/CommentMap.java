@@ -88,6 +88,12 @@ final class CommentMap {
         }
 
         int prevEnd = prev != null ? prev.getStartPosition() + prev.getLength() : -1;
+        // A node's range can extend past its visible content to include a trailing newline —
+        // notably a Markdown `///` Javadoc, whose range ends at the start of the next line.
+        // Left as-is, prevEnd would sit on the following line and a comment there would look
+        // like a same-line trailing comment of prev (and, for a Javadoc, get silently
+        // dropped). Back up over trailing whitespace so "same line" reflects the real content.
+        while (prevEnd > 0 && Character.isWhitespace(source.charAt(prevEnd - 1))) prevEnd--;
         boolean sameLineAsPrev = prev != null && sameLine(prevEnd, c.getStartPosition(), source);
 
         if (sameLineAsPrev) {

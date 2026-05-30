@@ -1,0 +1,21 @@
+public record PlayerDataUpdateMessage(
+    Action action,
+    String id,
+    // Modify fields (all option, present should be applied)
+    JsonObject backpack, // Present fields will replace current value
+    Integer experience, // Replaces the current exp
+    Integer coins, // Replaces the current coins
+    // The reason for the update, or null if it is unspecified.
+    Reason reason
+) {}
+---
+public record PlayerDataUpdateMessage(
+    Action action,
+    String id,
+    // Modify fields (all option, present should be applied)
+    JsonObject backpack, // Present fields will replace current value
+    Integer experience, // Replaces the current exp
+    Integer coins, // Replaces the current coins
+    // The reason for the update, or null if it is unspecified.
+    Reason reason
+) {}

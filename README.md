@@ -66,10 +66,16 @@ java -jar javafmt.jar check src/main/java
 
 # Format from stdin
 cat Foo.java | java -jar javafmt.jar format -
+
+# Only the files git reports as changed (working tree + index vs HEAD)
+java -jar javafmt.jar check --only-changed src/main/java
+
+# ...or changed relative to a ref
+java -jar javafmt.jar check --only-changed=origin/main src/main/java
 ```
 
 Run `java -jar javafmt.jar --help` for the full list of options (`--threads`, `--release`,
-`--enable-preview`, `--line-length`, `--verbose`).
+`--enable-preview`, `--line-length`, `--only-changed[=<ref>]`, `--verbose`).
 
 ### As a library
 

@@ -1,0 +1,77 @@
+class Example {
+    // ClassInstanceCreation root with args: must break at the chain `.`,
+    // keeping the constructor args flat (rather than exploding `new Button(`).
+    void ctorRootWithArgs() {
+        this.button = new Button(3, 3).onLeftClickAsync(() -> this.onVerifyPublish(hostSupplier.get(), onPublish));
+    }
+
+    // ClassInstanceCreation root with no args: same — break at the `.`.
+    void ctorRootNoArgs() {
+        this.handler = new EventHandler().registerWithAReasonablyLongCallbackNameHere(firstArg, secondArg);
+    }
+
+    // Parenthesized cast receiver (the only way to call a method on a cast):
+    // complex root, breaks at the `.`.
+    void castRoot() {
+        ((SomeInterfaceType) delegate).performActionWithAReasonablyLongName(firstArgument, secondArgument);
+    }
+
+    // Parenthesized infix receiver: complex root, breaks at the `.`.
+    void parenthesizedInfixRoot() {
+        int total = (firstValue + secondValue + thirdValue).computeSomethingReasonablyLongHere(extraArg);
+    }
+
+    // Name root stays on the per-call path: the call's own args wrap, no break
+    // is introduced at the `.`.
+    void nameRootStaysPerCall() {
+        someObject.handleSomethingWithAReasonablyLongMethodNameHere(firstArgument, secondArgument, thirdArgument);
+    }
+
+    // Short complex-root call fits flat — no break at all.
+    void fitsFlat() {
+        var x = new Foo(1).bar(2);
+    }
+}
+---
+class Example {
+    // ClassInstanceCreation root with args: must break at the chain `.`,
+    // keeping the constructor args flat (rather than exploding `new Button(`).
+    void ctorRootWithArgs() {
+        this.button = new Button(3, 3)
+            .onLeftClickAsync(() -> this.onVerifyPublish(hostSupplier.get(), onPublish));
+    }
+
+    // ClassInstanceCreation root with no args: same — break at the `.`.
+    void ctorRootNoArgs() {
+        this.handler = new EventHandler()
+            .registerWithAReasonablyLongCallbackNameHere(firstArg, secondArg);
+    }
+
+    // Parenthesized cast receiver (the only way to call a method on a cast):
+    // complex root, breaks at the `.`.
+    void castRoot() {
+        ((SomeInterfaceType) delegate)
+            .performActionWithAReasonablyLongName(firstArgument, secondArgument);
+    }
+
+    // Parenthesized infix receiver: complex root, breaks at the `.`.
+    void parenthesizedInfixRoot() {
+        int total = (firstValue + secondValue + thirdValue)
+            .computeSomethingReasonablyLongHere(extraArg);
+    }
+
+    // Name root stays on the per-call path: the call's own args wrap, no break
+    // is introduced at the `.`.
+    void nameRootStaysPerCall() {
+        someObject.handleSomethingWithAReasonablyLongMethodNameHere(
+            firstArgument,
+            secondArgument,
+            thirdArgument
+        );
+    }
+
+    // Short complex-root call fits flat — no break at all.
+    void fitsFlat() {
+        var x = new Foo(1).bar(2);
+    }
+}

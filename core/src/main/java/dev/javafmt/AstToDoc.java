@@ -1835,27 +1835,37 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             return false;
         }
 
-        // 2-segment chains: only route through chain-break logic when the first
-        // segment has non-empty args. Without this, per-call formatting lets the
-        // first seg's args group wrap independently, producing the orphaned shape
-        //   root.firstSeg(
-        //       arg
-        //   ).secondSeg(...);          <-- `).secondSeg(` reads as junk
-        // The chain-break path instead gives `root.firstSeg(arg)\n  .secondSeg(...)`.
-        //
-        // If the first seg has NO args, the orphan can't arise — per-call format
-        // produces the perfectly fine `root.firstSeg().secondSeg(\n  arg\n)` — so
-        // we leave that case alone rather than gratuitously add a chain break.
-        if (chain.size() == 2) {
-            var firstSeg = chain.getFirst();
-            var firstSegArgs = getProperty(firstSeg, MethodInvocation.ARGUMENTS_PROPERTY);
-            if (!firstSegArgs.isEmpty()) {
+        // For 1- and 2-segment chains the per-call path below has no break point at
+        // the receiver `.`, so when the line overflows its ONLY break points are the
+        // arg-lists. Route to the chain-break path (which does break at the `.`)
+        // whenever leaving it on per-call would force an arg-list to explode as that
+        // last resort. Two independent triggers:
+        var rootExpr = getProperty(chain.getFirst(), MethodInvocation.EXPRESSION_PROPERTY);
+        if (rootExpr != null) {
+            // 1. The first segment carries args (only meaningful for a 2-seg chain —
+            //    a 1-seg chain has no leading segment before the call). Per-call lets
+            //    `first(...)` wrap independently into the orphaned shape
+            //       root.firstSeg(
+            //           arg
+            //       ).secondSeg(...);     <-- `).secondSeg(` reads as junk
+            //    Breaking at the `.` instead gives `root.firstSeg(arg)\n  .secondSeg(...)`.
+            boolean firstSegHasArgs = chain.size() == 2
+                    && !getProperty(chain.getFirst(), MethodInvocation.ARGUMENTS_PROPERTY).isEmpty();
+            // 2. The root is a complex receiver with its own breakable interior
+            //    (`new X(a, b).method(...)`, `arr[i].method(...)`, `((T) x).method(...)`,
+            //    `(a + b).method(...)`). Per-call would blow up the root's args/elements
+            //    rather than break at the `.`. Name-like roots (names, field access,
+            //    `this`, `Foo.class`, literals) have no such interior, so they stay on
+            //    the cleaner per-call path — e.g. `obj.first().second(\n  arg\n)`.
+            boolean complexRoot = !isNameLikeReceiver(rootExpr);
+            if (firstSegHasArgs || complexRoot) {
                 visitMethodChain(chain);
                 return false;
             }
         }
 
-        // Single call or 2-call with empty first-seg args: use per-call formatting
+        // Per-call formatting: a single call on a name-like root, a no-receiver call,
+        // or a 2-call chain on a name-like root whose first segment takes no args.
         var parts = new ArrayList<Doc>();
 
         var expression = getProperty(node, MethodInvocation.EXPRESSION_PROPERTY);
@@ -1967,6 +1977,31 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             collectMethodChain(inner, chain);
         }
         chain.add(node);
+    }
+
+    /// A receiver that reads as an indivisible accessor — a name, a field access, an
+    /// array access, `this`, `Foo.class`, or a literal. These read as a single addressable
+    /// thing (`obj.field`, `arr[idx]`) rather than a call/constructor with a parenthesized
+    /// argument list, so a `recv.method(...)` call on one is left on the per-call path,
+    /// which wraps the call's own args cleanly (see arrayAccessNoBracketBreak.test).
+    ///
+    /// Everything else is "complex": a `new X(a, b)`, a parenthesized expression (which
+    /// is also how a cast or infix receiver must be written — `((T) x).m()`, `(a + b).m()`),
+    /// an array creation, a nested call, etc. These carry a breakable interior that per-call
+    /// would explode into the orphan shape `new X(\n  a,\n  b\n).method(...)`, so they are
+    /// routed to the chain-break path and break at the `.` instead.
+    private static boolean isNameLikeReceiver(ASTNode expr) {
+        return expr instanceof Name
+                || expr instanceof FieldAccess
+                || expr instanceof SuperFieldAccess
+                || expr instanceof ArrayAccess
+                || expr instanceof ThisExpression
+                || expr instanceof TypeLiteral
+                || expr instanceof StringLiteral
+                || expr instanceof NumberLiteral
+                || expr instanceof BooleanLiteral
+                || expr instanceof CharacterLiteral
+                || expr instanceof NullLiteral;
     }
 
     private Doc formatMethodCallNoDot(MethodInvocation node) {

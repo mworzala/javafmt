@@ -417,7 +417,19 @@ compute(longArg)
 
 This layout is used for chains whose root is a method call or other complex expression.
 
-If the chain has only 1 or 2 calls, it stays flat (no chain treatment is applied).
+A chain of only 1 or 2 calls usually stays flat (or, when it overflows, just wraps the
+final call's own arguments). It still breaks at the `.`, though, when wrapping the
+arguments alone would read badly — specifically when the first call carries arguments,
+or when the receiver is a complex expression (a `new`, a cast, a parenthesized
+expression — anything that isn't a plain name, field/array access, `this`, or a
+literal). For example:
+
+```java
+this.button = new Button(3, 3)
+    .onLeftClickAsync(() -> this.onVerifyPublish(hostSupplier.get(), onPublish));
+```
+
+breaks at the `.` rather than exploding the `new Button(3, 3)` arguments.
 
 ---
 

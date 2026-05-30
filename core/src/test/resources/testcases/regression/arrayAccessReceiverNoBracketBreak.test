@@ -1,0 +1,120 @@
+class Example {
+    // Reported bug: a call on an array-access receiver with simple args must keep the
+    // access glued and wrap the call's OWN args, not explode the brackets.
+    void receiverSimpleArgs() {
+        registry[index].handleSomethingWithAReasonablyLongName(firstArgument, secondArgument, third);
+    }
+
+    // Nested array-access receiver: the whole `matrix[i][j]` stays glued (the spine
+    // propagates through the array child).
+    void nestedReceiver() {
+        matrix[outerIndexValue][innerIndexValue].handleSomethingWithAReasonablyLongName(firstArgument, secondArg);
+    }
+
+    // Genuinely long index as receiver: brackets stay glued; the index's own call wraps
+    // instead. The bracket break is never taken in receiver position.
+    void longIndexReceiver() {
+        registry[computeTheIndexFromSomethingReasonablyLongHere(alpha, beta, gamma)].handle(firstArgument);
+    }
+
+    // Index is itself an array access: the OUTER access (the receiver) stays glued, but
+    // the INDEX access keeps its bracket-break ability (flatReceiver is cleared for it).
+    void indexIsArrayAccess() {
+        registry[lookupTableForResolvingKeys[someReasonablyLongKeyNameHere]].handleSomething(firstArgument, secondArg);
+    }
+
+    // 2-seg chain on an array root, empty first segment (per-call path): receiver glued,
+    // last call's args wrap.
+    void chainEmptyFirstSeg() {
+        registry[index].firstMethodCall().secondMethodWithReasonablyLongName(firstArgument, secondArg);
+    }
+
+    // Chain on an array root that routes through the chain-break path (first seg has
+    // args): the array root stays glued and the chain breaks at a `.`.
+    void chainWithFirstSegArgs() {
+        registry[index].firstCall(argumentOne).secondMethodWithReasonablyLongName(firstArgument, secondArg);
+    }
+
+    // Standalone (non-receiver) array access still bracket-breaks as the last resort
+    // when nothing else on the line can wrap.
+    void standaloneNonReceiver() {
+        int x = registryArrayThatIsQuiteLong[computeTheIndexFromSomethingReasonablyLongHere + extraOffsetValueHere];
+    }
+
+    // Array access used as a method argument keeps its bracket-break (not a receiver).
+    void accessAsArgument() {
+        consume(registryArrayThatIsQuiteLong[computeTheIndexFromSomethingReasonablyLongExpr + extraOffset]);
+    }
+}
+---
+class Example {
+    // Reported bug: a call on an array-access receiver with simple args must keep the
+    // access glued and wrap the call's OWN args, not explode the brackets.
+    void receiverSimpleArgs() {
+        registry[index].handleSomethingWithAReasonablyLongName(
+            firstArgument,
+            secondArgument,
+            third
+        );
+    }
+
+    // Nested array-access receiver: the whole `matrix[i][j]` stays glued (the spine
+    // propagates through the array child).
+    void nestedReceiver() {
+        matrix[outerIndexValue][innerIndexValue].handleSomethingWithAReasonablyLongName(
+            firstArgument,
+            secondArg
+        );
+    }
+
+    // Genuinely long index as receiver: brackets stay glued; the index's own call wraps
+    // instead. The bracket break is never taken in receiver position.
+    void longIndexReceiver() {
+        registry[computeTheIndexFromSomethingReasonablyLongHere(
+            alpha,
+            beta,
+            gamma
+        )].handle(firstArgument);
+    }
+
+    // Index is itself an array access: the OUTER access (the receiver) stays glued, but
+    // the INDEX access keeps its bracket-break ability (flatReceiver is cleared for it).
+    void indexIsArrayAccess() {
+        registry[lookupTableForResolvingKeys[
+            someReasonablyLongKeyNameHere
+        ]].handleSomething(firstArgument, secondArg);
+    }
+
+    // 2-seg chain on an array root, empty first segment (per-call path): receiver glued,
+    // last call's args wrap.
+    void chainEmptyFirstSeg() {
+        registry[index].firstMethodCall().secondMethodWithReasonablyLongName(
+            firstArgument,
+            secondArg
+        );
+    }
+
+    // Chain on an array root that routes through the chain-break path (first seg has
+    // args): the array root stays glued and the chain breaks at a `.`.
+    void chainWithFirstSegArgs() {
+        registry[index].firstCall(argumentOne)
+            .secondMethodWithReasonablyLongName(firstArgument, secondArg);
+    }
+
+    // Standalone (non-receiver) array access still bracket-breaks as the last resort
+    // when nothing else on the line can wrap.
+    void standaloneNonReceiver() {
+        int x = registryArrayThatIsQuiteLong[
+            computeTheIndexFromSomethingReasonablyLongHere + extraOffsetValueHere
+        ];
+    }
+
+    // Array access used as a method argument keeps its bracket-break (not a receiver).
+    void accessAsArgument() {
+        consume(
+            registryArrayThatIsQuiteLong[
+                computeTheIndexFromSomethingReasonablyLongExpr + extraOffset
+            ]
+        );
+    }
+}

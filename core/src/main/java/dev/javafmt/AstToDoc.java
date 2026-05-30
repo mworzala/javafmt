@@ -16,6 +16,16 @@ final class AstToDoc extends ASTVisitor {
     private Doc result;
     private CompilationUnit compilationUnit;
 
+    /// True while rendering the receiver spine of a `recv.method(...)` call. Consumed
+    /// by visit(ArrayAccess) to suppress its bracket-break alternative: an array access
+    /// used as a call receiver stays glued (`arr[i].m(...)`) and the call's own argument
+    /// list wraps instead of exploding the brackets into the orphan `arr[\n i\n].m(...)`.
+    /// The bracket break stays available for a standalone access (`int x = arr[longIdx];`),
+    /// the last resort when nothing else on the line can wrap. Saved/restored around the
+    /// set in visit(MethodInvocation) and cleared before an array index, so it never leaks
+    /// into siblings, arguments, or index subexpressions.
+    private boolean flatReceiver = false;
+
     public AstToDoc(String source, CommentMap comments) {
         this.source = source;
         this.comments = comments;
@@ -1870,7 +1880,10 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
         var expression = getProperty(node, MethodInvocation.EXPRESSION_PROPERTY);
         if (expression != null) {
+            boolean prevFlatReceiver = flatReceiver;
+            flatReceiver = true;
             expression.accept(this);
+            flatReceiver = prevFlatReceiver;
             parts.add(result);
             parts.add(text("."));
         }
@@ -2498,15 +2511,30 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
     @Override
     public boolean visit(ArrayAccess node) {
+        // Are we on a method call's receiver spine (`arr[i].m(...)`)? Capture it before
+        // recursing into children, which clobber the field.
+        boolean asReceiver = flatReceiver;
+
         var array = getProperty(node, ArrayAccess.ARRAY_PROPERTY);
+        // The array part continues the receiver spine, so `arr[i][j].m(...)` stays fully
+        // glued; the index is its own expression and keeps its break points.
+        flatReceiver = asReceiver;
         array.accept(this);
         var arrayDoc = result;
 
         var index = getProperty(node, ArrayAccess.INDEX_PROPERTY);
+        flatReceiver = false;
         index.accept(this);
         var indexDoc = result;
 
         var flat = concat(arrayDoc, text("["), indexDoc, text("]"));
+        if (asReceiver) {
+            // Receiver position: stay glued and let the trailing call's args wrap instead
+            // of exploding the brackets. (Mirrors isNameLikeReceiver, which already routes
+            // an array-access receiver onto the per-call path.)
+            result = flat;
+            return false;
+        }
         var breaking = concat(arrayDoc, text("["), indent(concat(softLine(), indexDoc)), softLine(),
                               text("]"));
         result = conditionalGroup(List.of(flat, breaking));

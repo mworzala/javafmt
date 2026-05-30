@@ -49,6 +49,17 @@ final class Flags {
         return stringFlag(name, null, defaultVal, usage);
     }
 
+    /// A string flag whose value is optional: `--flag` (bare) marks the flag present while
+    /// keeping `defaultVal`, `--flag=value` sets it to `value`, and omitting the flag leaves it
+    /// unset. Unlike a regular string flag, the bare form never consumes the following argument,
+    /// so `javafmt check --only-changed src/` treats `src/` as a positional argument. Use
+    /// [Value#isSet()] to tell "present (bare)" apart from "absent".
+    public Value<String> optionalStringFlag(String name, String defaultVal, String usage) {
+        FlagEntry<String> entry = (FlagEntry<String>) register(name, null, defaultVal, usage, s -> s);
+        entry.optionalValue = true;
+        return entry;
+    }
+
     public Value<Integer> intFlag(String name, String shortName, int defaultVal, String usage) {
         return register(name, shortName, defaultVal, usage, Integer::parseInt);
     }
@@ -145,6 +156,8 @@ final class Flags {
                 if (!entry.setRaw("true")) return OptionalInt.of(2);
             } else if (value != null) {
                 if (!entry.setRaw(value)) return OptionalInt.of(2);
+            } else if (entry.optionalValue) {
+                entry.set = true;
             } else {
                 i++;
                 if (i >= args.length) {
@@ -215,11 +228,16 @@ final class Flags {
 
     public static class Value<T> {
         T val;
+        boolean set;
         Value(T val) {
             this.val = val;
         }
         public T get() {
             return val;
+        }
+        /// Whether the flag was present on the command line (as opposed to using its default).
+        public boolean isSet() {
+            return set;
         }
     }
 
@@ -231,6 +249,7 @@ final class Flags {
         final Parser<T> parser;
         final PrintStream err;
         final boolean isBool;
+        boolean optionalValue;
 
         FlagEntry(String name, String shortName, T defaultVal, String usage, Parser<T> parser, PrintStream err) {
             super(defaultVal);
@@ -246,6 +265,7 @@ final class Flags {
         boolean setRaw(String raw) {
             try {
                 this.val = parser.parse(raw);
+                this.set = true;
                 return true;
             } catch (Exception e) {
                 err.println(

@@ -1745,16 +1745,47 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         elseExpr.accept(this);
         var elseDoc = result;
 
-        parts.add(indent(concat(
-                line(),
-                text("? "),
-                thenDoc,
-                line(),
-                text(": "),
-                elseDoc
-        )));
+        // Comments attached to an operand would otherwise be dropped: the operand
+        // visitors never consult the CommentMap, and no ancestor emits comments of a
+        // nested expression. The four positions below are the only ones the CommentMap
+        // can pin to this node's direct children — a comment before the condition or
+        // after the else operand falls outside the conditional's range and so attaches
+        // to an ancestor instead.
+        //
+        // Any operand comment forces the conditional to break. That keeps a trailing
+        // line comment from swallowing the `:`/operand that follows it, keeps an
+        // own-line comment from collapsing onto a neighbour's line, and makes the
+        // re-parsed attachment — and therefore the layout — stable across passes.
+        var condTrailing = comments != null ? comments.trailing(condition) : List.<Comment>of();
+        var thenLeading = comments != null ? comments.leading(thenExpr) : List.<Comment>of();
+        var thenTrailing = comments != null ? comments.trailing(thenExpr) : List.<Comment>of();
+        var elseLeading = comments != null ? comments.leading(elseExpr) : List.<Comment>of();
+        boolean hasComments = !condTrailing.isEmpty() || !thenLeading.isEmpty()
+                || !thenTrailing.isEmpty() || !elseLeading.isEmpty();
 
-        result = group(concat(parts));
+        for (var c : condTrailing) parts.add(concat(text(" "), renderComment(c)));
+
+        var body = new ArrayList<Doc>();
+        body.add(line());
+        body.add(text("? "));
+        for (var c : thenLeading) {
+            body.add(renderComment(c));
+            body.add(line());
+        }
+        body.add(thenDoc);
+        for (var c : thenTrailing) body.add(concat(text(" "), renderComment(c)));
+        body.add(line());
+        for (var c : elseLeading) {
+            body.add(renderComment(c));
+            body.add(line());
+        }
+        body.add(text(": "));
+        body.add(elseDoc);
+
+        parts.add(indent(concat(body)));
+
+        var doc = concat(parts);
+        result = hasComments ? breakGroup(doc) : group(doc);
         return false;
     }
 

@@ -1,0 +1,9 @@
+class Example {
+    int x = a ? b /* note */ : c;
+}
+---
+class Example {
+    int x = a
+        ? b /* note */
+        : c;
+}

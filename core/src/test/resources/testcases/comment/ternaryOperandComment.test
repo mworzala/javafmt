@@ -1,0 +1,29 @@
+class Example {
+    private static final int DEFAULT_MIN_PLAYTIME = ServerRuntime.getRuntime().isDevelopment()
+        ? 1 // In development, we skip min playtime entirely
+        : (int) Duration.ofMinutes(5).toMillis();
+
+    int withConditionComment = isReady() // guard
+        ? computeTheFirstReasonablyLongResultValue()
+        : computeTheSecondReasonablyLongResultValue();
+
+    int withElseLeadingComment = flag
+        ? firstReasonablyLongBranchValueHere()
+        // fall back to the default when the flag is off
+        : secondReasonablyLongBranchValueHere();
+}
+---
+class Example {
+    private static final int DEFAULT_MIN_PLAYTIME = ServerRuntime.getRuntime().isDevelopment()
+        ? 1 // In development, we skip min playtime entirely
+        : (int) Duration.ofMinutes(5).toMillis();
+
+    int withConditionComment = isReady() // guard
+        ? computeTheFirstReasonablyLongResultValue()
+        : computeTheSecondReasonablyLongResultValue();
+
+    int withElseLeadingComment = flag
+        ? firstReasonablyLongBranchValueHere()
+        // fall back to the default when the flag is off
+        : secondReasonablyLongBranchValueHere();
+}

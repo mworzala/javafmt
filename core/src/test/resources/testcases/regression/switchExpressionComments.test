@@ -1,0 +1,21 @@
+class A {
+    <T> T maybeThrowResponse(int code) {
+        return switch (code) {
+            case 200, 201, 204 -> null;
+            case 400 -> throw new RuntimeException("bad"); // client error
+            // ... more specific handlers as needed
+            default -> throw new RuntimeException("other");
+        };
+    }
+}
+---
+class A {
+    <T> T maybeThrowResponse(int code) {
+        return switch (code) {
+            case 200, 201, 204 -> null;
+            case 400 -> throw new RuntimeException("bad"); // client error
+            // ... more specific handlers as needed
+            default -> throw new RuntimeException("other");
+        };
+    }
+}

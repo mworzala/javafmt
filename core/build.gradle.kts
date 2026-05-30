@@ -50,6 +50,11 @@ val corpora = listOf(
         repo = "https://github.com/junit-team/junit-framework.git",
         tag = "r5.14.4"
     ),
+    Corpus(
+        name = "mapmaker",
+        repo = "https://github.com/hollow-cube/mapmaker.git",
+        tag = "1.9.2"
+    ),
 )
 
 val fetchTasks = corpora.map { corpus ->

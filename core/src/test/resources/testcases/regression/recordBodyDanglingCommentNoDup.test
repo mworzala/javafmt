@@ -1,0 +1,17 @@
+public record Foo(int a, int b) implements Bar {
+
+//    @Override
+//    public void write() {
+//        doStuff();
+//    }
+
+}
+---
+public record Foo(int a, int b) implements Bar {
+
+    //    @Override
+    //    public void write() {
+    //        doStuff();
+    //    }
+
+}

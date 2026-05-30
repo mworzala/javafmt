@@ -52,8 +52,8 @@ class Test {
     int d;
 
     // Array type annotations with dimension annotations
-    String[] e;
-    int[][] f;
+    String @Nullable [] e;
+    int @Nullable [] @NonNull [] f;
 
     // Wildcard annotations
     List<@Nullable ?> g;
@@ -69,7 +69,7 @@ class Test {
     <@NonNull T extends @Nullable Comparable<T>> void bounded(T value) {}
 
     // Varargs annotations
-    void varargs(String@Nullable ... args) {}
+    void varargs(String @Nullable ... args) {}
 
     // Combined
     @Nullable

@@ -664,6 +664,11 @@ final class AstToDoc extends ASTVisitor {
         parts.add(result);
 
         if (node.isVarargs()) {
+            // Annotations on the varargs dimension sit between the element type and `...`
+            // (`String @Nullable ... args`) and need a space separating them from the type.
+            if (!getProperty(node, SingleVariableDeclaration.VARARGS_ANNOTATIONS_PROPERTY).isEmpty()) {
+                parts.add(space());
+            }
             visitAnnotations(parts, node, SingleVariableDeclaration.VARARGS_ANNOTATIONS_PROPERTY, false);
             parts.add(text("..."));
         }
@@ -3410,7 +3415,13 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
         var dimensionsList = getProperty(node, ArrayType.DIMENSIONS_PROPERTY);
         for (var dim : dimensionsList) {
-            parts.add(text("[]"));
+            // A dimension carrying type annotations renders as `@Foo []` and needs a space
+            // separating it from the preceding element type or dimension (`byte @Nullable []`,
+            // `int @Nullable [] @NonNull []`); an unannotated dimension stays glued (`byte[]`,
+            // `int[][]`). Delegate to visit(Dimension) so the annotations aren't dropped.
+            if (!getProperty(dim, Dimension.ANNOTATIONS_PROPERTY).isEmpty()) parts.add(space());
+            dim.accept(this);
+            parts.add(result);
         }
 
         result = concat(parts);

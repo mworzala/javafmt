@@ -1,0 +1,33 @@
+/*
+ * Copyright 2024 the example authors.
+ * Licensed under the Example License.
+ */
+
+// a note about the package
+package com.example.app; // package trailing note
+
+// why we need this import
+import java.util.List; // import trailing note
+import java.util.Map;
+
+/** Type javadoc that must not duplicate. */
+class Example {
+    int x;
+}
+---
+/*
+ * Copyright 2024 the example authors.
+ * Licensed under the Example License.
+ */
+
+// a note about the package
+package com.example.app; // package trailing note
+
+// why we need this import
+import java.util.List; // import trailing note
+import java.util.Map;
+
+/** Type javadoc that must not duplicate. */
+class Example {
+    int x;
+}

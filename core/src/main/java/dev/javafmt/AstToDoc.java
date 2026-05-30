@@ -56,8 +56,15 @@ final class AstToDoc extends ASTVisitor {
 
         var package_ = getProperty(node, CompilationUnit.PACKAGE_PROPERTY);
         if (package_ != null) {
+            // Leading comments here are the file's license/copyright header (or any
+            // block/line comment before `package`); trailing comments sit after the `;`.
+            // Both attach to the package declaration in the CommentMap and would be
+            // dropped if not emitted — the package's own javadoc lives inside its range
+            // and is rendered separately by visit(PackageDeclaration).
+            emitLeadingComments(parts, package_);
             package_.accept(this);
             parts.add(result);
+            emitTrailingComments(parts, package_);
             parts.add(hardLine());
             parts.add(hardLine());
         }
@@ -65,8 +72,10 @@ final class AstToDoc extends ASTVisitor {
         var imports = getProperty(node, CompilationUnit.IMPORTS_PROPERTY);
         if (!imports.isEmpty()) {
             for (var imp : imports) {
+                emitLeadingComments(parts, imp);
                 imp.accept(this);
                 parts.add(result);
+                emitTrailingComments(parts, imp);
                 parts.add(hardLine());
             }
             parts.add(hardLine());
@@ -75,31 +84,12 @@ final class AstToDoc extends ASTVisitor {
         var types = getProperty(node, CompilationUnit.TYPES_PROPERTY);
         for (int i = 0; i < types.size(); i++) {
             var type = types.get(i);
-            var leading = comments != null ? comments.leading(type) : List.<Comment>of();
-
-            if (!leading.isEmpty()) {
-                ASTNode prev = null;
-                for (var c : leading) {
-                    if (prev != null && blankLinesBetween(prev, c) > 0) parts.add(hardLine());
-                    parts.add(renderComment(c));
-                    parts.add(hardLine());
-                    prev = c;
-                }
-                if (blankLinesBetween(leading.getLast(), type) > 0) parts.add(hardLine());
-            }
+            emitLeadingComments(parts, type);
 
             type.accept(this);
             parts.add(result);
 
-            var trailing = comments != null ? comments.trailing(type) : List.<Comment>of();
-            if (!trailing.isEmpty()) {
-                var prevDoc = parts.removeLast();
-                Doc combined = prevDoc;
-                for (var tc : trailing) {
-                    combined = concat(combined, text(" "), renderComment(tc));
-                }
-                parts.add(combined);
-            }
+            emitTrailingComments(parts, type);
 
             boolean lastType = (i == types.size() - 1);
             if (lastType && comments != null) {
@@ -126,8 +116,50 @@ final class AstToDoc extends ASTVisitor {
             }
         }
 
+        // A file with no type declarations (e.g. a bare license header) still carries
+        // its comments as dangling on the compilation unit. The types loop above never
+        // ran, so emit them here — otherwise they'd be silently dropped.
+        if (types.isEmpty() && comments != null) {
+            ASTNode prev = null;
+            for (var dc : comments.dangling(node)) {
+                if (prev != null && blankLinesBetween(prev, dc) > 0) parts.add(hardLine());
+                parts.add(renderComment(dc));
+                parts.add(hardLine());
+                prev = dc;
+            }
+        }
+
         result = concat(parts);
         return false;
+    }
+
+    /// Emit the leading comments attached to a top-level compilation-unit child (the
+    /// package declaration, an import, or a type), each on its own line, preserving
+    /// blank lines between consecutive comments and before the node itself.
+    private void emitLeadingComments(List<Doc> parts, ASTNode node) {
+        var leading = comments != null ? comments.leading(node) : List.<Comment>of();
+        if (leading.isEmpty()) return;
+        ASTNode prev = null;
+        for (var c : leading) {
+            if (prev != null && blankLinesBetween(prev, c) > 0) parts.add(hardLine());
+            parts.add(renderComment(c));
+            parts.add(hardLine());
+            prev = c;
+        }
+        if (blankLinesBetween(leading.getLast(), node) > 0) parts.add(hardLine());
+    }
+
+    /// Append the trailing comments of a top-level compilation-unit child to the doc
+    /// just emitted for that node (separated by a space), so `import a.B; // note`
+    /// keeps its note. Assumes the node's own doc is the last element of `parts`.
+    private void emitTrailingComments(List<Doc> parts, ASTNode node) {
+        var trailing = comments != null ? comments.trailing(node) : List.<Comment>of();
+        if (trailing.isEmpty()) return;
+        Doc combined = parts.removeLast();
+        for (var tc : trailing) {
+            combined = concat(combined, text(" "), renderComment(tc));
+        }
+        parts.add(combined);
     }
 
     @Override

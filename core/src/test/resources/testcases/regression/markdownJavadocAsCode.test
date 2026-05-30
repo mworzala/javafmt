@@ -1,0 +1,13 @@
+class A {
+    void f() {
+        doStuff();
+        ////            oldCode.run();
+    }
+}
+---
+class A {
+    void f() {
+        doStuff();
+        ////            oldCode.run();
+    }
+}

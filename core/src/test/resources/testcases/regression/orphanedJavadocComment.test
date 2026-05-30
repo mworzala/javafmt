@@ -1,0 +1,25 @@
+public final class MapHooks {
+    private MapHooks() {}
+
+    /**
+     * Orphaned javadoc, not attached to a declaration.
+     */
+
+    /**
+     * Attached to the field below.
+     */
+    public static final int X = 1;
+}
+---
+public final class MapHooks {
+    private MapHooks() {}
+
+    /**
+     * Orphaned javadoc, not attached to a declaration.
+     */
+
+    /**
+     * Attached to the field below.
+     */
+    public static final int X = 1;
+}

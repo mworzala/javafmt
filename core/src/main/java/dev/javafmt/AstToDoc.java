@@ -3898,9 +3898,15 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
     }
 
     private Doc renderBlockComment(BlockComment bc) {
-        int startPos = bc.getStartPosition();
-        var text = source.substring(startPos, startPos + bc.getLength());
-        // Compute column of /* to strip that indentation from subsequent lines
+        return renderRawComment(bc.getStartPosition(), bc.getLength());
+    }
+
+    /// Render a multi-line comment's source verbatim, stripping the comment's own start
+    /// column from each continuation line so it re-indents to the new column. Shared by
+    /// block comments and out-of-position Javadoc comments.
+    private Doc renderRawComment(int startPos, int length) {
+        var text = source.substring(startPos, startPos + length);
+        // Compute column of the comment start to strip that indentation from subsequent lines
         int col = 0;
         for (int i = startPos - 1; i >= 0 && source.charAt(i) != '\n'; i--) col++;
         var parts = new ArrayList<Doc>();
@@ -3913,6 +3919,12 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
     private Doc renderComment(Comment comment) {
         if (comment instanceof LineComment lc) return renderLineComment(lc);
         if (comment instanceof BlockComment bc) return renderBlockComment(bc);
+        // A Javadoc comment (`/** */` or markdown `///`) normally attaches to a declaration
+        // and is rendered by visitJavadoc. One that isn't in a doc position — e.g. a stray
+        // doc comment between two declarations, or commented-out `///` code in a method — is
+        // classified as an ordinary leading/trailing/dangling comment and lands here. Render
+        // its source verbatim with the same re-indentation as a block comment.
+        if (comment instanceof Javadoc jd) return renderRawComment(jd.getStartPosition(), jd.getLength());
         throw new IllegalArgumentException("Unexpected comment type: " + comment.getClass());
     }
 

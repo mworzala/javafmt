@@ -23,7 +23,7 @@
     <change-notes>
         <![CDATA[
       <ul>
-        <li>Improved compatibility layer for loading gradle plugin formatter version</li>
+        <li>Support for fragment (partial/range restricted) formatting</li>
       </ul>
     ]]>
     </change-notes>

@@ -12,7 +12,8 @@ import java.util.EnumSet;
 import java.util.Set;
 
 public class JavaFmtFormattingService extends AsyncDocumentFormattingService {
-    private static final Set<Feature> FEATURES = EnumSet.noneOf(Feature.class);
+    // We can format fragments, although it still parses the entire file so may not be perfect and is not faster.
+    private static final Set<Feature> FEATURES = EnumSet.of(Feature.FORMAT_FRAGMENTS);
 
     @Override
     protected @NotNull @NlsSafe String getName() {
@@ -43,9 +44,11 @@ public class JavaFmtFormattingService extends AsyncDocumentFormattingService {
                 var project = request.getContext().getProject();
                 var paths = JavaFmtProjectSettings.getInstance(project).getFormatterClasspath();
                 var loader = JavaFmtFormatterLoader.getInstance(project);
+                var source = request.getDocumentText();
                 try {
-                    var formatted = loader.format(paths, request.getDocumentText());
-                    request.onTextReady(formatted);
+                    var formatted = loader.format(paths, source);
+                    var result = RangeRestrictedFormat.restrict(source, formatted, request.getFormattingRanges());
+                    request.onTextReady(result);
                 } catch (JavaFmtFormatterLoader.FormatException e) {
                     request.onError("javafmt", e.getMessage());
                 }

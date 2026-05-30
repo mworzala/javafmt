@@ -1,0 +1,31 @@
+class C {
+    void m(List<String> xs) {
+        var _ = compute();
+        for (var _ : xs) {
+            count++;
+        }
+        try (var _ = open()) {
+            run();
+        } catch (Exception _) {
+            handle();
+        }
+        xs.forEach(_ -> count++);
+        map((_, v) -> v);
+    }
+}
+---
+class C {
+    void m(List<String> xs) {
+        var _ = compute();
+        for (var _ : xs) {
+            count++;
+        }
+        try (var _ = open()) {
+            run();
+        } catch (Exception _) {
+            handle();
+        }
+        xs.forEach(_ -> count++);
+        map((_, v) -> v);
+    }
+}

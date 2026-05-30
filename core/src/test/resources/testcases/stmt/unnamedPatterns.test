@@ -1,0 +1,21 @@
+class C {
+    String describe(Object obj) {
+        return switch (obj) {
+            case Point(int _, var _) -> "point";
+            case Point(_, _) -> "any point";
+            case Rect(Point(var _, var _), _) -> "rect";
+            default -> "other";
+        };
+    }
+}
+---
+class C {
+    String describe(Object obj) {
+        return switch (obj) {
+            case Point(int _, var _) -> "point";
+            case Point(_, _) -> "any point";
+            case Rect(Point(var _, var _), _) -> "rect";
+            default -> "other";
+        };
+    }
+}

@@ -1,0 +1,32 @@
+enum BackpackItem {
+    STARDUST(MATERIAL, Rarity.LEGENDARY),
+
+    // Dyes
+
+    ;
+
+    private final int id; // the id
+
+    // a method
+    void foo() {}
+
+//    @NotNull
+//    void getRecipePlaceholder(int amount) {
+//    }
+}
+---
+enum BackpackItem {
+    STARDUST(MATERIAL, Rarity.LEGENDARY),
+
+    // Dyes
+    ;
+
+    private final int id; // the id
+    // a method
+
+    void foo() {}
+
+    //    @NotNull
+    //    void getRecipePlaceholder(int amount) {
+    //    }
+}

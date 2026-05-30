@@ -415,10 +415,15 @@ final class AstToDoc extends ASTVisitor {
         parts.add(text("{"));
 
         var innerParts = new ArrayList<Doc>();
+        ASTNode prevItem = null;
+
+        // Comments after the last constant but before the `;` separator attach as leading
+        // comments of the first body member (or, with no body, as dangling on the enum) yet
+        // sit above the `;` in source — render them in the constant section so they stay there.
+        var preSemi = enumPreSemicolonComments(node, constants, body);
 
         if (!constants.isEmpty()) {
             innerParts.add(hardLine());
-            ASTNode prevItem = null;
             for (var constant : constants) {
                 // Own-line comments before the constant attach as its leading comments.
                 var leading = comments != null ? comments.leading(constant) : List.<Comment>of();
@@ -451,6 +456,14 @@ final class AstToDoc extends ASTVisitor {
                 innerParts.add(constantDoc);
             }
 
+            // Comments between the last constant and the `;` (e.g. `// ADD TAGS HERE`).
+            for (var c : preSemi) {
+                innerParts.add(hardLine());
+                if (prevItem != null && blankLinesBetween(prevItem, c) > 0) innerParts.add(hardLine());
+                innerParts.add(renderComment(c));
+                prevItem = c;
+            }
+
             // A body after the constants is separated by a `;` on its own line.
             if (!body.isEmpty()) {
                 innerParts.add(hardLine());
@@ -463,12 +476,36 @@ final class AstToDoc extends ASTVisitor {
                 innerParts.add(hardLine());
             }
             for (int i = 0; i < body.size(); i++) {
+                var member = body.get(i);
+                // Own-line comments before a member attach as leading comments (skipping any
+                // already rendered above the `;`).
+                for (var lc : (comments != null ? comments.leading(member) : List.<Comment>of())) {
+                    if (preSemi.contains(lc)) continue;
+                    innerParts.add(hardLine());
+                    innerParts.add(renderComment(lc));
+                }
                 innerParts.add(hardLine());
-                if (i > 0 && blankLinesBetween(body.get(i - 1), body.get(i)) > 0) {
+                if (i > 0 && blankLinesBetween(body.get(i - 1), member) > 0) {
                     innerParts.add(hardLine());
                 }
-                body.get(i).accept(this);
-                innerParts.add(result);
+                member.accept(this);
+                var memberDoc = result;
+                for (var tc : (comments != null ? comments.trailing(member) : List.<Comment>of())) {
+                    memberDoc = concat(memberDoc, text(" "), renderComment(tc));
+                }
+                innerParts.add(memberDoc);
+                prevItem = member;
+            }
+        }
+
+        // Dangling comments at the end of the body — commented-out code before the `}`.
+        if (comments != null) {
+            for (var dc : comments.dangling(node)) {
+                if (preSemi.contains(dc)) continue;
+                innerParts.add(hardLine());
+                if (prevItem != null && blankLinesBetween(prevItem, dc) > 0) innerParts.add(hardLine());
+                innerParts.add(renderComment(dc));
+                prevItem = dc;
             }
         }
 
@@ -478,6 +515,24 @@ final class AstToDoc extends ASTVisitor {
 
         result = concat(parts);
         return false;
+    }
+
+    /// Comments sitting between the last enum constant and the `;` separator. They attach as
+    /// leading comments of the first body member (or, with an empty body, as dangling on the
+    /// enum), but in source they're above the `;`, so they're rendered in the constant section.
+    private List<Comment> enumPreSemicolonComments(EnumDeclaration node, List<ASTNode> constants,
+            List<ASTNode> body) {
+        if (comments == null || constants.isEmpty()) return List.of();
+        var lastConstant = constants.get(constants.size() - 1);
+        int lastEnd = lastConstant.getStartPosition() + lastConstant.getLength();
+        int semiPos = source.indexOf(';', lastEnd);
+        if (semiPos < 0) return List.of();
+        var candidates = body.isEmpty() ? comments.dangling(node) : comments.leading(body.get(0));
+        var res = new ArrayList<Comment>();
+        for (var c : candidates) {
+            if (c.getStartPosition() < semiPos) res.add(c);
+        }
+        return res;
     }
 
     @Override

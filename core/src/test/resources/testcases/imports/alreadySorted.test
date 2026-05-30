@@ -1,0 +1,17 @@
+import com.acme.Widget;
+
+import javax.annotation.Nullable;
+import java.util.List;
+
+import static java.lang.Math.PI;
+
+class C {}
+---
+import com.acme.Widget;
+
+import javax.annotation.Nullable;
+import java.util.List;
+
+import static java.lang.Math.PI;
+
+class C {}

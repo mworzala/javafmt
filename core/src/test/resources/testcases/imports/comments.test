@@ -1,0 +1,12 @@
+import java.util.List; // keep me
+import com.acme.Widget;
+import java.util.ArrayList;
+
+class C {}
+---
+import com.acme.Widget;
+
+import java.util.ArrayList;
+import java.util.List; // keep me
+
+class C {}

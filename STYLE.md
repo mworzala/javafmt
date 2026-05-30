@@ -63,10 +63,12 @@ Exactly one blank line between each block.
 ```java
 package com.example.foo;
 
+import a.b.C;
+
 import java.util.List;
 import java.util.Map;
+
 import static java.lang.Math.PI;
-import a.b.C;
 
 public class Foo {
 
@@ -77,8 +79,14 @@ public class Foo {
 }
 ```
 
-**Imports are kept in the order you wrote them.** javafmt does not currently sort or reorganize imports. 
-(This may change in a future version.)
+**Imports are sorted .** Three blocks, separated by
+a single blank line, each sorted alphabetically by fully-qualified name:
+
+1. all other imports
+2. `javax.*` then `java.*` (no blank line between)
+3. `static` imports
+
+Imports are only reordered, never added, removed, deduplicated or changed to/from * imports.
 
 ---
 

@@ -5,14 +5,19 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 final class MainTest {
 
@@ -187,4 +192,159 @@ final class MainTest {
         assertTrue(r.stderr().contains("javafmt"), r.stderr());
         assertTrue(r.stderr().contains("--line-length"), r.stderr());
     }
+
+    @Test
+    void onlyChangedReportsModifiedAndSkipsUnmodifiedMisformatted(@TempDir Path repo) throws Exception {
+        assumeTrue(gitAvailable(), "git not available");
+        initRepo(repo);
+        var changed = repo.resolve("Changed.java");
+        var untouched = repo.resolve("Untouched.java");
+        Files.writeString(changed, FORMATTED);
+        Files.writeString(untouched, MISFORMATTED);
+        git(repo, "add", ".");
+        git(repo, "commit", "-q", "-m", "initial");
+
+        // Only Changed.java is modified relative to HEAD; Untouched.java stays misformatted but clean.
+        Files.writeString(changed, MISFORMATTED);
+
+        var r = invoke("", "check", "--only-changed", repo.toString());
+
+        assertEquals(1, r.code(), r.stderr());
+        assertTrue(r.stdout().contains("Changed.java"), r.stdout());
+        assertFalse(r.stdout().contains("Untouched.java"), r.stdout());
+    }
+
+    @Test
+    void onlyChangedWithCleanTreeFormatsNothing(@TempDir Path repo) throws Exception {
+        assumeTrue(gitAvailable(), "git not available");
+        initRepo(repo);
+        var file = repo.resolve("M.java");
+        Files.writeString(file, MISFORMATTED);
+        git(repo, "add", ".");
+        git(repo, "commit", "-q", "-m", "initial");
+
+        // Misformatted, but committed and unchanged: --only-changed has nothing to do.
+        var r = invoke("", "check", "--only-changed", repo.toString());
+
+        assertEquals(0, r.code(), r.stderr());
+        assertEquals("", r.stdout());
+    }
+
+    @Test
+    void onlyChangedAgainstRefComparesToThatRef(@TempDir Path repo) throws Exception {
+        assumeTrue(gitAvailable(), "git not available");
+        initRepo(repo);
+        var base = repo.resolve("Base.java");
+        Files.writeString(base, MISFORMATTED);
+        git(repo, "add", ".");
+        git(repo, "commit", "-q", "-m", "base");
+
+        var added = repo.resolve("Added.java");
+        Files.writeString(added, MISFORMATTED);
+        git(repo, "add", ".");
+        git(repo, "commit", "-q", "-m", "added");
+
+        // Both files are misformatted, but only Added.java differs from the previous commit.
+        var r = invoke("", "check", "--only-changed=HEAD~1", repo.toString());
+
+        assertEquals(1, r.code(), r.stderr());
+        assertTrue(r.stdout().contains("Added.java"), r.stdout());
+        assertFalse(r.stdout().contains("Base.java"), r.stdout());
+    }
+
+    @Test
+    void gitignoreRespectedByDefaultWhenWalkingDirectory(@TempDir Path repo) throws Exception {
+        assumeTrue(gitAvailable(), "git not available");
+        initRepo(repo);
+        Files.writeString(repo.resolve(".gitignore"), "Ignored.java\n");
+        Files.writeString(repo.resolve("Tracked.java"), MISFORMATTED);
+        Files.writeString(repo.resolve("Ignored.java"), MISFORMATTED);
+
+        // No flag: .gitignore is honored automatically when discovering files by walking.
+        var r = invoke("", "check", repo.toString());
+
+        assertEquals(1, r.code(), r.stderr());
+        assertTrue(r.stdout().contains("Tracked.java"), r.stdout());
+        assertFalse(r.stdout().contains("Ignored.java"), r.stdout());
+    }
+
+    @Test
+    void explicitlyNamedGitignoredFileIsStillFormatted(@TempDir Path repo) throws Exception {
+        assumeTrue(gitAvailable(), "git not available");
+        initRepo(repo);
+        Files.writeString(repo.resolve(".gitignore"), "Ignored.java\n");
+        var ignored = repo.resolve("Ignored.java");
+        Files.writeString(ignored, MISFORMATTED);
+
+        // Naming the file explicitly overrides .gitignore.
+        var r = invoke("", "check", ignored.toString());
+
+        assertEquals(1, r.code(), r.stderr());
+        assertTrue(r.stdout().contains("Ignored.java"), r.stdout());
+    }
+
+    @Test
+    void allFilesGitignoredFormatsNothing(@TempDir Path repo) throws Exception {
+        assumeTrue(gitAvailable(), "git not available");
+        initRepo(repo);
+        Files.writeString(repo.resolve(".gitignore"), "*.java\n");
+        Files.writeString(repo.resolve("Ignored.java"), MISFORMATTED);
+
+        // Every walked file is ignored: nothing to do, which is success rather than an error.
+        var r = invoke("", "check", repo.toString());
+
+        assertEquals(0, r.code(), r.stderr());
+        assertEquals("", r.stdout());
+    }
+
+    @Test
+    void directoryWalkOutsideGitRepoStillFormats(@TempDir Path tmp) throws Exception {
+        // gitignore handling degrades silently outside a repo: walking still formats everything.
+        Files.writeString(tmp.resolve("E.java"), MISFORMATTED);
+
+        var r = invoke("", "check", tmp.toString());
+
+        assertEquals(1, r.code(), r.stderr());
+        assertTrue(r.stdout().contains("E.java"), r.stdout());
+    }
+
+    @Test
+    void onlyChangedOutsideRepoExitsTwo(@TempDir Path tmp) throws Exception {
+        assumeTrue(gitAvailable(), "git not available");
+        var file = tmp.resolve("E.java");
+        Files.writeString(file, MISFORMATTED);
+
+        var r = invoke("", "check", "--only-changed", file.toString());
+
+        assertEquals(2, r.code());
+        assertTrue(r.stderr().contains("git repository"), r.stderr());
+    }
+
+    private static boolean gitAvailable() {
+        try {
+            return new ProcessBuilder("git", "--version")
+                .redirectErrorStream(true)
+                .start()
+                .waitFor() == 0;
+        } catch (IOException | InterruptedException e) {
+            return false;
+        }
+    }
+
+    private static void initRepo(Path dir) throws Exception {
+        git(dir, "init", "-q");
+        git(dir, "config", "user.email", "test@example.com");
+        git(dir, "config", "user.name", "javafmt test");
+        git(dir, "config", "commit.gpgsign", "false");
+    }
+
+    private static void git(Path dir, String... args) throws Exception {
+        var cmd = new ArrayList<String>();
+        cmd.add("git");
+        cmd.addAll(List.of(args));
+        var proc = new ProcessBuilder(cmd).directory(dir.toFile()).redirectErrorStream(true).start();
+        var output = new String(proc.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        assertEquals(0, proc.waitFor(), "git " + String.join(" ", args) + " failed:\n" + output);
+    }
+
 }

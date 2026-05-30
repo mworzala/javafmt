@@ -305,20 +305,31 @@ final class AstToDoc extends ASTVisitor {
         if (components.isEmpty()) {
             parts.add(text("()"));
         } else {
+            // The header formats like a method's parameter list, including comments: a
+            // comment after `(` attaches to the record name, one before `)` is dangling,
+            // and a component carries its own comments (`int a, // note`).
+            var afterOpen = comments != null ? comments.trailing(node.getName()) : List.<Comment>of();
+            var beforeClose = comments != null ? comments.dangling(node) : List.<Comment>of();
+
             var componentDocs = new ArrayList<Doc>();
             for (var component : components) {
                 component.accept(this);
                 componentDocs.add(result);
             }
-            parts.add(group(concat(
-                    text("("),
-                    indent(concat(
-                            softLine(),
-                            join(concat(text(","), line()), componentDocs)
-                    )),
-                    softLine(),
-                    text(")")
-            )));
+
+            if (!afterOpen.isEmpty() || !beforeClose.isEmpty() || argumentsHaveComments(components)) {
+                parts.add(argsWithComments(components, componentDocs, afterOpen, beforeClose));
+            } else {
+                parts.add(group(concat(
+                        text("("),
+                        indent(concat(
+                                softLine(),
+                                join(concat(text(","), line()), componentDocs)
+                        )),
+                        softLine(),
+                        text(")")
+                )));
+            }
         }
 
         parts.add(space());

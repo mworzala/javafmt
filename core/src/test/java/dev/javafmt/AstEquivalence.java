@@ -3,11 +3,15 @@ package dev.javafmt;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ChildListPropertyDescriptor;
 import org.eclipse.jdt.core.dom.ChildPropertyDescriptor;
+import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.ImportDeclaration;
 import org.eclipse.jdt.core.dom.Javadoc;
 import org.eclipse.jdt.core.dom.LambdaExpression;
 import org.eclipse.jdt.core.dom.SimplePropertyDescriptor;
 import org.eclipse.jdt.core.dom.StructuralPropertyDescriptor;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
@@ -63,11 +67,27 @@ final class AstEquivalence {
                     throw new Mismatch(childPath,
                             "list size differs (" + al.size() + " vs " + bl.size() + ")");
                 }
+                // The formatter reorders imports into a fixed layout, so the input and
+                // reparsed-output lists differ in order while preserving meaning. Compare
+                // them as a multiset: sort copies on a canonical import key before walking.
+                if (a instanceof CompilationUnit
+                        && lp.getId().equals(CompilationUnit.IMPORTS_PROPERTY.getId())) {
+                    al = new ArrayList<>(al);
+                    bl = new ArrayList<>(bl);
+                    al.sort(Comparator.comparing(AstEquivalence::importKey));
+                    bl.sort(Comparator.comparing(AstEquivalence::importKey));
+                }
                 for (int i = 0; i < al.size(); i++) {
                     compare(al.get(i), bl.get(i), childPath + "[" + i + "]");
                 }
             }
         }
+    }
+
+    private static String importKey(ASTNode node) {
+        var imp = (ImportDeclaration) node;
+        var fqn = imp.getName().getFullyQualifiedName();
+        return (imp.isStatic() ? "s:" : "") + fqn + (imp.isOnDemand() ? ".*" : "");
     }
 
     private AstEquivalence() {}

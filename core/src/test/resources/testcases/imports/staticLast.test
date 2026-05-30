@@ -1,0 +1,14 @@
+import static java.util.Collections.sort;
+import java.util.List;
+import static java.util.Arrays.asList;
+import java.util.ArrayList;
+
+class C {}
+---
+import java.util.ArrayList;
+import java.util.List;
+
+import static java.util.Arrays.asList;
+import static java.util.Collections.sort;
+
+class C {}

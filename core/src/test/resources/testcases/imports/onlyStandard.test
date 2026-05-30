@@ -1,0 +1,13 @@
+import java.util.List;
+import javax.swing.JFrame;
+import java.io.IOException;
+import javax.annotation.Nullable;
+
+class C {}
+---
+import javax.annotation.Nullable;
+import javax.swing.JFrame;
+import java.io.IOException;
+import java.util.List;
+
+class C {}

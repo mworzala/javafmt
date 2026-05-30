@@ -1,0 +1,14 @@
+import java.util.List;
+import javafx.scene.Node;
+import javax.swing.JFrame;
+import javautil.Thing;
+
+class C {}
+---
+import javafx.scene.Node;
+import javautil.Thing;
+
+import javax.swing.JFrame;
+import java.util.List;
+
+class C {}

@@ -71,12 +71,18 @@ final class AstToDoc extends ASTVisitor {
 
         var imports = getProperty(node, CompilationUnit.IMPORTS_PROPERTY);
         if (!imports.isEmpty()) {
-            for (var imp : imports) {
-                emitLeadingComments(parts, imp);
-                imp.accept(this);
-                parts.add(result);
-                emitTrailingComments(parts, imp);
-                parts.add(hardLine());
+            var importDecls = new ArrayList<ImportDeclaration>(imports.size());
+            for (var imp : imports) importDecls.add((ImportDeclaration) imp);
+            var blocks = ImportOrderer.group(importDecls);
+            for (int b = 0; b < blocks.size(); b++) {
+                if (b > 0) parts.add(hardLine()); // blank line between visual blocks
+                for (var imp : blocks.get(b)) {
+                    emitLeadingComments(parts, imp);
+                    imp.accept(this);
+                    parts.add(result);
+                    emitTrailingComments(parts, imp);
+                    parts.add(hardLine());
+                }
             }
             parts.add(hardLine());
         }

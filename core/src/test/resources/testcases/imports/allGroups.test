@@ -1,0 +1,23 @@
+import static org.junit.Assert.assertEquals;
+import java.util.Map;
+import org.example.Foo;
+import javax.swing.JFrame;
+import java.util.List;
+import com.acme.Widget;
+import static java.lang.Math.PI;
+import javax.annotation.Nullable;
+
+public class App {}
+---
+import com.acme.Widget;
+import org.example.Foo;
+
+import javax.annotation.Nullable;
+import javax.swing.JFrame;
+import java.util.List;
+import java.util.Map;
+
+import static java.lang.Math.PI;
+import static org.junit.Assert.assertEquals;
+
+public class App {}

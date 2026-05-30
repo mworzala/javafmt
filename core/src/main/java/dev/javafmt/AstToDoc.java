@@ -3222,7 +3222,18 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
         if (!arrowComments.isEmpty()) {
             Doc arrow = concat(paramListDoc, text(" ->"));
-            for (var c : arrowComments) arrow = concat(arrow, text(" "), renderComment(c));
+            boolean lastWasLine = false;
+            for (var c : arrowComments) {
+                // A line comment ends its line, so a following comment can't share it —
+                // put it on its own indented line instead of merging the two (which would
+                // comment the second one out).
+                if (lastWasLine) {
+                    arrow = concat(arrow, indent(concat(hardLine(), renderComment(c))));
+                } else {
+                    arrow = concat(arrow, text(" "), renderComment(c));
+                }
+                lastWasLine = c instanceof LineComment;
+            }
             parts.add(arrow);
             parts.add(indent(concat(hardLine(), bodyDoc)));
             result = concat(parts);

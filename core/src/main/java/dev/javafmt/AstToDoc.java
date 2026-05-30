@@ -739,9 +739,6 @@ final class AstToDoc extends ASTVisitor {
             atLineStart = false;
         }
 
-        // todo CONSTRUCTOR_PROPERTY
-        // todo COMPACT_CONSTRUCTOR_PROPERTY
-
         if (!node.isConstructor()) {
             var returnType = getProperty(node, MethodDeclaration.RETURN_TYPE2_PROPERTY);
             // Own-line comments between the modifiers and the return type (e.g. a
@@ -761,32 +758,36 @@ final class AstToDoc extends ASTVisitor {
         // todo EXTRA_DIMENSIONS_PROPERTY
         // todo EXTRA_DIMENSIONS2_PROPERTY
 
-        // The parameter list formats like a call's argument list, including comments: a
-        // comment after `(` attaches to the method name, one before `)` (an abstract
-        // method) is dangling, and a parameter carries its own comments (`m(int a, //\n b)`).
-        var params = getProperty(node, MethodDeclaration.PARAMETERS_PROPERTY);
-        var afterOpen = comments != null ? comments.trailing(node.getName()) : List.<Comment>of();
-        var beforeClose = comments != null ? comments.dangling(node) : List.<Comment>of();
-        if (params.isEmpty()) {
-            formatArguments(parts, List.of(), afterOpen, beforeClose);
-        } else {
-            var paramDocs = new ArrayList<Doc>();
-            for (var param : params) {
-                param.accept(this);
-                paramDocs.add(result);
-            }
-            if (!afterOpen.isEmpty() || !beforeClose.isEmpty() || argumentsHaveComments(params)) {
-                parts.add(argsWithComments(params, paramDocs, afterOpen, beforeClose));
+        // A compact canonical constructor (`Range { ... }`) has no parameter list at all —
+        // its parameters are implied by the record header — so skip the parens entirely.
+        if (!node.isCompactConstructor()) {
+            // The parameter list formats like a call's argument list, including comments: a
+            // comment after `(` attaches to the method name, one before `)` (an abstract
+            // method) is dangling, and a parameter carries its own comments (`m(int a, //\n b)`).
+            var params = getProperty(node, MethodDeclaration.PARAMETERS_PROPERTY);
+            var afterOpen = comments != null ? comments.trailing(node.getName()) : List.<Comment>of();
+            var beforeClose = comments != null ? comments.dangling(node) : List.<Comment>of();
+            if (params.isEmpty()) {
+                formatArguments(parts, List.of(), afterOpen, beforeClose);
             } else {
-                parts.add(group(concat(
-                        text("("),
-                        indent(concat(
-                                softLine(),
-                                join(concat(text(","), line()), paramDocs)
-                        )),
-                        softLine(),
-                        text(")")
-                )));
+                var paramDocs = new ArrayList<Doc>();
+                for (var param : params) {
+                    param.accept(this);
+                    paramDocs.add(result);
+                }
+                if (!afterOpen.isEmpty() || !beforeClose.isEmpty() || argumentsHaveComments(params)) {
+                    parts.add(argsWithComments(params, paramDocs, afterOpen, beforeClose));
+                } else {
+                    parts.add(group(concat(
+                            text("("),
+                            indent(concat(
+                                    softLine(),
+                                    join(concat(text(","), line()), paramDocs)
+                            )),
+                            softLine(),
+                            text(")")
+                    )));
+                }
             }
         }
 

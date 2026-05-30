@@ -22,7 +22,7 @@ record Example(
     int aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaad
 ) {
 
-    public Example() {
+    public Example {
         a = a.toLowerCase();
     }
 

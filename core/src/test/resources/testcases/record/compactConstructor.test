@@ -1,0 +1,11 @@
+record Range(int lo, int hi) {
+    public Range    {
+        if (lo > hi) throw new IllegalArgumentException("bad");
+    }
+}
+---
+record Range(int lo, int hi) {
+    public Range {
+        if (lo > hi) throw new IllegalArgumentException("bad");
+    }
+}

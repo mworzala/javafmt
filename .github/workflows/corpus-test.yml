@@ -2,13 +2,48 @@ name: Corpus Test
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: corpus-test-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # The corpus AST-equivalence test only exercises the core formatter, so it's
+  # wasted work on a PR that doesn't touch core/. This cheap job decides whether
+  # the heavy corpus job below runs or is skipped. A manual dispatch always runs.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      core: ${{ steps.filter.outputs.core }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            echo "core=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$BASE" "$HEAD" | grep -qE '^core/'; then
+            echo "core=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "core=false" >> "$GITHUB_OUTPUT"
+          fi
+
   corpus:
+    needs: changes
+    if: ${{ needs.changes.outputs.core == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-ci-runner
+        with:
+          cache-intellij: false
 
       - run: ./gradlew :core:corpusTest
 

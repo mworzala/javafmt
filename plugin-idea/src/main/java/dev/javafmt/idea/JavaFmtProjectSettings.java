@@ -12,8 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 @State(
-        name = "BlackProjectSettings",
-        storages = @Storage("black-formatter.xml")
+        name = "JavaFmtProjectSettings",
+        storages = @Storage("javafmt-formatter.xml")
 )
 @Service(Service.Level.PROJECT)
 public final class JavaFmtProjectSettings implements PersistentStateComponent<JavaFmtProjectSettings.State> {

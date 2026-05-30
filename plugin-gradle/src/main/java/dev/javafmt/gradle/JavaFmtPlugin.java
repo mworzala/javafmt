@@ -30,7 +30,7 @@ public class JavaFmtPlugin implements Plugin<Project> {
 
         project.afterEvaluate(p -> {
             if (!p.getPlugins().hasPlugin(JavaPlugin.class)) {
-                project.getLogger().warn("black: java plugin not applied");
+                project.getLogger().warn("javafmt: java plugin not applied");
             }
         });
     }

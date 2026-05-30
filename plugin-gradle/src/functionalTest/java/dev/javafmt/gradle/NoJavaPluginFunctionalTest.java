@@ -20,7 +20,7 @@ class NoJavaPluginFunctionalTest extends FunctionalTestSupport {
 
         var result = runner("help").build();
 
-        assertTrue(result.getOutput().contains("black: java plugin not applied"),
+        assertTrue(result.getOutput().contains("javafmt: java plugin not applied"),
                 "expected warning in output; got:\n" + result.getOutput());
     }
 

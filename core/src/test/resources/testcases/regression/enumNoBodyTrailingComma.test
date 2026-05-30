@@ -1,0 +1,15 @@
+enum Direction {
+    NORTH,
+    // cardinal east
+    EAST,
+    SOUTH,
+    WEST
+}
+---
+enum Direction {
+    NORTH,
+    // cardinal east
+    EAST,
+    SOUTH,
+    WEST,
+}

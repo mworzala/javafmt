@@ -56,7 +56,7 @@ non-sealed class ImplB implements SealedInterface {}
 enum WithInterface implements Comparable<WithInterface> {
     A,
     B,
-    C
+    C,
 }
 
 record WithImpl(int x, int y) implements Serializable, Comparable<WithImpl> {}

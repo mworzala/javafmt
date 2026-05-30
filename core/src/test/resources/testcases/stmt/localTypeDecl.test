@@ -27,7 +27,7 @@ void example() {
     enum LocalEnum {
         A,
         B,
-        C
+        C,
     }
     record LocalRecord(int x, int y) {}
 }

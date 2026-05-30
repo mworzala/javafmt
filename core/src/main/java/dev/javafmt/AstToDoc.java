@@ -362,21 +362,43 @@ final class AstToDoc extends ASTVisitor {
 
         if (!constants.isEmpty()) {
             innerParts.add(hardLine());
-            for (int i = 0; i < constants.size(); i++) {
-                if (i > 0) {
-                    innerParts.add(hardLine());
-                    if (blankLinesBetween(constants.get(i - 1), constants.get(i)) > 0) {
+            ASTNode prevItem = null;
+            for (var constant : constants) {
+                // Own-line comments before the constant attach as its leading comments.
+                var leading = comments != null ? comments.leading(constant) : List.<Comment>of();
+                for (var lc : leading) {
+                    if (prevItem != null) {
                         innerParts.add(hardLine());
+                        if (blankLinesBetween(prevItem, lc) > 0) innerParts.add(hardLine());
                     }
+                    innerParts.add(renderComment(lc));
+                    prevItem = lc;
                 }
-                constants.get(i).accept(this);
-                if (i < constants.size() - 1) {
-                    innerParts.add(concat(result, text(",")));
-                } else if (body.isEmpty()) {
-                    innerParts.add(result);
-                } else {
-                    innerParts.add(concat(result, text(";")));
+                if (prevItem != null) {
+                    innerParts.add(hardLine());
+                    if (blankLinesBetween(prevItem, constant) > 0) innerParts.add(hardLine());
                 }
+
+                constant.accept(this);
+                // Every constant gets a trailing comma, including the last: adding a constant
+                // stays a one-line diff, and the `;` that may follow the constants sits on its
+                // own line rather than gluing to the last constant.
+                var constantDoc = concat(result, text(","));
+                prevItem = constant;
+
+                // A trailing comment sits after the comma (`TROLL, // not actually used`).
+                var trailing = comments != null ? comments.trailing(constant) : List.<Comment>of();
+                for (var tc : trailing) {
+                    constantDoc = concat(constantDoc, text(" "), renderComment(tc));
+                    prevItem = tc;
+                }
+                innerParts.add(constantDoc);
+            }
+
+            // A body after the constants is separated by a `;` on its own line.
+            if (!body.isEmpty()) {
+                innerParts.add(hardLine());
+                innerParts.add(text(";"));
             }
         }
 

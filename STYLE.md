@@ -169,14 +169,18 @@ public record User(
 
 ## Enums
 
-Enum constants are one per line, followed by `;` and then the body (if any). A blank
-line separates the constants from the rest of the body.
+Enum constants are one per line, **each followed by a trailing comma — including the
+last one.** Always emitting the trailing comma keeps adding (or removing) a constant to
+a one-line diff. When the enum has a body, the `;` that separates the constants from it
+goes on its own line rather than gluing to the last constant, and a blank line separates
+it from the body.
 
 ```java
 enum Color {
     RED("ff0000"),
     GREEN("00ff00"),
-    BLUE("0000ff");
+    BLUE("0000ff"),
+    ;
 
     private final String hex;
 
@@ -187,6 +191,17 @@ enum Color {
     public String hex() {
         return hex;
     }
+}
+```
+
+An enum with no body has no `;` — just the constants, each with its trailing comma:
+
+```java
+enum Direction {
+    NORTH,
+    EAST,
+    SOUTH,
+    WEST,
 }
 ```
 

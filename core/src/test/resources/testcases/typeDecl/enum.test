@@ -13,7 +13,7 @@ enum Empty {}
 enum Color {
     RED,
     GREEN,
-    BLUE
+    BLUE,
 }
 
 enum Planet {
@@ -24,13 +24,14 @@ enum Planet {
     JUPITER,
     SATURN,
     URANUS,
-    NEPTUNE
+    NEPTUNE,
 }
 
 enum Status {
     ACTIVE("active"),
     INACTIVE("inactive"),
-    DELETED("deleted");
+    DELETED("deleted"),
+    ;
 
     private final String value;
     Status(String value) {
@@ -53,13 +54,15 @@ enum Operation {
         public int apply(int a, int b) {
             return a - b;
         }
-    };
+    },
+    ;
 
     public abstract int apply(int a, int b);
 }
 
 enum Singleton {
-    INSTANCE;
+    INSTANCE,
+    ;
 
     public void doSomething() {
         System.out.println("hello");
@@ -69,7 +72,8 @@ enum Singleton {
 enum WithArgs {
     A(1, 2, 3),
     B(4, 5, 6),
-    C(7, 8, 9);
+    C(7, 8, 9),
+    ;
 
     final int x;
     final int y;
@@ -84,13 +88,14 @@ enum WithArgs {
 enum WithInterface implements Comparable<WithInterface> {
     FIRST,
     SECOND,
-    THIRD
+    THIRD,
 }
 
 enum Mixed {
     FOO("foo"),
     BAR("bar"),
-    BAZ("baz");
+    BAZ("baz"),
+    ;
 
     private final String label;
     Mixed(String label) {

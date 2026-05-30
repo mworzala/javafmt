@@ -1,0 +1,12 @@
+class A {
+    Runnable r = () ->
+        // first comment
+        // second comment
+        doStuff();
+}
+---
+class A {
+    Runnable r = () -> // first comment
+        // second comment
+        doStuff();
+}

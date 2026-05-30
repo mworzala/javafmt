@@ -678,7 +678,10 @@ final class AstToDoc extends ASTVisitor {
         var initializer = getProperty(node, SingleVariableDeclaration.INITIALIZER_PROPERTY);
         if (initializer != null) throw new UnsupportedOperationException("initializer on SingleVariableDeclaration");
 
-        result = concat(parts);
+        // Wrap in a group so the breakable separators visitModifiers emits after leading
+        // declaration annotations (see there) resolve per-parameter: inline when the
+        // parameter fits, each annotation on its own line when it doesn't.
+        result = group(concat(parts));
         return false;
     }
 
@@ -877,6 +880,15 @@ final class AstToDoc extends ASTVisitor {
                 || node instanceof VariableDeclarationExpression
                 || node instanceof VariableDeclarationStatement;
 
+        // A parameter or record component (SingleVariableDeclaration) keeps its leading
+        // annotations on the same line when it fits, but lets them break onto their own
+        // lines when the declaration is too wide. The declaration is wrapped in a group (see
+        // visit(SingleVariableDeclaration)), so the line() separator emitted below resolves
+        // per-declaration: a flat group renders the line() as a space, a broken one as a
+        // newline. This avoids splitting inside an annotation's own argument list (`@Foo(\n
+        // ...\n) @Bar long x`) when all that was needed was a break between annotations.
+        boolean breakableAnnotations = node instanceof SingleVariableDeclaration;
+
         boolean seenKeyword = false;
         boolean atLineStart = true; // the container starts us on a fresh line
         for (int i = 0; i < modifiers.size(); i++) {
@@ -918,10 +930,17 @@ final class AstToDoc extends ASTVisitor {
             // a type-use annotation (after a keyword, e.g. `private static @Nullable`),
             // an inline annotation, and keyword modifiers are space-separated. A trailing
             // line comment forces the next item onto the next line so it isn't swallowed.
-            boolean declAnnotation = modifier instanceof Annotation && !inline && !seenKeyword;
+            // On a parameter/record component a leading declaration annotation gets a
+            // breakable separator instead of a hard one: inline while the declaration fits,
+            // its own line once it overflows.
+            boolean leadingAnnotation = modifier instanceof Annotation && !seenKeyword;
+            boolean declAnnotation = leadingAnnotation && !inline;
             if (trailingLine || declAnnotation) {
                 doc.add(hardLine());
                 atLineStart = true;
+            } else if (leadingAnnotation && breakableAnnotations) {
+                doc.add(line());
+                atLineStart = false;
             } else {
                 doc.add(space());
                 atLineStart = false;

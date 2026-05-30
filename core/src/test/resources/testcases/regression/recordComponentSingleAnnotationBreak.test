@@ -1,0 +1,8 @@
+record R(
+    @SomeQualifiedAnnotation(withArgument = "a value that makes this line quite long indeed") int value
+) {}
+---
+record R(
+    @SomeQualifiedAnnotation(withArgument = "a value that makes this line quite long indeed")
+    int value
+) {}

@@ -1,0 +1,17 @@
+@RuntimeGson
+public record Command(
+    String name,
+    @Nullable String description,
+    @MagicConstant(flagsFromClass = Permission.class) @JsonAdapter(UnsignedLongAdapter.class) long permissions,
+    List<Argument> arguments
+) {}
+---
+@RuntimeGson
+public record Command(
+    String name,
+    @Nullable String description,
+    @MagicConstant(flagsFromClass = Permission.class)
+    @JsonAdapter(UnsignedLongAdapter.class)
+    long permissions,
+    List<Argument> arguments
+) {}

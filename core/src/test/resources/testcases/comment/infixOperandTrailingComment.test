@@ -1,0 +1,41 @@
+class Example {
+    // Trailing `//` on each non-last operand of an `||` chain.
+    boolean orChain(Object id, int i) {
+        return isEverythingAllowed() //
+            || isUniqueIdAllowed(id) //
+            || allowedIndices.contains(i);
+    }
+
+    // Trailing `//` on `&&` operands.
+    boolean andChain(String name) {
+        return !name.isEmpty() //
+            && doesNotContainWhitespace(name) //
+            && doesNotContainControl(name);
+    }
+
+    // Comment-free operator chain stays flat.
+    boolean plain(boolean a, boolean b, boolean c) {
+        return aVeryLongConditionNameHere && anotherLongConditionHere && yetAnotherConditionValue;
+    }
+}
+---
+class Example {
+    // Trailing `//` on each non-last operand of an `||` chain.
+    boolean orChain(Object id, int i) {
+        return isEverythingAllowed() //
+            || isUniqueIdAllowed(id) //
+            || allowedIndices.contains(i);
+    }
+
+    // Trailing `//` on `&&` operands.
+    boolean andChain(String name) {
+        return !name.isEmpty() //
+            && doesNotContainWhitespace(name) //
+            && doesNotContainControl(name);
+    }
+
+    // Comment-free operator chain stays flat.
+    boolean plain(boolean a, boolean b, boolean c) {
+        return aVeryLongConditionNameHere && anotherLongConditionHere && yetAnotherConditionValue;
+    }
+}

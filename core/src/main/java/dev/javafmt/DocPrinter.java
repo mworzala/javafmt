@@ -102,12 +102,25 @@ final class DocPrinter {
     }
 
     private void emitNewline(int indent) {
+        // The line that just ended must not carry trailing whitespace (the style
+        // guarantee). Strip it now — at end-of-line — rather than relying on every doc
+        // producer to avoid emitting a token+space immediately before a break. Only the
+        // current line is affected: text-block content arrives as a single Text node with
+        // embedded newlines that never reach this method, so its significant trailing
+        // spaces are untouched.
+        stripTrailingSpaces();
         // If there's already a pending indent (back-to-back newlines),
         // flush it as a bare newline first.
         if (pendingIndent >= 0) {
             out.append('\n');
         }
         pendingIndent = indent;
+    }
+
+    private void stripTrailingSpaces() {
+        int n = out.length();
+        while (n > 0 && (out.charAt(n - 1) == ' ' || out.charAt(n - 1) == '\t')) n--;
+        out.setLength(n);
     }
 
     private void flushPendingIndent() {

@@ -1,0 +1,23 @@
+class Example {
+    void f() {
+        // Own-line comment between a local variable's annotation and its type.
+        @SuppressWarnings("resource")
+        // tag::user_guide[]
+        WebClient webClient = new WebClient();
+
+        // Plain annotated local variable stays inline.
+        @SuppressWarnings("unchecked") List<String> list = cast();
+    }
+}
+---
+class Example {
+    void f() {
+        // Own-line comment between a local variable's annotation and its type.
+        @SuppressWarnings("resource")
+        // tag::user_guide[]
+        WebClient webClient = new WebClient();
+
+        // Plain annotated local variable stays inline.
+        @SuppressWarnings("unchecked") List<String> list = cast();
+    }
+}

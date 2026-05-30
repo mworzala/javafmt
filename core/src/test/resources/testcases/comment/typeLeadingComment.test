@@ -1,0 +1,43 @@
+class Example {
+    // Commented-out alternative annotation between a real annotation and the method:
+    // the comments attach as leading comments of the return type.
+    @Test
+    @EnabledOnJre(versions = { 25, 26 })
+    // Can also be expressed as follows.
+    // @EnabledOnJre(value = JAVA_25, versions = 26)
+    void onJava25And26() {}
+
+    // Own-line comment before a field's type.
+    @Deprecated
+    // legacy identifier
+    int id = 1;
+
+    // Comment-free declarations are unaffected.
+    public static void plain() {}
+
+    <T> T generic(T t) {
+        return t;
+    }
+}
+---
+class Example {
+    // Commented-out alternative annotation between a real annotation and the method:
+    // the comments attach as leading comments of the return type.
+    @Test
+    @EnabledOnJre(versions = {25, 26})
+    // Can also be expressed as follows.
+    // @EnabledOnJre(value = JAVA_25, versions = 26)
+    void onJava25And26() {}
+
+    // Own-line comment before a field's type.
+    @Deprecated
+    // legacy identifier
+    int id = 1;
+
+    // Comment-free declarations are unaffected.
+    public static void plain() {}
+
+    <T> T generic(T t) {
+        return t;
+    }
+}

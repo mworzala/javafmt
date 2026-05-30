@@ -1,0 +1,65 @@
+class Example {
+    // Own-line comment before `else` (braced then-body).
+    void beforeElse(boolean a) {
+        if (a) {
+            x();
+        }
+        // Otherwise, fail.
+        else {
+            y();
+        }
+    }
+
+    // Own-line comment before `else if`.
+    void beforeElseIf(boolean a, boolean b) {
+        if (a) {
+            x();
+        }
+        // Container?
+        else if (b) {
+            y();
+        }
+    }
+
+    // Comment-free if/else stays `} else {`.
+    void noComment(boolean a) {
+        if (a) {
+            x();
+        } else {
+            y();
+        }
+    }
+}
+---
+class Example {
+    // Own-line comment before `else` (braced then-body).
+    void beforeElse(boolean a) {
+        if (a) {
+            x();
+        }
+        // Otherwise, fail.
+        else {
+            y();
+        }
+    }
+
+    // Own-line comment before `else if`.
+    void beforeElseIf(boolean a, boolean b) {
+        if (a) {
+            x();
+        }
+        // Container?
+        else if (b) {
+            y();
+        }
+    }
+
+    // Comment-free if/else stays `} else {`.
+    void noComment(boolean a) {
+        if (a) {
+            x();
+        } else {
+            y();
+        }
+    }
+}

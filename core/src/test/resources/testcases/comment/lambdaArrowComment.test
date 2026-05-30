@@ -1,0 +1,47 @@
+class Example {
+    // Comment after a lambda arrow (nested lambda body).
+    void nested() {
+        builder.addVisitor(
+            ctx -> //
+                descriptor -> ctx.report(descriptor.getName())
+        );
+    }
+
+    // Comment after a single-param lambda arrow.
+    void singleParam() {
+        list.forEach(
+            item -> // process each
+                handle(item)
+        );
+    }
+
+    // Comment-free lambdas are unaffected.
+    void plain() {
+        list.forEach(x -> handle(x));
+        Runnable r = () -> doSomething();
+    }
+}
+---
+class Example {
+    // Comment after a lambda arrow (nested lambda body).
+    void nested() {
+        builder.addVisitor(
+            ctx -> //
+                descriptor -> ctx.report(descriptor.getName())
+        );
+    }
+
+    // Comment after a single-param lambda arrow.
+    void singleParam() {
+        list.forEach(
+            item -> // process each
+                handle(item)
+        );
+    }
+
+    // Comment-free lambdas are unaffected.
+    void plain() {
+        list.forEach(x -> handle(x));
+        Runnable r = () -> doSomething();
+    }
+}

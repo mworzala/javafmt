@@ -1,0 +1,59 @@
+class Example {
+    // Field initializer with a comment after `=` (trailing the name).
+    String serverUrl = // specify the server URL here
+        computeDefaultServerUrlValueHere();
+
+    void locals() {
+        // Local variable initializer with a comment after `=`.
+        var writer = // create a debug writer
+            new StringWriter();
+
+        // Own-line comment after `=` (leading the initializer).
+        int x =
+            // computed below
+            compute();
+    }
+
+    void assignments() {
+        // Plain assignment with a comment after `=`.
+        this.serverUrl = // specify the server URL here
+            computeDefaultServerUrlValueHere();
+
+        // Compound assignment.
+        total += // running sum
+            computeNextChunkValueHere();
+    }
+
+    // Comment-free initializers are unaffected.
+    int a = 1;
+}
+---
+class Example {
+    // Field initializer with a comment after `=` (trailing the name).
+    String serverUrl = // specify the server URL here
+        computeDefaultServerUrlValueHere();
+
+    void locals() {
+        // Local variable initializer with a comment after `=`.
+        var writer = // create a debug writer
+            new StringWriter();
+
+        // Own-line comment after `=` (leading the initializer).
+        int x =
+            // computed below
+            compute();
+    }
+
+    void assignments() {
+        // Plain assignment with a comment after `=`.
+        this.serverUrl = // specify the server URL here
+            computeDefaultServerUrlValueHere();
+
+        // Compound assignment.
+        total += // running sum
+            computeNextChunkValueHere();
+    }
+
+    // Comment-free initializers are unaffected.
+    int a = 1;
+}

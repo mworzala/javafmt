@@ -1,0 +1,95 @@
+class Example {
+    // 3-segment chain on a name root; `//` on each non-last segment forces the chain
+    // to break one-per-line and the comments are preserved.
+    void nameRoot() {
+        var r = Arrays.stream(items) //
+            .map(x -> transformWithReasonablyLongName(x)) //
+            .toList();
+    }
+
+    // No-receiver root (static import): the root call keeps its trailing comment and
+    // the following segment breaks to its own line rather than gluing onto the comment.
+    void noReceiverRoot() {
+        assertThat(cache) //
+            .doesNotContain(entry(0, 0)) //
+            .hasSize(1);
+    }
+
+    // 2-segment chain, comment on the first segment only.
+    void firstSegOnly() {
+        var r = builder.configure() //
+            .buildSomethingWithAReasonablyLongName();
+    }
+
+    // Comment on a middle segment only; later segments still break with it.
+    void middleSegOnly() {
+        var r = source.filterByName(predicateValue) //
+            .mapToResult(transformerFunctionHere)
+            .collectIntoList();
+    }
+
+    // A short chain that would otherwise fit flat is forced to break by the comment.
+    void shortForcedBreak() {
+        var r = a.b() //
+            .c();
+    }
+
+    // A trailing block comment on a segment is preserved and forces the break too.
+    void blockComment() {
+        var r = source.firstStepWithLongName() /* note */
+            .secondStepWithAnotherLongName();
+    }
+
+    // A comment-free chain is unaffected and stays flat.
+    void noComment() {
+        var r = stream.filter(x -> x > 0).map(x -> x * 2).collect(Collectors.toList());
+    }
+}
+---
+class Example {
+    // 3-segment chain on a name root; `//` on each non-last segment forces the chain
+    // to break one-per-line and the comments are preserved.
+    void nameRoot() {
+        var r = Arrays.stream(items) //
+            .map(x -> transformWithReasonablyLongName(x)) //
+            .toList();
+    }
+
+    // No-receiver root (static import): the root call keeps its trailing comment and
+    // the following segment breaks to its own line rather than gluing onto the comment.
+    void noReceiverRoot() {
+        assertThat(cache) //
+            .doesNotContain(entry(0, 0)) //
+            .hasSize(1);
+    }
+
+    // 2-segment chain, comment on the first segment only.
+    void firstSegOnly() {
+        var r = builder.configure() //
+            .buildSomethingWithAReasonablyLongName();
+    }
+
+    // Comment on a middle segment only; later segments still break with it.
+    void middleSegOnly() {
+        var r = source.filterByName(predicateValue) //
+            .mapToResult(transformerFunctionHere)
+            .collectIntoList();
+    }
+
+    // A short chain that would otherwise fit flat is forced to break by the comment.
+    void shortForcedBreak() {
+        var r = a.b() //
+            .c();
+    }
+
+    // A trailing block comment on a segment is preserved and forces the break too.
+    void blockComment() {
+        var r = source.firstStepWithLongName() /* note */
+            .secondStepWithAnotherLongName();
+    }
+
+    // A comment-free chain is unaffected and stays flat.
+    void noComment() {
+        var r = stream.filter(x -> x > 0).map(x -> x * 2).collect(Collectors.toList());
+    }
+}

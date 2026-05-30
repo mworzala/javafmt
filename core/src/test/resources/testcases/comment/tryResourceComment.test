@@ -1,0 +1,39 @@
+class Example {
+    // Comments on try-with-resources (after `(` and trailing each resource).
+    void resourceComments() {
+        try (
+            //
+            ResourceLock lock = acquire(); //
+            Other other = make(lock) //
+        ) {
+            use(lock);
+        }
+    }
+
+    // Comment-free resources stay inline.
+    void plain() {
+        try (var a = open("a"); var b = open("b")) {
+            use(a, b);
+        }
+    }
+}
+---
+class Example {
+    // Comments on try-with-resources (after `(` and trailing each resource).
+    void resourceComments() {
+        try (
+            //
+            ResourceLock lock = acquire(); //
+            Other other = make(lock) //
+        ) {
+            use(lock);
+        }
+    }
+
+    // Comment-free resources stay inline.
+    void plain() {
+        try (var a = open("a"); var b = open("b")) {
+            use(a, b);
+        }
+    }
+}

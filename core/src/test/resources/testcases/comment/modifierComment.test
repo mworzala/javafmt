@@ -1,0 +1,43 @@
+class Example {
+    // Own-line comment between two annotations of the same member.
+    @Tag("timeout")
+    // tag::user_guide[]
+    @Test
+    void annotatedMethod() {}
+
+    // Own-line comment between keyword modifiers before a nested class.
+    static
+    // tag::user_guide[]
+    public class Inner {}
+
+    // Own-line comment before a keyword modifier of a field.
+    public
+    // note
+    static int FIELD = 1;
+
+    // Comment-free modifiers are unaffected.
+    @Override
+    public static void plain() {}
+}
+---
+class Example {
+    // Own-line comment between two annotations of the same member.
+    @Tag("timeout")
+    // tag::user_guide[]
+    @Test
+    void annotatedMethod() {}
+
+    // Own-line comment between keyword modifiers before a nested class.
+    static
+    // tag::user_guide[]
+    public class Inner {}
+
+    // Own-line comment before a keyword modifier of a field.
+    public
+    // note
+    static int FIELD = 1;
+
+    // Comment-free modifiers are unaffected.
+    @Override
+    public static void plain() {}
+}

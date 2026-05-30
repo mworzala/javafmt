@@ -1,0 +1,39 @@
+class Example {
+    // Comment between the return type and the method name.
+    public java.util.stream.Stream<String>
+    // tag::custom_line_break[]
+    provideThings(int x) {
+        return null;
+    }
+
+    /**
+     * Doc.
+     */
+    // Comment before a constructor name (after javadoc).
+    Example(int port) {}
+
+    // Comment-free declarations are unaffected.
+    public int plain(int a) {
+        return a;
+    }
+}
+---
+class Example {
+    // Comment between the return type and the method name.
+    public java.util.stream.Stream<String>
+    // tag::custom_line_break[]
+    provideThings(int x) {
+        return null;
+    }
+
+    /**
+     * Doc.
+     */
+    // Comment before a constructor name (after javadoc).
+    Example(int port) {}
+
+    // Comment-free declarations are unaffected.
+    public int plain(int a) {
+        return a;
+    }
+}

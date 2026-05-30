@@ -1,0 +1,19 @@
+class Example {
+    // Own-line comment after the operator (leading the right operand).
+    String concat = aaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        // note
+        + bbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
+
+    // Comment-free operator chain is unaffected.
+    boolean plain = aLongConditionValueHere && anotherLongConditionHere && thirdConditionValueHere;
+}
+---
+class Example {
+    // Own-line comment after the operator (leading the right operand).
+    String concat = aaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        // note
+        + bbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
+
+    // Comment-free operator chain is unaffected.
+    boolean plain = aLongConditionValueHere && anotherLongConditionHere && thirdConditionValueHere;
+}

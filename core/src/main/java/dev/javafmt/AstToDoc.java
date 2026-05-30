@@ -153,13 +153,24 @@ final class AstToDoc extends ASTVisitor {
     /// just emitted for that node (separated by a space), so `import a.B; // note`
     /// keeps its note. Assumes the node's own doc is the last element of `parts`.
     private void emitTrailingComments(List<Doc> parts, ASTNode node) {
+        if (!hasTrailingComment(node)) return;
+        parts.add(withTrailingComments(parts.removeLast(), node));
+    }
+
+    private boolean hasTrailingComment(ASTNode node) {
+        return comments != null && !comments.trailing(node).isEmpty();
+    }
+
+    /// Return {@code doc} with the node's trailing comments appended, each preceded by a
+    /// space. A line comment must be followed by a newline in the rendered output, so a
+    /// caller that appends one is responsible for forcing a break after this doc.
+    private Doc withTrailingComments(Doc doc, ASTNode node) {
         var trailing = comments != null ? comments.trailing(node) : List.<Comment>of();
-        if (trailing.isEmpty()) return;
-        Doc combined = parts.removeLast();
+        Doc combined = doc;
         for (var tc : trailing) {
             combined = concat(combined, text(" "), renderComment(tc));
         }
-        parts.add(combined);
+        return combined;
     }
 
     @Override
@@ -211,7 +222,11 @@ final class AstToDoc extends ASTVisitor {
 
         visitJavadoc(parts, node, TypeDeclaration.JAVADOC_PROPERTY);
 
-        visitModifiers(parts, node, TypeDeclaration.MODIFIERS2_PROPERTY);
+        boolean atLineStart = visitModifiers(parts, node, TypeDeclaration.MODIFIERS2_PROPERTY);
+
+        // Own-line comments between the modifiers and the `class`/`interface` keyword
+        // (`static\n// c\nclass X`) attach as leading comments of the type name.
+        emitTypeLeadingComments(parts, node.getName(), atLineStart);
 
         boolean isInterface = node.isInterface();
         parts.add(text(isInterface ? "interface" : "class"));
@@ -272,7 +287,8 @@ final class AstToDoc extends ASTVisitor {
 
         visitJavadoc(parts, node, RecordDeclaration.JAVADOC_PROPERTY);
 
-        visitModifiers(parts, node, RecordDeclaration.MODIFIERS2_PROPERTY);
+        boolean atLineStart = visitModifiers(parts, node, RecordDeclaration.MODIFIERS2_PROPERTY);
+        emitTypeLeadingComments(parts, node.getName(), atLineStart);
 
         parts.add(text("record"));
         parts.add(space());
@@ -316,7 +332,8 @@ final class AstToDoc extends ASTVisitor {
 
         visitJavadoc(parts, node, EnumDeclaration.JAVADOC_PROPERTY);
 
-        visitModifiers(parts, node, EnumDeclaration.MODIFIERS2_PROPERTY);
+        boolean atLineStart = visitModifiers(parts, node, EnumDeclaration.MODIFIERS2_PROPERTY);
+        emitTypeLeadingComments(parts, node.getName(), atLineStart);
 
         parts.add(text("enum"));
         parts.add(space());
@@ -425,7 +442,8 @@ final class AstToDoc extends ASTVisitor {
 
         visitJavadoc(parts, node, AnnotationTypeDeclaration.JAVADOC_PROPERTY);
 
-        visitModifiers(parts, node, AnnotationTypeDeclaration.MODIFIERS2_PROPERTY);
+        boolean atLineStart = visitModifiers(parts, node, AnnotationTypeDeclaration.MODIFIERS2_PROPERTY);
+        emitTypeLeadingComments(parts, node.getName(), atLineStart);
 
         parts.add(text("@interface"));
         parts.add(space());
@@ -444,9 +462,12 @@ final class AstToDoc extends ASTVisitor {
 
         visitJavadoc(parts, node, AnnotationTypeMemberDeclaration.JAVADOC_PROPERTY);
 
-        visitModifiers(parts, node, AnnotationTypeMemberDeclaration.MODIFIERS2_PROPERTY);
+        boolean atLineStart = visitModifiers(parts, node, AnnotationTypeMemberDeclaration.MODIFIERS2_PROPERTY);
 
         var type = getProperty(node, AnnotationTypeMemberDeclaration.TYPE_PROPERTY);
+        // Own-line comments between the member's javadoc/modifiers and its type (e.g. an
+        // implementation-notes block) attach as leading comments of the type.
+        emitTypeLeadingComments(parts, type, atLineStart);
         type.accept(this);
         parts.add(result);
         parts.add(space());
@@ -474,14 +495,38 @@ final class AstToDoc extends ASTVisitor {
         var keyword = node instanceof TypeDeclaration td && td.isInterface()
                 ? "extends" : "implements";
         parts.add(text(keyword));
-        parts.add(space());
         var ifaceDocs = new ArrayList<Doc>();
         for (var iface : interfaces) {
             iface.accept(this);
             ifaceDocs.add(result);
         }
-        parts.add(join(concat(text(","), space()), ifaceDocs));
-        parts.add(space());
+        // Comments among the interface list (section markers like `// Lifecycle Callbacks`,
+        // or a comment before the keyword) attach as leading comments of the interfaces and
+        // would otherwise be dropped. Render one per line, emitting them.
+        if (elementsHaveComments(interfaces)) {
+            var inner = new ArrayList<Doc>();
+            int n = interfaces.size();
+            for (int i = 0; i < n; i++) {
+                var iface = interfaces.get(i);
+                for (var lc : comments.leading(iface)) {
+                    inner.add(hardLine());
+                    inner.add(renderComment(lc));
+                }
+                inner.add(hardLine());
+                inner.add(ifaceDocs.get(i));
+                if (i < n - 1) inner.add(text(","));
+                for (var tc : comments.trailing(iface)) {
+                    inner.add(text(" "));
+                    inner.add(renderComment(tc));
+                }
+            }
+            parts.add(indent(concat(inner)));
+            parts.add(space());
+        } else {
+            parts.add(space());
+            parts.add(join(concat(text(","), space()), ifaceDocs));
+            parts.add(space());
+        }
     }
 
     private void visitPermits(List<Doc> parts, ASTNode node, ChildListPropertyDescriptor property) {
@@ -656,9 +701,12 @@ final class AstToDoc extends ASTVisitor {
 
         visitJavadoc(parts, node, FieldDeclaration.JAVADOC_PROPERTY);
 
-        visitModifiers(parts, node, FieldDeclaration.MODIFIERS2_PROPERTY);
+        boolean atLineStart = visitModifiers(parts, node, FieldDeclaration.MODIFIERS2_PROPERTY);
 
         var type = getProperty(node, FieldDeclaration.TYPE_PROPERTY);
+        // Own-line comments between the modifiers and the field type attach as leading
+        // comments of the type.
+        emitTypeLeadingComments(parts, type, atLineStart);
         type.accept(this);
         parts.add(result);
         parts.add(space());
@@ -682,11 +730,13 @@ final class AstToDoc extends ASTVisitor {
 
         visitJavadoc(parts, node, MethodDeclaration.JAVADOC_PROPERTY);
 
-        visitModifiers(parts, node, MethodDeclaration.MODIFIERS2_PROPERTY);
+        boolean atLineStart = visitModifiers(parts, node, MethodDeclaration.MODIFIERS2_PROPERTY);
 
+        boolean hasTypeParams = !getProperty(node, MethodDeclaration.TYPE_PARAMETERS_PROPERTY).isEmpty();
         visitTypeArguments(parts, node, MethodDeclaration.TYPE_PARAMETERS_PROPERTY);
-        if (!getProperty(node, MethodDeclaration.TYPE_PARAMETERS_PROPERTY).isEmpty()) {
+        if (hasTypeParams) {
             parts.add(space());
+            atLineStart = false;
         }
 
         // todo CONSTRUCTOR_PROPERTY
@@ -694,34 +744,50 @@ final class AstToDoc extends ASTVisitor {
 
         if (!node.isConstructor()) {
             var returnType = getProperty(node, MethodDeclaration.RETURN_TYPE2_PROPERTY);
+            // Own-line comments between the modifiers and the return type (e.g. a
+            // commented-out alternative annotation) attach as leading comments of the type.
+            emitTypeLeadingComments(parts, returnType, atLineStart);
             returnType.accept(this);
             parts.add(result);
             parts.add(space());
+            atLineStart = false;
         }
 
+        // Own-line comments between the return type (or modifiers, for a constructor) and the
+        // method name attach as leading comments of the name.
+        emitTypeLeadingComments(parts, node.getName(), atLineStart);
         parts.add(text(node.getName().getIdentifier()));
 
         // todo EXTRA_DIMENSIONS_PROPERTY
         // todo EXTRA_DIMENSIONS2_PROPERTY
 
+        // The parameter list formats like a call's argument list, including comments: a
+        // comment after `(` attaches to the method name, one before `)` (an abstract
+        // method) is dangling, and a parameter carries its own comments (`m(int a, //\n b)`).
         var params = getProperty(node, MethodDeclaration.PARAMETERS_PROPERTY);
+        var afterOpen = comments != null ? comments.trailing(node.getName()) : List.<Comment>of();
+        var beforeClose = comments != null ? comments.dangling(node) : List.<Comment>of();
         if (params.isEmpty()) {
-            parts.add(text("()"));
+            formatArguments(parts, List.of(), afterOpen, beforeClose);
         } else {
             var paramDocs = new ArrayList<Doc>();
             for (var param : params) {
                 param.accept(this);
                 paramDocs.add(result);
             }
-            parts.add(group(concat(
-                    text("("),
-                    indent(concat(
-                            softLine(),
-                            join(concat(text(","), line()), paramDocs)
-                    )),
-                    softLine(),
-                    text(")")
-            )));
+            if (!afterOpen.isEmpty() || !beforeClose.isEmpty() || argumentsHaveComments(params)) {
+                parts.add(argsWithComments(params, paramDocs, afterOpen, beforeClose));
+            } else {
+                parts.add(group(concat(
+                        text("("),
+                        indent(concat(
+                                softLine(),
+                                join(concat(text(","), line()), paramDocs)
+                        )),
+                        softLine(),
+                        text(")")
+                )));
+            }
         }
 
         // todo RECEIVER_TYPE_PROPERTY
@@ -758,44 +824,89 @@ final class AstToDoc extends ASTVisitor {
         return false;
     }
 
-    private void visitModifiers(List<Doc> doc, ASTNode node, ChildListPropertyDescriptor property) {
+    /// Returns whether rendering ended at the start of a line (true when there are no
+    /// modifiers, or the last one was a declaration annotation / a modifier with a trailing
+    /// line comment). Callers use this to place a comment that leads the declaration's type.
+    private boolean visitModifiers(List<Doc> doc, ASTNode node, ChildListPropertyDescriptor property) {
         var modifiers = getProperty(node, property);
-        if (modifiers.isEmpty()) return;
+        if (modifiers.isEmpty()) return true;
 
         boolean inline = node instanceof SingleVariableDeclaration
                 || node instanceof VariableDeclarationExpression
                 || node instanceof VariableDeclarationStatement;
 
         boolean seenKeyword = false;
+        boolean atLineStart = true; // the container starts us on a fresh line
         for (int i = 0; i < modifiers.size(); i++) {
             var modifier = modifiers.get(i);
+
+            // Own-line comments among the modifier list (`@Tag\n// c\n@Test`,
+            // `static\n// c\npublic class`) attach as leading comments of this modifier and
+            // would otherwise be dropped. Emit them each on their own line. A leading comment
+            // of the FIRST modifier can't occur — it would fall outside the declaration and
+            // attach to the enclosing context instead — so there is always a modifier before
+            // us to break away from.
+            var leading = comments != null ? comments.leading(modifier) : List.<Comment>of();
+            if (!leading.isEmpty()) {
+                if (!atLineStart) doc.add(hardLine());
+                for (var lc : leading) {
+                    doc.add(renderComment(lc));
+                    doc.add(hardLine());
+                }
+                atLineStart = true;
+            }
+
             if (modifier instanceof Modifier) {
                 seenKeyword = true;
             }
             modifier.accept(this);
+            doc.add(result);
 
-            if (modifier instanceof Annotation && !inline) {
-                // Annotation after a keyword modifier (e.g. private static @Nullable)
-                // is a type-use annotation — keep on same line as type
-                if (seenKeyword) {
-                    doc.add(result);
-                    doc.add(space());
-                } else {
-                    doc.add(result);
-                    doc.add(hardLine());
-                }
-            } else if (modifier instanceof Annotation) {
-                doc.add(result);
+            // Trailing comments (`@AutoClose // <1>`, `@Deprecated //`, `private /* final */`).
+            var trailing = comments != null ? comments.trailing(modifier) : List.<Comment>of();
+            boolean trailingLine = false;
+            for (var tc : trailing) {
                 doc.add(space());
-            } else {
-                doc.add(result);
+                doc.add(renderComment(tc));
+                if (tc instanceof LineComment) trailingLine = true;
             }
+
+            // Separator to the next modifier (or the type/body that follows). A declaration
+            // annotation — one applied before any keyword modifier — goes on its own line;
+            // a type-use annotation (after a keyword, e.g. `private static @Nullable`),
+            // an inline annotation, and keyword modifiers are space-separated. A trailing
+            // line comment forces the next item onto the next line so it isn't swallowed.
+            boolean declAnnotation = modifier instanceof Annotation && !inline && !seenKeyword;
+            if (trailingLine || declAnnotation) {
+                doc.add(hardLine());
+                atLineStart = true;
+            } else {
+                doc.add(space());
+                atLineStart = false;
+            }
+        }
+        return atLineStart;
+    }
+
+    /// Emit own-line comments that sit between a declaration's modifier list and its type
+    /// (`@EnabledOnJre(...)\n// alt:\n// @EnabledOnJre(value = ...)\nvoid m()`). They attach
+    /// as leading comments of the type and are otherwise dropped. {@code atLineStart} is the
+    /// line state left by visitModifiers; a hardLine is inserted first only when needed.
+    private void emitTypeLeadingComments(List<Doc> parts, ASTNode type, boolean atLineStart) {
+        var leading = comments != null ? comments.leading(type) : List.<Comment>of();
+        if (leading.isEmpty()) return;
+        if (!atLineStart) parts.add(hardLine());
+        for (var lc : leading) {
+            parts.add(renderComment(lc));
+            parts.add(hardLine());
         }
     }
 
     @Override
     public boolean visit(Modifier node) {
-        result = text(node.getKeyword().toString() + " ");
+        // Bare keyword; visitModifiers adds the separating space (so it can swap in a
+        // line break when a comment follows).
+        result = text(node.getKeyword().toString());
         return false;
     }
 
@@ -916,9 +1027,19 @@ final class AstToDoc extends ASTVisitor {
 
         var elseStmt = getProperty(node, IfStatement.ELSE_STATEMENT_PROPERTY);
         if (elseStmt != null) {
-            // `} else` stays on the same line when the then-body uses braces;
-            // otherwise `else` moves to its own line so a non-braced then is visible.
-            if (thenStmt instanceof Block) {
+            // An own-line comment before `else` attaches as a leading comment of the else
+            // statement. When present it forces `else` onto its own line (after the comment)
+            // rather than gluing `} else`; otherwise `} else` stays on the same line when the
+            // then-body uses braces, and `else` moves to its own line for a non-braced then.
+            var elseLeading = comments != null ? comments.leading(elseStmt) : List.<Comment>of();
+            if (!elseLeading.isEmpty()) {
+                for (var lc : elseLeading) {
+                    parts.add(hardLine());
+                    parts.add(renderComment(lc));
+                }
+                parts.add(hardLine());
+                parts.add(text("else "));
+            } else if (thenStmt instanceof Block) {
                 parts.add(text(" else "));
             } else {
                 parts.add(hardLine());
@@ -1238,9 +1359,12 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
     public boolean visit(VariableDeclarationStatement node) {
         var parts = new ArrayList<Doc>();
 
-        visitModifiers(parts, node, VariableDeclarationStatement.MODIFIERS2_PROPERTY);
+        boolean atLineStart = visitModifiers(parts, node, VariableDeclarationStatement.MODIFIERS2_PROPERTY);
 
         var type = getProperty(node, VariableDeclarationStatement.TYPE_PROPERTY);
+        // Own-line comment between a local variable's modifiers and its type
+        // (`@SuppressWarnings("resource")\n// c\nWebClient w = ...`).
+        emitTypeLeadingComments(parts, type, atLineStart);
         type.accept(this);
         parts.add(result);
         parts.add(space());
@@ -1281,8 +1405,39 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         }
         init.accept(this);
         var initDoc = result;
+
+        // A comment after `=` attaches either as a trailing comment of the name (`x = // c`,
+        // same line) or as a leading comment of the initializer (`x =\n // c\n v`, own line).
+        // Neither the name nor the initializer visitor emits it, so emit it after `=` with
+        // the initializer dropped onto its own indented line.
+        var nameTrailing = comments != null ? comments.trailing(node.getName()) : List.<Comment>of();
+        var initLeading = comments != null ? comments.leading(init) : List.<Comment>of();
+        if (!nameTrailing.isEmpty() || !initLeading.isEmpty()) {
+            result = initializerWithComments(concat(name, text(" =")), nameTrailing, initLeading, initDoc);
+            return false;
+        }
+
         result = group(concat(name, text(" = "), initDoc));
         return false;
+    }
+
+    /// Render `<head> <comments> <newline> <init>` for an assignment-like construct whose
+    /// `=` is followed by a comment. {@code head} ends with the operator (no trailing
+    /// space); its trailing comments render inline after the operator (`x = // c`), any
+    /// leading comments of the initializer render on their own lines, and the initializer
+    /// drops to its own indented line so a line comment can't swallow it. Used by variable
+    /// fragments and assignments.
+    private Doc initializerWithComments(Doc head, List<Comment> headTrailing, List<Comment> initLeading, Doc initDoc) {
+        Doc h = head;
+        for (var tc : headTrailing) h = concat(h, text(" "), renderComment(tc));
+        var body = new ArrayList<Doc>();
+        for (var lc : initLeading) {
+            body.add(hardLine());
+            body.add(renderComment(lc));
+        }
+        body.add(hardLine());
+        body.add(initDoc);
+        return concat(h, indent(concat(body)));
     }
 
     @Override
@@ -1384,15 +1539,22 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
                 resource.accept(this);
                 resourceParts.add(result);
             }
-            parts.add(group(concat(
-                    text("("),
-                    indent(concat(
-                            softLine(),
-                            join(concat(text(";"), line()), resourceParts)
-                    )),
-                    softLine(),
-                    text(")")
-            )));
+            // A comment on a resource (`try ( //\n var a = ...; //\n var b = ...)`) would be
+            // dropped; render one-per-line emitting them when present (a comment after `(` is
+            // a leading comment of the first resource).
+            if (elementsHaveComments(resources)) {
+                parts.add(resourcesWithComments(resources, resourceParts));
+            } else {
+                parts.add(group(concat(
+                        text("("),
+                        indent(concat(
+                                softLine(),
+                                join(concat(text(";"), line()), resourceParts)
+                        )),
+                        softLine(),
+                        text(")")
+                )));
+            }
             parts.add(text(" "));
         }
 
@@ -1400,15 +1562,29 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         body.accept(this);
         parts.add(result);
 
+        // A comment after the try block's `}` (`} // @formatter:on\n catch`) attaches as a
+        // trailing comment of the body; emit it and push `catch`/`finally` onto its own line
+        // (instead of gluing `} catch`) so a line comment can't swallow it.
+        var bodyTrailing = comments != null ? comments.trailing(body) : List.<Comment>of();
+        boolean breakAfterBody = false;
+        for (var tc : bodyTrailing) {
+            parts.add(text(" "));
+            parts.add(renderComment(tc));
+            if (tc instanceof LineComment) breakAfterBody = true;
+        }
+
         var catches = getProperty(node, TryStatement.CATCH_CLAUSES_PROPERTY);
         for (var catchClause : catches) {
+            parts.add(breakAfterBody ? hardLine() : text(" "));
+            breakAfterBody = false;
             catchClause.accept(this);
             parts.add(result);
         }
 
         var finallyBlock = getProperty(node, TryStatement.FINALLY_PROPERTY);
         if (finallyBlock != null) {
-            parts.add(text(" finally "));
+            parts.add(breakAfterBody ? hardLine() : text(" "));
+            parts.add(text("finally "));
             finallyBlock.accept(this);
             parts.add(result);
         }
@@ -1419,8 +1595,10 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
     @Override
     public boolean visit(CatchClause node) {
+        // The separator before `catch` (a space gluing `} catch`, or a line break when a
+        // comment follows the try block) is emitted by visit(TryStatement).
         var parts = new ArrayList<Doc>();
-        parts.add(text(" catch ("));
+        parts.add(text("catch ("));
 
         var exception = getProperty(node, CatchClause.EXCEPTION_PROPERTY);
         exception.accept(this);
@@ -1581,21 +1759,26 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
     @Override
     public boolean visit(Assignment node) {
-        var parts = new ArrayList<Doc>();
-
         var left = getProperty(node, Assignment.LEFT_HAND_SIDE_PROPERTY);
         left.accept(this);
-        parts.add(result);
-
-        parts.add(space());
-        parts.add(text(node.getOperator().toString()));
-        parts.add(space());
+        var leftDoc = result;
+        var op = node.getOperator().toString();
 
         var right = getProperty(node, Assignment.RIGHT_HAND_SIDE_PROPERTY);
         right.accept(this);
-        parts.add(result);
+        var rightDoc = result;
 
-        result = concat(parts);
+        // A comment after the `=` (`x = // c\n v`) attaches as a trailing comment of the
+        // left-hand side or a leading comment of the right-hand side; emit it after the
+        // operator with the value on its own line, same as a variable initializer.
+        var leftTrailing = comments != null ? comments.trailing(left) : List.<Comment>of();
+        var rightLeading = comments != null ? comments.leading(right) : List.<Comment>of();
+        if (!leftTrailing.isEmpty() || !rightLeading.isEmpty()) {
+            result = initializerWithComments(concat(leftDoc, space(), text(op)), leftTrailing, rightLeading, rightDoc);
+            return false;
+        }
+
+        result = concat(leftDoc, space(), text(op), space(), rightDoc);
         return false;
     }
 
@@ -1713,7 +1896,12 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         // all same-operator operands up into one group, the whole chain breaks (or
         // not) as a unit — chop-all semantics for binary operator chains.
         var operands = new ArrayList<ASTNode>();
-        collectSameOpOperands(node, op, operands);
+        // anchors[i] is the inner InfixExpression node that operand[i] is the RIGHT operand
+        // of (null for the leftmost leaf). In a left-leaning chain `(a && b) && c`, a trailing
+        // comment after `b` attaches to the inner `(a && b)` node — not the flattened leaf
+        // `b` — so we must check the anchor too or it is dropped.
+        var anchors = new ArrayList<ASTNode>();
+        collectSameOpOperands(node, op, operands, anchors);
 
         var operandDocs = new ArrayList<Doc>();
         for (var operand : operands) {
@@ -1721,13 +1909,48 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             operandDocs.add(result);
         }
 
+        // A trailing comment on a non-last operand (`a() //\n || b()`) attaches to that
+        // operand (or its anchor) and would otherwise be dropped. Emit it; a line comment
+        // forces the chain to break so it ends its line. The LAST operand's trailing comment
+        // is the whole expression's — left to the enclosing context, since the `;`/`)` the
+        // parent emits after it would be swallowed by an inline line comment here.
+        int last = operandDocs.size() - 1;
+        boolean forceBreak = false;
+
+        Doc head = operandDocs.get(0);
+        if (last > 0 && hasTrailingComment(operands.get(0))) {
+            head = withTrailingComments(head, operands.get(0));
+            forceBreak = true;
+        }
+
         var tail = new ArrayList<Doc>();
         for (int i = 1; i < operandDocs.size(); i++) {
             tail.add(line());
+            // An own-line comment after the operator (`a\n + // c\n b`) attaches as a leading
+            // comment of this operand; emit it on its own line before the operator.
+            var leading = comments != null ? comments.leading(operands.get(i)) : List.<Comment>of();
+            for (var lc : leading) {
+                tail.add(renderComment(lc));
+                tail.add(line());
+                forceBreak = true;
+            }
             tail.add(text(operator + " "));
-            tail.add(operandDocs.get(i));
+            var od = operandDocs.get(i);
+            if (i < last) {
+                var anchor = anchors.get(i);
+                if (hasTrailingComment(operands.get(i))) {
+                    od = withTrailingComments(od, operands.get(i));
+                    forceBreak = true;
+                }
+                if (anchor != null && hasTrailingComment(anchor)) {
+                    od = withTrailingComments(od, anchor);
+                    forceBreak = true;
+                }
+            }
+            tail.add(od);
         }
-        result = group(concat(operandDocs.get(0), indent(concat(tail))));
+        var doc = concat(head, indent(concat(tail)));
+        result = forceBreak ? breakGroup(doc) : group(doc);
         return false;
     }
 
@@ -1735,24 +1958,34 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
     /// leaf operand (in source order) into {@code out}. Stops descending at any node
     /// whose operator differs or that is not an InfixExpression (e.g.
     /// ParenthesizedExpression — parentheses correctly halt flattening).
-    private void collectSameOpOperands(InfixExpression node, InfixExpression.Operator op, List<ASTNode> out) {
+    private void collectSameOpOperands(InfixExpression node, InfixExpression.Operator op,
+            List<ASTNode> out, List<ASTNode> anchors) {
+        var extended = getProperty(node, InfixExpression.EXTENDED_OPERANDS_PROPERTY);
         var left = getProperty(node, InfixExpression.LEFT_OPERAND_PROPERTY);
         if (left instanceof InfixExpression leftInfix && leftInfix.getOperator() == op) {
-            collectSameOpOperands(leftInfix, op, out);
+            collectSameOpOperands(leftInfix, op, out, anchors);
         } else {
             out.add(left);
+            anchors.add(null); // leftmost leaf: a comment after it attaches to the leaf itself
         }
         var right = getProperty(node, InfixExpression.RIGHT_OPERAND_PROPERTY);
         if (right instanceof InfixExpression rightInfix && rightInfix.getOperator() == op) {
-            collectSameOpOperands(rightInfix, op, out);
+            collectSameOpOperands(rightInfix, op, out, anchors);
         } else {
             out.add(right);
+            // `node`'s source range ends at its LAST operand, so a comment after that operand
+            // attaches to `node` (the left-leaning subtree) rather than the leaf — anchor it
+            // there. For a non-last operand of a flat node (one with extended operands), the
+            // comment attaches to the leaf itself, so no anchor is needed.
+            anchors.add(extended.isEmpty() ? node : null);
         }
-        for (var ext : getProperty(node, InfixExpression.EXTENDED_OPERANDS_PROPERTY)) {
+        for (int e = 0; e < extended.size(); e++) {
+            var ext = extended.get(e);
             if (ext instanceof InfixExpression extInfix && extInfix.getOperator() == op) {
-                collectSameOpOperands(extInfix, op, out);
+                collectSameOpOperands(extInfix, op, out, anchors);
             } else {
                 out.add(ext);
+                anchors.add(e == extended.size() - 1 ? node : null);
             }
         }
     }
@@ -1877,6 +2110,36 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             return false;
         }
 
+        // A comment that forces a non-outermost chain segment to render multi-line — the
+        // `foo() //\n .bar()` idiom, a `seg( //` comment, or a comment on a segment's
+        // argument — must go through the chain-break path so the comment is emitted (per-call
+        // would drop it) and the chain breaks at its dots rather than leaving a `).next()`
+        // orphan. Only non-outermost segments count: the outermost segment's trailing
+        // comment is the chain expression's, handled by the enclosing context.
+        if (chainSegmentHasComment(chain)) {
+            visitMethodChain(chain);
+            return false;
+        }
+
+        // A trailing comment on the chain's root receiver (`new X() //\n .foo()`,
+        // `obj //\n .foo()`) likewise routes through the chain-break path, which emits it
+        // and breaks the first segment off so it doesn't glue onto the comment's line.
+        var chainRoot = getProperty(chain.getFirst(), MethodInvocation.EXPRESSION_PROPERTY);
+        if (chainRoot != null && hasTrailingComment(chainRoot)) {
+            visitMethodChain(chain);
+            return false;
+        }
+
+        // An own-line comment before any segment (including the outermost — unlike a
+        // trailing comment, a leading one is followed by its own `.seg`, never a parent
+        // token) routes through the chain-break path so it's emitted.
+        for (var seg : chain) {
+            if (!nameLeadingComments(seg).isEmpty()) {
+                visitMethodChain(chain);
+                return false;
+            }
+        }
+
         // For 1- and 2-segment chains the per-call path below has no break point at
         // the receiver `.`, so when the line overflows its ONLY break points are the
         // arg-lists. Route to the chain-break path (which does break at the `.`)
@@ -1925,7 +2188,7 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         parts.add(text(node.getName().getIdentifier()));
 
         var arguments = getProperty(node, MethodInvocation.ARGUMENTS_PROPERTY);
-        formatArguments(parts, arguments);
+        formatArguments(parts, arguments, afterOpenParenComments(node), beforeCloseParenComments(node));
 
         result = group(concat(parts));
         return false;
@@ -1958,21 +2221,49 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
     private void visitMethodChain(List<MethodInvocation> chain) {
         var innermost = chain.getFirst();
         var rootExpr = getProperty(innermost, MethodInvocation.EXPRESSION_PROPERTY);
+        int lastSeg = chain.size() - 1;
+
+        // A segment that renders multi-line because of a comment (its own trailing comment
+        // `foo() //`, a `seg( //` comment, or a comment on one of its arguments) forces the
+        // chain to break at its dots so a broken segment doesn't leave a `).next()` orphan.
+        // A non-outermost segment's trailing comment is also appended to its doc; the
+        // OUTERMOST segment's trailing comment is left to the parent (the `;`/`,`/`)` it
+        // emits would be swallowed by an inline line comment here).
+        boolean forceBreak = false;
 
         Doc rootDoc;
         int startIndex;
         if (rootExpr != null) {
             rootExpr.accept(this);
-            rootDoc = result;
+            // A trailing comment on the root receiver (`new X() //\n .foo()`) is appended
+            // here; it forces the chain to break and the first segment off its line.
+            rootDoc = withTrailingComments(result, rootExpr);
+            forceBreak |= hasTrailingComment(rootExpr);
             startIndex = 0;
         } else {
-            rootDoc = formatMethodCallNoDot(innermost);
+            // The innermost call is rendered into the root; emit its trailing comment here
+            // unless it is also the outermost segment (a 1-segment chain).
+            if (lastSeg > 0) {
+                rootDoc = withTrailingComments(formatMethodCallNoDot(innermost), innermost);
+                forceBreak |= segmentBreaks(innermost);
+            } else {
+                rootDoc = formatMethodCallNoDot(innermost);
+            }
             startIndex = 1;
         }
 
         var segDocs = new ArrayList<Doc>();
         for (int i = startIndex; i < chain.size(); i++) {
-            segDocs.add(formatMethodCallWithDot(chain.get(i)));
+            var seg = chain.get(i);
+            var doc = formatMethodCallWithDot(seg);
+            // An own-line comment leading this segment (emitted by formatMethodCallWithDot)
+            // forces the chain to break — for every segment, including the outermost.
+            forceBreak |= !nameLeadingComments(seg).isEmpty();
+            if (i < lastSeg) {
+                doc = withTrailingComments(doc, seg);
+                forceBreak |= segmentBreaks(seg);
+            }
+            segDocs.add(doc);
         }
 
         if (segDocs.isEmpty()) {
@@ -1995,7 +2286,19 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         // `eventNode(args)` — can SEE this break point through the inner group
         // wall, and don't incorrectly conclude that the entire chain is on the
         // current line and start wrapping their own args.
-        var firstSegGroup = group(indent(concat(boundaryLine(), segDocs.getFirst())));
+        //
+        // When the root renders multi-line because of a comment — a no-receiver root call
+        // that ends in a trailing comment (`assertThat(x) //`) or has its args forced open
+        // (`assertThat( //\n x)`), or a receiver that ends in a trailing comment
+        // (`new X() //`) — its boundaryLine MUST break. Otherwise the inner group stays
+        // flat, collapses the boundaryLine, and glues the first segment onto the root's last
+        // line, swallowing a trailing line comment or leaving a `x).next()` orphan. Forcing
+        // the break only here keeps the normal gluing otherwise.
+        boolean rootBreaks = startIndex == 1
+                ? segmentBreaks(innermost)
+                : hasTrailingComment(rootExpr);
+        var firstSegInner = indent(concat(boundaryLine(), segDocs.getFirst()));
+        var firstSegGroup = rootBreaks ? breakGroup(firstSegInner) : group(firstSegInner);
 
         var outerParts = new ArrayList<Doc>();
         outerParts.add(rootDoc);
@@ -2013,7 +2316,8 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             outerParts.add(indent(concat(restParts)));
         }
 
-        result = group(concat(outerParts));
+        var doc = concat(outerParts);
+        result = forceBreak ? breakGroup(doc) : group(doc);
     }
 
     private void collectMethodChain(MethodInvocation node, List<MethodInvocation> chain) {
@@ -2022,6 +2326,30 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             collectMethodChain(inner, chain);
         }
         chain.add(node);
+    }
+
+    /// True when any NON-outermost segment of the chain renders across multiple lines
+    /// because of a comment. Such chains must route through visitMethodChain so the chain
+    /// breaks at its dots — leaving them on the per-call path would emit the orphan
+    /// `...).nextSeg()`. The outermost segment is excluded: nothing follows it to orphan,
+    /// and its own trailing comment belongs to the enclosing context.
+    private boolean chainSegmentHasComment(List<MethodInvocation> chain) {
+        for (int i = 0; i < chain.size() - 1; i++) {
+            if (segmentBreaks(chain.get(i))) return true;
+        }
+        return false;
+    }
+
+    /// A chain segment renders across multiple lines because a comment forces it open: it
+    /// carries a trailing comment (`seg() //`), a comment right after its `(` (`seg( //`),
+    /// or a comment on one of its arguments. A non-outermost such segment forces the whole
+    /// chain to break at its dots so the broken segment doesn't leave a `...).next()` orphan.
+    private boolean segmentBreaks(MethodInvocation seg) {
+        return hasTrailingComment(seg)
+                || !afterOpenParenComments(seg).isEmpty()
+                || !nameLeadingComments(seg).isEmpty()
+                || !typeWitnessTrailing(seg).isEmpty()
+                || argumentsHaveComments(getProperty(seg, MethodInvocation.ARGUMENTS_PROPERTY));
     }
 
     /// A receiver that reads as an indivisible accessor — a name, a field access, an
@@ -2052,28 +2380,103 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
     private Doc formatMethodCallNoDot(MethodInvocation node) {
         var parts = new ArrayList<Doc>();
         visitTypeArguments(parts, node, MethodInvocation.TYPE_ARGUMENTS_PROPERTY);
+        emitTypeWitnessTrailing(parts, node);
         parts.add(text(node.getName().getIdentifier()));
-        formatArguments(parts, getProperty(node, MethodInvocation.ARGUMENTS_PROPERTY));
+        formatArguments(parts, getProperty(node, MethodInvocation.ARGUMENTS_PROPERTY), afterOpenParenComments(node), beforeCloseParenComments(node));
         return concat(parts);
     }
 
     private Doc formatMethodCallWithDot(MethodInvocation node) {
         var parts = new ArrayList<Doc>();
+        // Own-line comments before this segment (`seg()\n// c\n.next()`) attach as leading
+        // comments of the method name; emit them on their own line before the `.`. The
+        // hardLine after each breaks the chain here, so the comment ends its line.
+        for (var lc : nameLeadingComments(node)) {
+            parts.add(renderComment(lc));
+            parts.add(hardLine());
+        }
         parts.add(text("."));
         visitTypeArguments(parts, node, MethodInvocation.TYPE_ARGUMENTS_PROPERTY);
+        emitTypeWitnessTrailing(parts, node);
         parts.add(text(node.getName().getIdentifier()));
-        formatArguments(parts, getProperty(node, MethodInvocation.ARGUMENTS_PROPERTY));
+        formatArguments(parts, getProperty(node, MethodInvocation.ARGUMENTS_PROPERTY), afterOpenParenComments(node), beforeCloseParenComments(node));
         return concat(parts);
     }
 
+    /// Own-line comments before a chain segment (`seg()\n// c\n.next()`) attach as leading
+    /// comments of the segment's method name.
+    private List<Comment> nameLeadingComments(MethodInvocation node) {
+        return comments != null ? comments.leading(node.getName()) : List.<Comment>of();
+    }
+
+    /// A comment after an explicit type witness, before the method name
+    /// (`Comparator.<T, U> //\n compare(...)`), attaches as a trailing comment of the last
+    /// type argument. Emit it and break before the name so a line comment ends its line.
+    private List<Comment> typeWitnessTrailing(MethodInvocation node) {
+        var typeArgs = getProperty(node, MethodInvocation.TYPE_ARGUMENTS_PROPERTY);
+        if (comments == null || typeArgs.isEmpty()) return List.of();
+        return comments.trailing(typeArgs.getLast());
+    }
+
+    private void emitTypeWitnessTrailing(List<Doc> parts, MethodInvocation node) {
+        var trailing = typeWitnessTrailing(node);
+        if (trailing.isEmpty()) return;
+        for (var tc : trailing) {
+            parts.add(text(" "));
+            parts.add(renderComment(tc));
+        }
+        parts.add(hardLine());
+    }
+
+    /// A comment right after a call's `(` (`foo( // c\n arg)`) attaches as a trailing
+    /// comment of the method name. Returns those so the argument list can re-emit them
+    /// just after the `(`.
+    private List<Comment> afterOpenParenComments(MethodInvocation node) {
+        return comments != null ? comments.trailing(node.getName()) : List.<Comment>of();
+    }
+
+    /// An own-line comment after the last argument, before the `)` (`m(arg\n// c\n)`),
+    /// attaches as a dangling comment of the call. Returns those so the argument list can
+    /// re-emit them just before the `)`.
+    private List<Comment> beforeCloseParenComments(MethodInvocation node) {
+        return comments != null ? comments.dangling(node) : List.<Comment>of();
+    }
+
     private void formatArguments(List<Doc> parts, List<ASTNode> arguments) {
+        formatArguments(parts, arguments, List.of(), List.of());
+    }
+
+    private void formatArguments(List<Doc> parts, List<ASTNode> arguments,
+            List<Comment> afterOpenParen, List<Comment> beforeClose) {
         if (arguments.isEmpty()) {
-            parts.add(text("()"));
+            if (afterOpenParen.isEmpty() && beforeClose.isEmpty()) {
+                parts.add(text("()"));
+            } else {
+                // `m( // c\n)` / `m(\n// c\n)` — a comment inside an empty call.
+                Doc open = text("(");
+                for (var c : afterOpenParen) open = concat(open, text(" "), renderComment(c));
+                var inner = new ArrayList<Doc>();
+                for (var c : beforeClose) {
+                    inner.add(hardLine());
+                    inner.add(renderComment(c));
+                }
+                parts.add(breakGroup(concat(open, indent(concat(inner)), hardLine(), text(")"))));
+            }
         } else {
             var argDocs = new ArrayList<Doc>();
             for (var arg : arguments) {
                 arg.accept(this);
                 argDocs.add(result);
+            }
+
+            // An argument carrying a comment (the `m(arg, //\n next)` idiom), a comment right
+            // after `(` (attached to the method name), or a dangling comment before `)`,
+            // forces a one-per-line break and bypasses the tuple / trailing-block layouts
+            // below: a line comment must end its line and a leading comment needs its own
+            // line, neither of which those layouts accommodate. Without this it's dropped.
+            if (!afterOpenParen.isEmpty() || !beforeClose.isEmpty() || argumentsHaveComments(arguments)) {
+                parts.add(argsWithComments(arguments, argDocs, afterOpenParen, beforeClose));
+                return;
             }
 
             var lastArg = arguments.getLast();
@@ -2150,6 +2553,48 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
                 }
             }
         }
+    }
+
+    private boolean argumentsHaveComments(List<ASTNode> arguments) {
+        if (comments == null) return false;
+        for (var arg : arguments) {
+            if (!comments.leading(arg).isEmpty() || !comments.trailing(arg).isEmpty()) return true;
+        }
+        return false;
+    }
+
+    /// Render an argument list whose arguments carry comments (or that has a comment right
+    /// after `(`), one per line. The {@code afterOpenParen} comments stay on the `(` line;
+    /// a leading comment goes on its own line before its argument; a trailing comment goes
+    /// AFTER the separating comma (so a line comment can't swallow it) and before the line
+    /// break. Always breaks — line comments must end their line.
+    private Doc argsWithComments(List<ASTNode> arguments, List<Doc> argDocs,
+            List<Comment> afterOpenParen, List<Comment> beforeClose) {
+        Doc open = text("(");
+        for (var c : afterOpenParen) open = concat(open, text(" "), renderComment(c));
+        var inner = new ArrayList<Doc>();
+        inner.add(softLine());
+        int n = arguments.size();
+        for (int i = 0; i < n; i++) {
+            var arg = arguments.get(i);
+            for (var lc : comments.leading(arg)) {
+                inner.add(renderComment(lc));
+                inner.add(line());
+            }
+            inner.add(argDocs.get(i));
+            if (i < n - 1) inner.add(text(","));
+            for (var tc : comments.trailing(arg)) {
+                inner.add(text(" "));
+                inner.add(renderComment(tc));
+            }
+            if (i < n - 1) inner.add(line());
+        }
+        // Dangling comment(s) after the last argument, on their own line before `)`.
+        for (var dc : beforeClose) {
+            inner.add(line());
+            inner.add(renderComment(dc));
+        }
+        return breakGroup(concat(open, indent(concat(inner)), softLine(), text(")")));
     }
 
     // Detect uniform tuple-per-line + smaller trailing group (e.g. [2,2,2,1]). Returns sizes or null.
@@ -2291,23 +2736,31 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         parts.add(result);
 
         var arguments = getProperty(node, ClassInstanceCreation.ARGUMENTS_PROPERTY);
+        // A comment after `(` (`new X( // c`) attaches to the type; a dangling one before
+        // `)` to the call; each argument carries its own comments — same as a method call.
+        var ctorAfterOpen = comments != null ? comments.trailing(type) : List.<Comment>of();
+        var ctorBeforeClose = comments != null ? comments.dangling(node) : List.<Comment>of();
         if (arguments.isEmpty()) {
-            parts.add(text("()"));
+            formatArguments(parts, List.of(), ctorAfterOpen, ctorBeforeClose);
         } else {
             var argDocs = new ArrayList<Doc>();
             for (var arg : arguments) {
                 arg.accept(this);
                 argDocs.add(result);
             }
-            parts.add(group(concat(
-                    text("("),
-                    indent(concat(
-                            softLine(),
-                            join(concat(text(","), line()), argDocs)
-                    )),
-                    softLine(),
-                    text(")")
-            )));
+            if (!ctorAfterOpen.isEmpty() || !ctorBeforeClose.isEmpty() || argumentsHaveComments(arguments)) {
+                parts.add(argsWithComments(arguments, argDocs, ctorAfterOpen, ctorBeforeClose));
+            } else {
+                parts.add(group(concat(
+                        text("("),
+                        indent(concat(
+                                softLine(),
+                                join(concat(text(","), line()), argDocs)
+                        )),
+                        softLine(),
+                        text(")")
+                )));
+            }
         }
 
         var anonymousClass = getProperty(node, ClassInstanceCreation.ANONYMOUS_CLASS_DECLARATION_PROPERTY);
@@ -2453,11 +2906,28 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
                     join(concat(text(","), line()), paramsDoc)
             )), softLine(), text(")"));
         }
-        parts.add(group(concat(paramListDoc, text(" -> "))));
-
         var body = getProperty(node, LambdaExpression.BODY_PROPERTY);
         body.accept(this);
-        parts.add(result);
+        var bodyDoc = result;
+
+        // A comment after the arrow (`ctx -> // c\n body`) attaches as a trailing comment of
+        // the (last) parameter or a leading comment of the body; emit it after `->` and push
+        // the body onto its own indented line so a line comment can't swallow it.
+        var arrowComments = new ArrayList<Comment>();
+        if (comments != null && !parameters.isEmpty()) arrowComments.addAll(comments.trailing(parameters.getLast()));
+        if (comments != null) arrowComments.addAll(comments.leading(body));
+
+        if (!arrowComments.isEmpty()) {
+            Doc arrow = concat(paramListDoc, text(" ->"));
+            for (var c : arrowComments) arrow = concat(arrow, text(" "), renderComment(c));
+            parts.add(arrow);
+            parts.add(indent(concat(hardLine(), bodyDoc)));
+            result = concat(parts);
+            return false;
+        }
+
+        parts.add(group(concat(paramListDoc, text(" -> "))));
+        parts.add(bodyDoc);
 
         var partsDoc = concat(parts);
         result = body instanceof Block
@@ -2508,9 +2978,19 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
     @Override
     public boolean visit(ArrayInitializer node) {
         var expressions = getProperty(node, ArrayInitializer.EXPRESSIONS_PROPERTY);
+        var dangling = comments != null ? comments.dangling(node) : List.<Comment>of();
 
         if (expressions.isEmpty()) {
-            result = text("{}");
+            if (dangling.isEmpty()) {
+                result = text("{}");
+            } else {
+                var inner = new ArrayList<Doc>();
+                for (var dc : dangling) {
+                    inner.add(hardLine());
+                    inner.add(renderComment(dc));
+                }
+                result = breakGroup(concat(text("{"), indent(concat(inner)), hardLine(), text("}")));
+            }
             return false;
         }
 
@@ -2518,6 +2998,13 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         for (var expr : expressions) {
             expr.accept(this);
             elemDocs.add(result);
+        }
+
+        // An element carrying a comment (`{ // c\n a, // c\n b }`) or a dangling comment
+        // before `}` forces a one-per-line break; the element visitors don't emit these.
+        if (!dangling.isEmpty() || elementsHaveComments(expressions)) {
+            result = arrayWithComments(expressions, elemDocs, dangling);
+            return false;
         }
 
         var flat = concat(
@@ -2539,6 +3026,67 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
         result = conditionalGroup(List.of(flat, breaking));
         return false;
+    }
+
+    private boolean elementsHaveComments(List<ASTNode> elems) {
+        if (comments == null) return false;
+        for (var e : elems) {
+            if (!comments.leading(e).isEmpty() || !comments.trailing(e).isEmpty()) return true;
+        }
+        return false;
+    }
+
+    /// Render try-with-resources `(r1; r2; ...)` one per line when a resource carries a
+    /// comment: a leading comment (including one right after `(`) on its own line before the
+    /// resource, a trailing comment after the separating `;`. Always breaks.
+    private Doc resourcesWithComments(List<ASTNode> resources, List<Doc> resourceDocs) {
+        var inner = new ArrayList<Doc>();
+        inner.add(softLine());
+        int n = resources.size();
+        for (int i = 0; i < n; i++) {
+            var r = resources.get(i);
+            for (var lc : comments.leading(r)) {
+                inner.add(renderComment(lc));
+                inner.add(line());
+            }
+            inner.add(resourceDocs.get(i));
+            if (i < n - 1) inner.add(text(";"));
+            for (var tc : comments.trailing(r)) {
+                inner.add(text(" "));
+                inner.add(renderComment(tc));
+            }
+            if (i < n - 1) inner.add(line());
+        }
+        return breakGroup(concat(text("("), indent(concat(inner)), softLine(), text(")")));
+    }
+
+    /// Render an array initializer whose elements carry comments, one per line with the
+    /// usual trailing comma. A leading comment (including one right after `{`) goes on its
+    /// own line before its element; a trailing comment goes after the element's comma;
+    /// dangling comments sit on their own lines before `}`. Always breaks.
+    private Doc arrayWithComments(List<ASTNode> elems, List<Doc> elemDocs, List<Comment> dangling) {
+        var inner = new ArrayList<Doc>();
+        inner.add(hardLine());
+        int n = elems.size();
+        for (int i = 0; i < n; i++) {
+            var e = elems.get(i);
+            for (var lc : comments.leading(e)) {
+                inner.add(renderComment(lc));
+                inner.add(hardLine());
+            }
+            inner.add(elemDocs.get(i));
+            inner.add(text(","));
+            for (var tc : comments.trailing(e)) {
+                inner.add(text(" "));
+                inner.add(renderComment(tc));
+            }
+            if (i < n - 1) inner.add(hardLine());
+        }
+        for (var dc : dangling) {
+            inner.add(hardLine());
+            inner.add(renderComment(dc));
+        }
+        return breakGroup(concat(text("{"), indent(concat(inner)), hardLine(), text("}")));
     }
 
     @Override
@@ -2906,24 +3454,33 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         typeName.accept(this);
         parts.add(result);
 
+        // An annotation's `(values)` formats exactly like a call's `(args)`, including
+        // comment handling: a comment after `(` attaches to the type name, a dangling one
+        // before `)` to the annotation, and a member-value-pair carries its own comments.
         var values = getProperty(node, NormalAnnotation.VALUES_PROPERTY);
+        var afterOpen = comments != null ? comments.trailing(typeName) : List.<Comment>of();
+        var beforeClose = comments != null ? comments.dangling(node) : List.<Comment>of();
         if (values.isEmpty()) {
-            parts.add(text("()"));
+            formatArguments(parts, List.of(), afterOpen, beforeClose);
         } else {
             var valueDocs = new ArrayList<Doc>();
             for (var value : values) {
                 value.accept(this);
                 valueDocs.add(result);
             }
-            parts.add(group(concat(
-                    text("("),
-                    indent(concat(
-                            softLine(),
-                            join(concat(text(","), line()), valueDocs)
-                    )),
-                    softLine(),
-                    text(")")
-            )));
+            if (!afterOpen.isEmpty() || !beforeClose.isEmpty() || argumentsHaveComments(values)) {
+                parts.add(argsWithComments(values, valueDocs, afterOpen, beforeClose));
+            } else {
+                parts.add(group(concat(
+                        text("("),
+                        indent(concat(
+                                softLine(),
+                                join(concat(text(","), line()), valueDocs)
+                        )),
+                        softLine(),
+                        text(")")
+                )));
+            }
         }
 
         result = concat(parts);

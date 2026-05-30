@@ -1,0 +1,39 @@
+class Example {
+    // Trailing comments on annotation member-value-pairs.
+    @Command(
+        name = "discover", //
+        description = "Discover tests", //
+        mixinStandardHelpOptions = true
+    )
+    void withPairComments() {}
+
+    // Comment right after the annotation's open paren.
+    @Command( // <1>
+        name = "x"
+    )
+    void afterOpenParen() {}
+
+    // Comment-free annotation is unaffected.
+    @Command(name = "x", description = "y")
+    void noComment() {}
+}
+---
+class Example {
+    // Trailing comments on annotation member-value-pairs.
+    @Command(
+        name = "discover", //
+        description = "Discover tests", //
+        mixinStandardHelpOptions = true
+    )
+    void withPairComments() {}
+
+    // Comment right after the annotation's open paren.
+    @Command( // <1>
+        name = "x"
+    )
+    void afterOpenParen() {}
+
+    // Comment-free annotation is unaffected.
+    @Command(name = "x", description = "y")
+    void noComment() {}
+}

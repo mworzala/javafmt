@@ -1,0 +1,25 @@
+@interface Foo {
+    /**
+     * Doc.
+     */
+    // Implementation notes:
+    // - Test.* prefix
+    // - .*Tests? suffix
+    String[] value() default "x";
+
+    // Comment-free member is unaffected.
+    int count();
+}
+---
+@interface Foo {
+    /**
+     * Doc.
+     */
+    // Implementation notes:
+    // - Test.* prefix
+    // - .*Tests? suffix
+    String[] value() default "x";
+
+    // Comment-free member is unaffected.
+    int count();
+}

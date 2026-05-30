@@ -1,0 +1,43 @@
+class Example {
+    // Comment right after a constructor call's open paren.
+    Object afterOpen() {
+        return new PreconditionViolationException( // <1>
+            "Could not load resource"
+        );
+    }
+
+    // Trailing comment on a constructor argument.
+    Object argComment() {
+        return new Foo(
+            firstArgumentValueHere, // a
+            secondArgumentValueHere
+        );
+    }
+
+    // Comment-free constructor call is unaffected.
+    Object plain() {
+        return new ArrayList<>(initialCapacityValue);
+    }
+}
+---
+class Example {
+    // Comment right after a constructor call's open paren.
+    Object afterOpen() {
+        return new PreconditionViolationException( // <1>
+            "Could not load resource"
+        );
+    }
+
+    // Trailing comment on a constructor argument.
+    Object argComment() {
+        return new Foo(
+            firstArgumentValueHere, // a
+            secondArgumentValueHere
+        );
+    }
+
+    // Comment-free constructor call is unaffected.
+    Object plain() {
+        return new ArrayList<>(initialCapacityValue);
+    }
+}

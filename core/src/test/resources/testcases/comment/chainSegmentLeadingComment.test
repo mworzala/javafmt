@@ -1,0 +1,43 @@
+class Example {
+    // Own-line comment before the outermost chain segment.
+    void beforeOutermost() {
+        request.getEngineExecutionListener()
+            // tag::custom_line_break[]
+            .executionStarted(request.getRootTestDescriptor());
+    }
+
+    // Own-line comment before a middle segment.
+    void beforeMiddle() {
+        var x = source.first()
+            // explain
+            .second()
+            .third();
+    }
+
+    // Comment-free chain stays flat.
+    void noComment() {
+        var x = source.first().second().third();
+    }
+}
+---
+class Example {
+    // Own-line comment before the outermost chain segment.
+    void beforeOutermost() {
+        request.getEngineExecutionListener()
+            // tag::custom_line_break[]
+            .executionStarted(request.getRootTestDescriptor());
+    }
+
+    // Own-line comment before a middle segment.
+    void beforeMiddle() {
+        var x = source.first()
+            // explain
+            .second()
+            .third();
+    }
+
+    // Comment-free chain stays flat.
+    void noComment() {
+        var x = source.first().second().third();
+    }
+}

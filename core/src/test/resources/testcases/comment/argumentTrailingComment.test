@@ -1,0 +1,75 @@
+class Example {
+    // Trailing line comment after each argument (the `arg, //` idiom): args break
+    // one-per-line and each comment follows its comma.
+    void trailingEachArg() {
+        out.printf(ASCIIDOC_FORMAT, //
+            code(name), //
+            code(since) //
+        );
+    }
+
+    // Trailing comment on just the first argument.
+    void trailingFirstArg() {
+        register(firstArgumentName, // the key
+            secondArgumentValue);
+    }
+
+    // Leading own-line comment before an argument.
+    void leadingBeforeArg() {
+        compute(alpha,
+            // explain beta
+            beta);
+    }
+
+    // Trailing block comment on an argument is preserved (also forces the break).
+    void blockComment() {
+        configure(firstOption /* primary */, secondOption);
+    }
+
+    // Comment-free args are unaffected and stay flat.
+    void noComment() {
+        someMethodWithAReasonablyLongNameHere(firstArgument, secondArgument, thirdArgument, fourth);
+    }
+}
+---
+class Example {
+    // Trailing line comment after each argument (the `arg, //` idiom): args break
+    // one-per-line and each comment follows its comma.
+    void trailingEachArg() {
+        out.printf(
+            ASCIIDOC_FORMAT, //
+            code(name), //
+            code(since) //
+        );
+    }
+
+    // Trailing comment on just the first argument.
+    void trailingFirstArg() {
+        register(
+            firstArgumentName, // the key
+            secondArgumentValue
+        );
+    }
+
+    // Leading own-line comment before an argument.
+    void leadingBeforeArg() {
+        compute(
+            alpha,
+            // explain beta
+            beta
+        );
+    }
+
+    // Trailing block comment on an argument is preserved (also forces the break).
+    void blockComment() {
+        configure(
+            firstOption, /* primary */
+            secondOption
+        );
+    }
+
+    // Comment-free args are unaffected and stay flat.
+    void noComment() {
+        someMethodWithAReasonablyLongNameHere(firstArgument, secondArgument, thirdArgument, fourth);
+    }
+}

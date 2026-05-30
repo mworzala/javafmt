@@ -1,0 +1,43 @@
+class Example {
+    // Trailing comment on a `new` receiver root: the comment is kept and the chain
+    // breaks one-per-line rather than gluing the first call onto the comment's line.
+    Object toStringBuilder() {
+        return new ToStringBuilder(this) //
+            .append("a", getA()) //
+            .append("b", getB())
+            .toString();
+    }
+
+    // Trailing comment on a name receiver root.
+    void nameRoot() {
+        result = obj //
+            .computeSomethingWithAReasonablyLongName(argumentValueHere);
+    }
+
+    // Comment-free chain stays flat.
+    Object plain() {
+        return new ToStringBuilder(this).append("a", getA()).append("b", getB()).toString();
+    }
+}
+---
+class Example {
+    // Trailing comment on a `new` receiver root: the comment is kept and the chain
+    // breaks one-per-line rather than gluing the first call onto the comment's line.
+    Object toStringBuilder() {
+        return new ToStringBuilder(this) //
+            .append("a", getA()) //
+            .append("b", getB())
+            .toString();
+    }
+
+    // Trailing comment on a name receiver root.
+    void nameRoot() {
+        result = obj //
+            .computeSomethingWithAReasonablyLongName(argumentValueHere);
+    }
+
+    // Comment-free chain stays flat.
+    Object plain() {
+        return new ToStringBuilder(this).append("a", getA()).append("b", getB()).toString();
+    }
+}

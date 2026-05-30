@@ -1,0 +1,13 @@
+class Outer {
+    // Own-line comment between a modifier and a nested class name.
+    static
+    // tag::user_guide_field_injection[]
+    class SharedTempDirectoryDemo {}
+}
+---
+class Outer {
+    // Own-line comment between a modifier and a nested class name.
+    static
+    // tag::user_guide_field_injection[]
+    class SharedTempDirectoryDemo {}
+}

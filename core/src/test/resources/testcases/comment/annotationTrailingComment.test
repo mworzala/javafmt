@@ -1,0 +1,51 @@
+class Example {
+    // Trailing line comment on a marker annotation.
+    @AutoClose // <1>
+    @Test
+    void markerWithComment() {}
+
+    // Trailing comment on an annotation with arguments.
+    @Timeout(5) // Poll at most 5 seconds
+    void annotationWithArgs() {}
+
+    // Bare trailing comment marker.
+    @Deprecated //
+    void bareTrailing() {}
+
+    // Trailing block comment on a keyword modifier stays inline.
+    private /* final */ UniqueId uniqueId;
+
+    // Comment-free modifiers/annotations are unaffected.
+    @Override
+    public static void plain() {}
+
+    private static String typeUse() {
+        return null;
+    }
+}
+---
+class Example {
+    // Trailing line comment on a marker annotation.
+    @AutoClose // <1>
+    @Test
+    void markerWithComment() {}
+
+    // Trailing comment on an annotation with arguments.
+    @Timeout(5) // Poll at most 5 seconds
+    void annotationWithArgs() {}
+
+    // Bare trailing comment marker.
+    @Deprecated //
+    void bareTrailing() {}
+
+    // Trailing block comment on a keyword modifier stays inline.
+    private /* final */ UniqueId uniqueId;
+
+    // Comment-free modifiers/annotations are unaffected.
+    @Override
+    public static void plain() {}
+
+    private static String typeUse() {
+        return null;
+    }
+}

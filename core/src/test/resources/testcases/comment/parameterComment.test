@@ -1,0 +1,35 @@
+class Session {
+    // Trailing comments on constructor parameters.
+    Session(List<Interceptor> interceptors, //
+        Supplier<Listener> listenerSupplier, //
+        Function<Store, Launcher> launcherFactory) {
+    }
+
+    // Leading comment on a method parameter.
+    void f(
+        // the first
+        int a,
+        int b) {}
+
+    // Comment-free parameters are unaffected.
+    void g(int a, int b, int c) {}
+}
+---
+class Session {
+    // Trailing comments on constructor parameters.
+    Session(
+        List<Interceptor> interceptors, //
+        Supplier<Listener> listenerSupplier, //
+        Function<Store, Launcher> launcherFactory
+    ) {}
+
+    // Leading comment on a method parameter.
+    void f(
+        // the first
+        int a,
+        int b
+    ) {}
+
+    // Comment-free parameters are unaffected.
+    void g(int a, int b, int c) {}
+}

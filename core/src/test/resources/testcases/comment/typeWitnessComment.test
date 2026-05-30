@@ -1,0 +1,24 @@
+class Example {
+    // Comment after an explicit type witness, before the method name.
+    static final java.util.Comparator<M> comparator = java.util.Comparator.<M, String> //
+        comparing(d -> d.getName()) //
+        .thenComparing(d -> d.other());
+
+    // Comment-free type witness is unaffected.
+    java.util.List<String> empty() {
+        return java.util.Collections.<String>emptyList();
+    }
+}
+---
+class Example {
+    // Comment after an explicit type witness, before the method name.
+    static final java.util.Comparator<M> comparator = java.util.Comparator
+        .<M, String> //
+        comparing(d -> d.getName()) //
+        .thenComparing(d -> d.other());
+
+    // Comment-free type witness is unaffected.
+    java.util.List<String> empty() {
+        return java.util.Collections.<String>emptyList();
+    }
+}

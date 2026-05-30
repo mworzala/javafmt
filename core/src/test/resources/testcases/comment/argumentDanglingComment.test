@@ -1,0 +1,52 @@
+class Example {
+    // Dangling comment after the last argument, before `)`, plus leading comments on args.
+    java.util.List<Object> listOf() {
+        return List.of(
+            // c1
+            new TextFile("file1", "first content"),
+            // c2
+            new TextFile("file2", "second content")
+            // c3 dangling before the close paren
+        );
+    }
+
+    // Only a dangling comment before `)`.
+    void formatterMarker() {
+        register(firstArgumentNameHere, secondArgumentNameHere, thirdArgumentNameHereToo
+        // @formatter:on
+        );
+    }
+
+    // Comment-free call is unaffected.
+    void noComment() {
+        foo(a, b, c);
+    }
+}
+---
+class Example {
+    // Dangling comment after the last argument, before `)`, plus leading comments on args.
+    java.util.List<Object> listOf() {
+        return List.of(
+            // c1
+            new TextFile("file1", "first content"),
+            // c2
+            new TextFile("file2", "second content")
+            // c3 dangling before the close paren
+        );
+    }
+
+    // Only a dangling comment before `)`.
+    void formatterMarker() {
+        register(
+            firstArgumentNameHere,
+            secondArgumentNameHere,
+            thirdArgumentNameHereToo
+            // @formatter:on
+        );
+    }
+
+    // Comment-free call is unaffected.
+    void noComment() {
+        foo(a, b, c);
+    }
+}

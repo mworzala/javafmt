@@ -1,0 +1,61 @@
+class Example {
+    // Comment right after `(` of a standalone call (attaches to the method name).
+    java.util.stream.IntStream concatStreams() {
+        return IntStream.concat( // <1>
+            firstStreamValue,
+            secondStreamValue);
+    }
+
+    // Comment after `(` where the call would otherwise fit on one line.
+    Object listElements() {
+        return Arrays.asList( // elements
+            alpha, beta, gamma);
+    }
+
+    // Comment after `(` on a non-outermost chain segment: the chain breaks at its dots
+    // (no `).next()` orphan) and the comment is preserved.
+    void chainSegment() {
+        result = source.transform( // step 1
+            firstArgumentValue).collectIntoResultList();
+    }
+
+    // Comment-free calls are unaffected.
+    void noComment() {
+        foo(a, b, c);
+        bar();
+    }
+}
+---
+class Example {
+    // Comment right after `(` of a standalone call (attaches to the method name).
+    java.util.stream.IntStream concatStreams() {
+        return IntStream.concat( // <1>
+            firstStreamValue,
+            secondStreamValue
+        );
+    }
+
+    // Comment after `(` where the call would otherwise fit on one line.
+    Object listElements() {
+        return Arrays.asList( // elements
+            alpha,
+            beta,
+            gamma
+        );
+    }
+
+    // Comment after `(` on a non-outermost chain segment: the chain breaks at its dots
+    // (no `).next()` orphan) and the comment is preserved.
+    void chainSegment() {
+        result = source.transform( // step 1
+                firstArgumentValue
+            )
+            .collectIntoResultList();
+    }
+
+    // Comment-free calls are unaffected.
+    void noComment() {
+        foo(a, b, c);
+        bar();
+    }
+}

@@ -1,0 +1,30 @@
+class Example {
+}
+
+class Ext implements
+    // Lifecycle Callbacks
+    BeforeAllCallback,
+    AfterAllCallback,
+    // Dependency Injection
+    ParameterResolver {
+    void m() {}
+}
+
+class Plain implements Runnable, Comparable<Plain> {
+    public void run() {}
+}
+---
+class Example {}
+
+class Ext implements
+    // Lifecycle Callbacks
+    BeforeAllCallback,
+    AfterAllCallback,
+    // Dependency Injection
+    ParameterResolver {
+    void m() {}
+}
+
+class Plain implements Runnable, Comparable<Plain> {
+    public void run() {}
+}

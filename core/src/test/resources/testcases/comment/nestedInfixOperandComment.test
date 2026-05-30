@@ -1,0 +1,52 @@
+class Example {
+    // Trailing `//` on a non-last operand that is itself a nested expression (`==`),
+    // in a left-leaning `&&` chain. The comment attaches to the inner subtree node.
+    boolean nested(java.lang.reflect.Method method, String name, int count) {
+        return method.getName().equals(name) //
+            && method.getParameterCount() == count //
+            && method.getParameterTypes()[0].isAssignableFrom(String.class);
+    }
+
+    // Regression: a `+` chain that is itself a commented call argument must not duplicate
+    // the operand comment (the anchor of a non-last operand must not be the whole expression).
+    void argChain() {
+        out.printf(FORMAT, //
+            code(name) //
+                + " " //
+                + italic(kind), //
+            code(since) //
+        );
+    }
+
+    // Comment-free chain is unaffected.
+    boolean plain() {
+        return aVeryLongConditionExpr && anotherLongConditionExpr && yetAnotherLongConditionValue;
+    }
+}
+---
+class Example {
+    // Trailing `//` on a non-last operand that is itself a nested expression (`==`),
+    // in a left-leaning `&&` chain. The comment attaches to the inner subtree node.
+    boolean nested(java.lang.reflect.Method method, String name, int count) {
+        return method.getName().equals(name) //
+            && method.getParameterCount() == count //
+            && method.getParameterTypes()[0].isAssignableFrom(String.class);
+    }
+
+    // Regression: a `+` chain that is itself a commented call argument must not duplicate
+    // the operand comment (the anchor of a non-last operand must not be the whole expression).
+    void argChain() {
+        out.printf(
+            FORMAT, //
+            code(name) //
+                + " " //
+                + italic(kind), //
+            code(since) //
+        );
+    }
+
+    // Comment-free chain is unaffected.
+    boolean plain() {
+        return aVeryLongConditionExpr && anotherLongConditionExpr && yetAnotherLongConditionValue;
+    }
+}

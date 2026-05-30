@@ -1,0 +1,47 @@
+class Example {
+    // Comment after the try block's `}` (before `catch`) is kept; `catch` moves to its
+    // own line instead of gluing `} catch`.
+    void beforeCatch() {
+        try {
+            risky();
+        } // @formatter:on
+        catch (Exception ex) {
+            handle(ex);
+        }
+    }
+
+    // Comment-free try/catch/finally stays glued.
+    void plain() {
+        try {
+            risky();
+        } catch (Exception ex) {
+            handle(ex);
+        } finally {
+            cleanup();
+        }
+    }
+}
+---
+class Example {
+    // Comment after the try block's `}` (before `catch`) is kept; `catch` moves to its
+    // own line instead of gluing `} catch`.
+    void beforeCatch() {
+        try {
+            risky();
+        } // @formatter:on
+        catch (Exception ex) {
+            handle(ex);
+        }
+    }
+
+    // Comment-free try/catch/finally stays glued.
+    void plain() {
+        try {
+            risky();
+        } catch (Exception ex) {
+            handle(ex);
+        } finally {
+            cleanup();
+        }
+    }
+}

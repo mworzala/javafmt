@@ -1,0 +1,41 @@
+class Example {
+    // Element trailing comments in an array initializer.
+    String[] elementComments() {
+        return new String[] {
+            "a", // first
+            "b" // second
+        };
+    }
+
+    // Array values inside an annotation.
+    @ValueSource(strings = {
+        "x", // one
+        "y" // two
+    })
+    void annotationArray() {}
+
+    // Comment-free array is unaffected.
+    int[] plain = {1, 2, 3};
+}
+---
+class Example {
+    // Element trailing comments in an array initializer.
+    String[] elementComments() {
+        return new String[] {
+            "a", // first
+            "b", // second
+        };
+    }
+
+    // Array values inside an annotation.
+    @ValueSource(
+        strings = {
+            "x", // one
+            "y", // two
+        }
+    )
+    void annotationArray() {}
+
+    // Comment-free array is unaffected.
+    int[] plain = {1, 2, 3};
+}

@@ -652,7 +652,7 @@ parameter declaration) go on their own line:
 
 ```java
 @Deprecated
-    @SuppressWarnings("rawtypes")
+@SuppressWarnings("rawtypes")
 class A {
 
     @Deprecated

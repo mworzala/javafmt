@@ -97,6 +97,10 @@ val corpusTest by tasks.registering(Test::class) {
         includeTags("corpus")
     }
     systemProperty("javafmt.corpus.dir", corpusRoot.get().asFile.absolutePath)
+    // Corpus runs the STRICT emission ledger: a comment the handlers and the statement-level
+    // mop-up fail to emit (the production fallback is disabled under STRICT) fails the build,
+    // so a real drop is caught here rather than silently force-appended.
+    systemProperty("javafmt.commentLedger", System.getProperty("javafmt.commentLedger", "strict"))
     // Corpus is large; surface progress and don't fail-fast.
     maxHeapSize = "1g"
     testLogging {

@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 
 /// Decorates an AST with comment attachments computed once after parsing.
 ///
@@ -33,6 +34,11 @@ import java.util.List;
 /// attachments because the rules use line-relative position only at build time.
 final class CommentMap {
     private final IdentityHashMap<ASTNode, NodeComments> attachments = new IdentityHashMap<>();
+    // Identity set of every comment that attach() processed. This is the "attached" side of
+    // the emission conservation law: the emission ledger asserts every member of this set is
+    // rendered (see CommentLedger). A comment that lands here but is never emitted is the
+    // silent-drop bug the ledger exists to catch.
+    private final Set<Comment> attachedSet = Collections.newSetFromMap(new IdentityHashMap<>());
     private int attachedCount = 0;
 
     static final class NodeComments {
@@ -71,6 +77,14 @@ final class CommentMap {
         return nc != null ? nc.dangling : Collections.emptyList();
     }
 
+    /// Every comment attach() bound to a node — the "attached" side of the emission
+    /// conservation law. Includes in-position `/** */` Javadoc (attached like any other
+    /// comment but emitted via visitJavadoc, which records it on the emitted side). Excludes
+    /// `///` Markdown Javadoc, which build() never attaches.
+    Set<Comment> attachedComments() {
+        return attachedSet;
+    }
+
     private void attach(Comment c, CompilationUnit cu, String source) {
         var enclosing = findEnclosing(cu, c);
         var children = directChildren(enclosing);
@@ -103,6 +117,7 @@ final class CommentMap {
         } else {
             getOrCreate(enclosing).dangling.add(c);
         }
+        attachedSet.add(c);
         attachedCount++;
     }
 

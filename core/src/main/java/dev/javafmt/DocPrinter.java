@@ -8,6 +8,10 @@ final class DocPrinter {
     private final StringBuilder out = new StringBuilder();
     private int currentLineWidth = 0;
     private int pendingIndent = -1; // -1 means no pending newline
+    // Set by a CommentBreak: the next ordinary break (HardLine/Line/SoftLine) is absorbed so a
+    // trailing line comment in an already-breaking context doesn't stack into a blank line.
+    // Consumed by the next emitNewline, or voided when real text is flushed.
+    private boolean absorbNextBreak = false;
 
     // Main work stack — drives `print`. Replaces an ArrayDeque<Frame> so that each
     // push/pop is a couple of array writes/reads instead of a Frame object allocation
@@ -79,6 +83,16 @@ final class DocPrinter {
 
                 case Doc.HardLine h -> emitNewline(indent);
 
+                case Doc.CommentBreak ignored -> {
+                    // Unconditional line end for a trailing line comment. Unlike emitNewline, this
+                    // is never itself absorbed; instead it arms absorbNextBreak so the following
+                    // separator (if any) collapses into this one newline.
+                    stripTrailingSpaces();
+                    if (pendingIndent >= 0) out.append('\n');
+                    pendingIndent = indent;
+                    absorbNextBreak = true;
+                }
+
                 case Doc.Group g -> {
                     boolean flatMode = !g.shouldBreak() && fits(indent, g.doc());
                     pushMain(indent, flatMode, g.doc());
@@ -102,6 +116,15 @@ final class DocPrinter {
     }
 
     private void emitNewline(int indent) {
+        // A CommentBreak just ended the line; absorb this immediately-following break so the
+        // two don't render as a blank line. The absorbed break's indent wins, though: it is the
+        // structural one that decides where the next line starts (e.g. a block's closing brace
+        // dedents relative to the comment it followed). Only one break is absorbed.
+        if (absorbNextBreak) {
+            absorbNextBreak = false;
+            pendingIndent = indent;
+            return;
+        }
         // The line that just ended must not carry trailing whitespace (the style
         // guarantee). Strip it now — at end-of-line — rather than relying on every doc
         // producer to avoid emitting a token+space immediately before a break. Only the
@@ -129,6 +152,9 @@ final class DocPrinter {
             out.append(" ".repeat(pendingIndent));
             currentLineWidth = pendingIndent;
             pendingIndent = -1;
+            // Real content landed on the new line; the absorb window (an immediately-following
+            // break after a CommentBreak) has closed.
+            absorbNextBreak = false;
         }
     }
 
@@ -168,6 +194,7 @@ final class DocPrinter {
                 case Doc.SoftLine ignored -> { /* zero-width when flat */ }
                 case Doc.BoundaryLine ignored -> { /* zero-width when flat */ }
                 case Doc.HardLine h -> { return false; }
+                case Doc.CommentBreak cb -> { return false; }
                 case Doc.Indent i -> pushScratch(indent + indentStep, true, i.doc());
                 case Doc.Group g -> pushScratch(indent, true, g.doc());
                 case Doc.ConditionalGroup cg -> pushScratch(indent, true, cg.alternatives().getFirst());
@@ -204,6 +231,7 @@ final class DocPrinter {
                 case Doc.SoftLine ignored -> { /* zero-width when flat */ }
                 case Doc.BoundaryLine ignored -> { /* zero-width when flat */ }
                 case Doc.HardLine h -> { return true; }
+                case Doc.CommentBreak cb -> { return true; }
                 case Doc.Indent i -> pushScratch(indent + indentStep, true, i.doc());
                 case Doc.Group g -> pushScratch(indent, true, g.doc());
                 case Doc.ConditionalGroup cg -> pushScratch(indent, true, cg.alternatives().getFirst());
@@ -239,6 +267,7 @@ final class DocPrinter {
                 }
                 case Doc.BoundaryLine ignored -> { return true; }
                 case Doc.HardLine h -> { return true; }
+                case Doc.CommentBreak cb -> { return true; }
                 case Doc.Indent i -> pushScratch(indent + indentStep, flat, i.doc());
                 case Doc.Group g -> pushScratch(indent, true, g.doc());
                 case Doc.ConditionalGroup cg -> pushScratch(indent, flat, cg.alternatives().getFirst());

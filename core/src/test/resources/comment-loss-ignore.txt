@@ -1,11 +1,11 @@
-# Files whose formatted output drops or duplicates a comment. The corpus comment-
-# preservation check is skipped for these (AST-equivalence and idempotence still run).
-# This is the backlog — shrink it by fixing a context and deleting the entry.
-
-# Inline block comment inside an enum constant's argument list
-# (`UNLIMITED(-1, /*Minecraft world limit*/29_999_984)`). JDT attaches it to the
-# enclosing EnumConstantDeclaration, but its position-based attribution flips between
-# the flat and one-per-line layouts, so routing the arguments through the comment-aware
-# argument renderer is not idempotent. Left as a known drop until enum-constant
-# arguments get their own stable comment handling.
-mapmaker/modules/core/src/main/java/net/hollowcube/mapmaker/map/MapSize.java
+# Files whose formatted output DROPS or DUPLICATES a comment.
+#
+# This list MUST stay empty. The generic orphan mop-up (AstToDoc.postVisit) preserves every
+# attached comment, and the STRICT emission ledger fails the build on any drop, so a real loss
+# is now a located, fixable error rather than something to record here. The list — and the test
+# asserting it is empty — exists only as a tripwire: if a future change reintroduces a loss, the
+# fix is to emit the comment, not to add it here.
+#
+# (A comment that is preserved but whose coarse fallback placement normalizes once on the first
+# format is NOT a loss; those few cases are listed separately as idempotence reflows in
+# CorpusTest, where preservation and AST-equivalence still run.)

@@ -1,0 +1,7 @@
+class A {
+    int x = ( /*c*/ 1 );
+}
+---
+class A {
+    int x = (1); /*c*/
+}

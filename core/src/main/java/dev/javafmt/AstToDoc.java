@@ -4,8 +4,11 @@ import org.eclipse.jdt.core.dom.*;
 import org.jspecify.annotations.NullUnmarked;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 
 import static dev.javafmt.Doc.*;
 
@@ -15,6 +18,13 @@ final class AstToDoc extends ASTVisitor {
     private final CommentMap comments;
     private Doc result;
     private CompilationUnit compilationUnit;
+
+    // The "emitted" side of the emission conservation law (see CommentLedger). Every comment
+    // that reaches the output is recorded here: ordinary leading/trailing/dangling comments
+    // via renderComment, and in-position `/** */` Javadoc via visitJavadoc (which renders
+    // through appendCommentLines, bypassing renderComment). A comment in CommentMap's attached
+    // set but absent here was silently dropped.
+    private final Set<Comment> emitted = Collections.newSetFromMap(new IdentityHashMap<>());
 
     /// True while rendering the receiver spine of a `recv.method(...)` call. Consumed
     /// by visit(ArrayAccess) to suppress its bracket-break alternative: an array access
@@ -26,21 +36,103 @@ final class AstToDoc extends ASTVisitor {
     /// into siblings, arguments, or index subexpressions.
     private boolean flatReceiver = false;
 
+    // When true, any comment still unemitted after the whole tree is visited is force-appended
+    // at the end of the compilation unit so it is never lost (the production safety net). Off
+    // under the STRICT ledger so CI surfaces an un-handled position instead of papering over it.
+    private final boolean appendOrphansAtCu;
+
     public AstToDoc(String source, CommentMap comments) {
+        this(source, comments, false);
+    }
+
+    public AstToDoc(String source, CommentMap comments, boolean appendOrphansAtCu) {
         this.source = source;
         this.comments = comments;
+        this.appendOrphansAtCu = appendOrphansAtCu;
     }
 
     public AstToDoc(String source) {
-        this(source, null);
+        this(source, null, false);
     }
 
     public AstToDoc() {
-        this(null, null);
+        this(null, null, false);
     }
 
     public Doc result() {
         return result;
+    }
+
+    /// The set of comments this visitor rendered into the Doc — the "emitted" side of the
+    /// emission conservation law. Compare against {@link CommentMap#attachedComments()} via
+    /// {@link CommentLedger} to detect silently dropped comments.
+    Set<Comment> emittedComments() {
+        return emitted;
+    }
+
+    // Attached comments sorted by start position, for range queries in the orphan mop-up.
+    // Built lazily on first use because it is only needed when a node actually contains an
+    // un-emitted comment.
+    private Comment[] sortedComments;
+
+    /// Generic safety net for comments that no construct-specific handler emitted.
+    ///
+    /// A comment can attach to a deep expression or type node (`( /*c*/ x )`, `(int) /*c*/ y`,
+    /// `return /*c*/ z`) whose visitor — and every ancestor's visitor — never consults the
+    /// CommentMap. Rather than add an emission site for each such position (the losing game),
+    /// every statement and body declaration sweeps the comments that fall strictly inside its
+    /// source range and were not emitted by any inner handler, appending them as trailing
+    /// comments. Because postVisit runs bottom-up and renderComment records each comment as
+    /// emitted, the innermost enclosing statement/declaration claims an orphan and outer ones
+    /// skip it. Placement is coarse (end of the enclosing statement) but the comment is never
+    /// lost, and on reparse it is an ordinary trailing comment, so a second format is a no-op.
+    @Override
+    public void postVisit(ASTNode node) {
+        if (comments == null) return;
+        if (!(node instanceof Statement || node instanceof BodyDeclaration)) return;
+        var orphans = orphansWithin(node);
+        if (orphans.isEmpty()) return;
+        Doc combined = result;
+        boolean lastIsLine = false;
+        for (var c : orphans) {
+            combined = concat(combined, text(" "), renderComment(c));
+            lastIsLine = c instanceof LineComment;
+        }
+        if (lastIsLine) combined = concat(combined, commentBreak());
+        result = combined;
+    }
+
+    /// Attached comments that start strictly within {@code node}'s source range and have not
+    /// yet been emitted, in source order.
+    private List<Comment> orphansWithin(ASTNode node) {
+        if (sortedComments == null) {
+            sortedComments = comments.attachedComments().toArray(new Comment[0]);
+            java.util.Arrays.sort(sortedComments, Comparator.comparingInt(Comment::getStartPosition));
+        }
+        int start = node.getStartPosition();
+        int end = start + node.getLength();
+        List<Comment> res = null;
+        for (int i = lowerBound(start); i < sortedComments.length; i++) {
+            var c = sortedComments[i];
+            int cs = c.getStartPosition();
+            if (cs >= end) break;
+            if (emitted.contains(c)) continue;
+            if (res == null) res = new ArrayList<>();
+            res.add(c);
+        }
+        return res == null ? List.of() : res;
+    }
+
+    /// Index of the first comment whose start position is >= {@code pos}.
+    private int lowerBound(int pos) {
+        int lo = 0;
+        int hi = sortedComments.length;
+        while (lo < hi) {
+            int mid = (lo + hi) >>> 1;
+            if (sortedComments[mid].getStartPosition() < pos) lo = mid + 1;
+            else hi = mid;
+        }
+        return lo;
     }
 
     @Override
@@ -132,6 +224,17 @@ final class AstToDoc extends ASTVisitor {
                 parts.add(renderComment(dc));
                 parts.add(hardLine());
                 prev = dc;
+            }
+        }
+
+        // Production safety net: a comment in a position no handler and not even the
+        // statement-level mop-up reaches (e.g. inside an import) is force-appended here so it is
+        // never lost. orphansWithin(node) over the whole compilation unit returns every comment
+        // still unemitted. Off under STRICT so the ledger reports such a gap to CI instead.
+        if (appendOrphansAtCu && comments != null) {
+            for (var c : orphansWithin(node)) {
+                parts.add(hardLine());
+                parts.add(renderComment(c));
             }
         }
 
@@ -1205,10 +1308,16 @@ final class AstToDoc extends ASTVisitor {
             if (!trailing.isEmpty()) {
                 var prevDoc = parts.removeLast();
                 Doc combined = prevDoc;
+                boolean lastIsLine = false;
                 for (var tc : trailing) {
                     combined = concat(combined, text(" "), renderComment(tc));
+                    lastIsLine = tc instanceof LineComment;
                     prevItem = tc;
                 }
+                // A trailing line comment must end its line. CommentBreak forces that and
+                // absorbs the loop's own separator hardLine (or the closing brace's), so the
+                // comment ends exactly one line without stacking into a blank line.
+                if (lastIsLine) combined = concat(combined, commentBreak());
                 parts.add(combined);
             }
         }
@@ -2866,38 +2975,57 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         return false;
     }
 
-    /// Render an argument list whose arguments carry comments (or that has a comment right
-    /// after `(`), one per line. The {@code afterOpenParen} comments stay on the `(` line;
-    /// a leading comment goes on its own line before its argument; a trailing comment goes
-    /// AFTER the separating comma (so a line comment can't swallow it) and before the line
-    /// break. Always breaks — line comments must end their line.
-    private Doc argsWithComments(List<ASTNode> arguments, List<Doc> argDocs,
-            List<Comment> afterOpenParen, List<Comment> beforeClose) {
-        Doc open = text("(");
-        for (var c : afterOpenParen) open = concat(open, text(" "), renderComment(c));
+    /// Bracketed, comment-carrying list layout shared by argument lists, try-with-resources,
+    /// and array initializers. {@code hard} uses hardLines (an array initializer always breaks
+    /// one-per-line); the others use soft breaks that the surrounding group resolves.
+    /// {@code trailingSep} appends the separator after the last item too (an array's trailing
+    /// comma).
+    private record ListStyle(String open, String close, String sep, boolean trailingSep, boolean hard) {}
+
+    private static final ListStyle PAREN_COMMA = new ListStyle("(", ")", ",", false, false);
+    private static final ListStyle PAREN_SEMI = new ListStyle("(", ")", ";", false, false);
+    private static final ListStyle BRACE_COMMA = new ListStyle("{", "}", ",", true, true);
+
+    /// Render a bracketed list whose items carry comments, one per line. Always breaks — a
+    /// line comment must end its line. An {@code afterOpen} comment stays on the open-bracket
+    /// line; a leading comment goes on its own line before its item; a trailing comment goes
+    /// AFTER the separator (so a line comment can't swallow it); a {@code dangling} comment
+    /// sits on its own line before the close bracket.
+    private Doc renderList(List<ASTNode> items, List<Doc> itemDocs,
+            List<Comment> afterOpen, List<Comment> dangling, ListStyle style) {
+        Doc breakUnit = style.hard() ? hardLine() : line();
+        Doc edgeBreak = style.hard() ? hardLine() : softLine();
+        Doc open = text(style.open());
+        for (var c : afterOpen) open = concat(open, text(" "), renderComment(c));
         var inner = new ArrayList<Doc>();
-        inner.add(softLine());
-        int n = arguments.size();
+        inner.add(edgeBreak);
+        int n = items.size();
         for (int i = 0; i < n; i++) {
-            var arg = arguments.get(i);
-            for (var lc : comments.leading(arg)) {
+            var item = items.get(i);
+            for (var lc : comments.leading(item)) {
                 inner.add(renderComment(lc));
-                inner.add(line());
+                inner.add(breakUnit);
             }
-            inner.add(argDocs.get(i));
-            if (i < n - 1) inner.add(text(","));
-            for (var tc : comments.trailing(arg)) {
+            inner.add(itemDocs.get(i));
+            if (style.trailingSep() || i < n - 1) inner.add(text(style.sep()));
+            for (var tc : comments.trailing(item)) {
                 inner.add(text(" "));
                 inner.add(renderComment(tc));
             }
-            if (i < n - 1) inner.add(line());
+            if (i < n - 1) inner.add(breakUnit);
         }
-        // Dangling comment(s) after the last argument, on their own line before `)`.
-        for (var dc : beforeClose) {
-            inner.add(line());
+        for (var dc : dangling) {
+            inner.add(breakUnit);
             inner.add(renderComment(dc));
         }
-        return breakGroup(concat(open, indent(concat(inner)), softLine(), text(")")));
+        return breakGroup(concat(open, indent(concat(inner)), edgeBreak, text(style.close())));
+    }
+
+    /// Render an argument list whose arguments carry comments (or that has a comment right
+    /// after `(`), one per line. See {@link #renderList}.
+    private Doc argsWithComments(List<ASTNode> arguments, List<Doc> argDocs,
+            List<Comment> afterOpenParen, List<Comment> beforeClose) {
+        return renderList(arguments, argDocs, afterOpenParen, beforeClose, PAREN_COMMA);
     }
 
     // Detect uniform tuple-per-line + smaller trailing group (e.g. [2,2,2,1]). Returns sizes or null.
@@ -3384,56 +3512,15 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
     }
 
     /// Render try-with-resources `(r1; r2; ...)` one per line when a resource carries a
-    /// comment: a leading comment (including one right after `(`) on its own line before the
-    /// resource, a trailing comment after the separating `;`. Always breaks.
+    /// comment. See {@link #renderList}.
     private Doc resourcesWithComments(List<ASTNode> resources, List<Doc> resourceDocs) {
-        var inner = new ArrayList<Doc>();
-        inner.add(softLine());
-        int n = resources.size();
-        for (int i = 0; i < n; i++) {
-            var r = resources.get(i);
-            for (var lc : comments.leading(r)) {
-                inner.add(renderComment(lc));
-                inner.add(line());
-            }
-            inner.add(resourceDocs.get(i));
-            if (i < n - 1) inner.add(text(";"));
-            for (var tc : comments.trailing(r)) {
-                inner.add(text(" "));
-                inner.add(renderComment(tc));
-            }
-            if (i < n - 1) inner.add(line());
-        }
-        return breakGroup(concat(text("("), indent(concat(inner)), softLine(), text(")")));
+        return renderList(resources, resourceDocs, List.of(), List.of(), PAREN_SEMI);
     }
 
-    /// Render an array initializer whose elements carry comments, one per line with the
-    /// usual trailing comma. A leading comment (including one right after `{`) goes on its
-    /// own line before its element; a trailing comment goes after the element's comma;
-    /// dangling comments sit on their own lines before `}`. Always breaks.
+    /// Render an array initializer whose elements carry comments, one per line with the usual
+    /// trailing comma. See {@link #renderList}.
     private Doc arrayWithComments(List<ASTNode> elems, List<Doc> elemDocs, List<Comment> dangling) {
-        var inner = new ArrayList<Doc>();
-        inner.add(hardLine());
-        int n = elems.size();
-        for (int i = 0; i < n; i++) {
-            var e = elems.get(i);
-            for (var lc : comments.leading(e)) {
-                inner.add(renderComment(lc));
-                inner.add(hardLine());
-            }
-            inner.add(elemDocs.get(i));
-            inner.add(text(","));
-            for (var tc : comments.trailing(e)) {
-                inner.add(text(" "));
-                inner.add(renderComment(tc));
-            }
-            if (i < n - 1) inner.add(hardLine());
-        }
-        for (var dc : dangling) {
-            inner.add(hardLine());
-            inner.add(renderComment(dc));
-        }
-        return breakGroup(concat(text("{"), indent(concat(inner)), hardLine(), text("}")));
+        return renderList(elems, elemDocs, List.of(), dangling, BRACE_COMMA);
     }
 
     @Override
@@ -4013,6 +4100,10 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         // Check for legacy /** ... */ javadoc via the AST
         var javadoc = getProperty(node, property);
         if (javadoc != null) {
+            // The Javadoc node is in cu.getCommentList() and is attached by CommentMap like any
+            // other comment, but it renders here (not through renderComment). Mark it emitted so
+            // the ledger's conservation law balances instead of flagging every documented decl.
+            emitted.add((Comment) javadoc);
             int startPos = javadoc.getStartPosition();
             var text = source.substring(startPos, startPos + javadoc.getLength());
             // Compute the column of /** to strip that indentation from subsequent lines
@@ -4081,6 +4172,9 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
     }
 
     private Doc renderComment(Comment comment) {
+        // Ledger: renderComment is the universal leaf for the leading/trailing/dangling comment
+        // channel, so recording here marks every such comment emitted exactly once.
+        emitted.add(comment);
         if (comment instanceof LineComment lc) return renderLineComment(lc);
         if (comment instanceof BlockComment bc) return renderBlockComment(bc);
         // A Javadoc comment (`/** */` or markdown `///`) normally attaches to a declaration

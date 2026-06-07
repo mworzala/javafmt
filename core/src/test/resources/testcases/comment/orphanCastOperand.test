@@ -1,0 +1,7 @@
+class A {
+    Object o = (int) /*cast*/ value;
+}
+---
+class A {
+    Object o = (int) value; /*cast*/
+}

@@ -29,6 +29,18 @@ sealed interface Doc {
     /** Always a newline, regardless of grouping. */
     record HardLine() implements Doc {}
 
+    /// A forced line end that terminates a trailing line comment's line.
+    ///
+    /// Renders like {@link HardLine} — an unconditional newline that forces every enclosing
+    /// group to break (a line comment must end its line, or it would comment out whatever
+    /// follows). The one difference is in the printer: a {@code CommentBreak} ABSORBS one
+    /// immediately-following break, so a trailing line comment placed by the generic comment
+    /// emitter inside an already-breaking context (a statement in a block, an enum constant)
+    /// does not stack with that context's own separator into a blank line. This lets the
+    /// emitter append a break after every trailing line comment uniformly, without each call
+    /// site knowing whether its surroundings already break.
+    record CommentBreak() implements Doc {}
+
     /** Sequence of docs. */
     record Concat(java.util.List<Doc> parts) implements Doc {}
 
@@ -60,6 +72,7 @@ sealed interface Doc {
     static Doc softLine()               { return new SoftLine(); }
     static Doc boundaryLine()           { return new BoundaryLine(); }
     static Doc hardLine()               { return new HardLine(); }
+    static Doc commentBreak()           { return new CommentBreak(); }
     static Doc indent(Doc d)            { return new Indent(d); }
     static Doc group(Doc d)             { return new Group(d); }
     static Doc breakGroup(Doc d)        { return new Group(d, true); }

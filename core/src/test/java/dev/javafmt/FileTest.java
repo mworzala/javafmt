@@ -62,6 +62,14 @@ public class FileTest {
         var a2d = new AstToDoc(source, commentMap);
         ast.accept(a2d);
 
+        // STRICT emission ledger: every attached comment must be emitted. A drop here is a
+        // located, build-breaking failure — not something that slips through to the whole-file
+        // multiset check. Curated cases are the contract, so they hold the strictest line.
+        var dropped = CommentLedger.dropped(commentMap.attachedComments(), a2d.emittedComments());
+        if (!dropped.isEmpty()) {
+            throw new AssertionError(CommentLedger.describe(dropped, source));
+        }
+
         var printer = new DocPrinter(100);
         var out = printer.print(a2d.result());
 

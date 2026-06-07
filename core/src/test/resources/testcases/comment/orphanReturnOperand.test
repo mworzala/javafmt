@@ -1,0 +1,11 @@
+class A {
+    void m() {
+        return /*note*/ compute();
+    }
+}
+---
+class A {
+    void m() {
+        return compute(); /*note*/
+    }
+}

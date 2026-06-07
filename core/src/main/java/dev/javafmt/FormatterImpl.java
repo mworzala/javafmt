@@ -21,6 +21,7 @@ public final class FormatterImpl implements Formatter {
     private final boolean enablePreview;
     private final int lineLength;
     private final Map<String, String> compilerOptions;
+    private final CommentLedger.Mode ledgerMode = CommentLedger.Mode.fromProperty();
     // ASTParser isn't safe to share across threads, but reusing one per thread avoids
     // the non-trivial newParser cost on every file. Per-call setup happens in format()
     // because createAST() invokes JDT's private initializeDefaults() afterwards, which
@@ -62,8 +63,18 @@ public final class FormatterImpl implements Formatter {
             }
 
             var comments = CommentMap.build(cu, source);
-            var a2d = new AstToDoc(source, comments);
+            // WARN (the production default) force-appends any otherwise-unemitted comment so a
+            // drop is impossible; STRICT instead leaves it unemitted and throws below, so CI
+            // surfaces the gap; OFF does neither (legacy).
+            var a2d = new AstToDoc(source, comments, ledgerMode == CommentLedger.Mode.WARN);
             cu.accept(a2d);
+            if (ledgerMode == CommentLedger.Mode.STRICT) {
+                var dropped = CommentLedger.dropped(comments.attachedComments(), a2d.emittedComments());
+                if (!dropped.isEmpty()) {
+                    throw new IllegalStateException(
+                            "javafmt dropped comments — " + CommentLedger.describe(dropped, source));
+                }
+            }
             var printer = new DocPrinter(lineLength);
             var formatted = printer.print(a2d.result());
             return new Result.Success(formatted);

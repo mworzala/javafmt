@@ -2093,22 +2093,30 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
     @Override
     public boolean visit(AssertStatement node) {
-        var parts = new ArrayList<Doc>();
-        parts.add(text("assert "));
-
         var expression = getProperty(node, AssertStatement.EXPRESSION_PROPERTY);
         expression.accept(this);
-        parts.add(result);
+        var exprDoc = result;
 
         var message = getProperty(node, AssertStatement.MESSAGE_PROPERTY);
-        if (message != null) {
-            parts.add(text(" : "));
-            message.accept(this);
-            parts.add(result);
+        if (message == null) {
+            // No message: nothing to wrap at, so the expression breaks internally if needed.
+            result = concat(text("assert "), exprDoc, text(";"));
+            return false;
         }
 
-        parts.add(text(";"));
-        result = concat(parts);
+        message.accept(this);
+        var messageDoc = result;
+
+        // With a message, prefer to wrap at the `:` over breaking inside the asserted
+        // expression: `assert <expr>\n    : <message>;`. The separator line lives in this
+        // outer group so it breaks first; the expression keeps its own group and stays flat
+        // unless `assert <expr>` alone still overflows the line.
+        result = group(concat(
+            text("assert "),
+            exprDoc,
+            indent(concat(line(), text(": "), messageDoc)),
+            text(";")
+        ));
         return false;
     }
 

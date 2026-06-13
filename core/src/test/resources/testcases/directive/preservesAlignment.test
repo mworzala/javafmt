@@ -1,0 +1,19 @@
+class Config {
+    void setup() {
+        // @formatter:off
+        int x   =   1;
+        int yy  =  22;
+        int zzz = 333;
+        // @formatter:on
+    }
+}
+---
+class Config {
+    void setup() {
+        // @formatter:off
+        int x   =   1;
+        int yy  =  22;
+        int zzz = 333;
+        // @formatter:on
+    }
+}

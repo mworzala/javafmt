@@ -22,8 +22,14 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
-/// Asserts two JDT ASTs are structurally equivalent, ignoring source positions, whitespace, and Javadoc contents.
-/// A failing comparison throws {@link Mismatch} with a path showing where the trees diverge.
+/// Structural equivalence of two JDT ASTs, ignoring source positions, whitespace, and Javadoc
+/// contents — i.e. javafmt's notion of "same meaning" (invariant #1: a reformat never changes
+/// what the program does).
+///
+/// The corpus test asserts every reformatted file stays equivalent to its input; the formatter
+/// itself uses {@link #equivalent} as the safety net for `// @formatter:off` splicing (see
+/// {@link FormatterDirectives}). A failing comparison throws {@link Mismatch} with a path showing
+/// where the trees diverge.
 final class AstEquivalence {
 
     static final class Mismatch extends RuntimeException {
@@ -34,6 +40,16 @@ final class AstEquivalence {
 
     static void assertEquivalent(ASTNode a, ASTNode b) {
         compare(a, b, "");
+    }
+
+    /// Non-throwing form: {@code true} when the two trees are structurally equivalent.
+    static boolean equivalent(ASTNode a, ASTNode b) {
+        try {
+            compare(a, b, "");
+            return true;
+        } catch (Mismatch m) {
+            return false;
+        }
     }
 
     @SuppressWarnings("unchecked")

@@ -78,6 +78,10 @@ public class FileTest {
         var printer = new DocPrinter(100);
         var out = printer.print(a2d.result());
 
+        // `// @formatter:off` / `on`: splice the original source back over any disabled region,
+        // mirroring FormatterImpl.format so golden cases exercise directive handling.
+        out = FormatterDirectives.apply(source, ast, out, s -> parse(s, module));
+
         return Arrays.stream(out.split("\n"))
             .map(String::stripTrailing)
             .collect(Collectors.joining("\n"))

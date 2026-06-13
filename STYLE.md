@@ -35,6 +35,7 @@ The two invariants every reformat upholds:
 - [`throws` clauses](#throws-clauses)
 - [Annotations](#annotations)
 - [Comments](#comments)
+- [Formatter directives (`@formatter:off` / `@formatter:on`)](#formatter-directives-formatteroff--formatteron)
 - [Javadoc](#javadoc)
 - [Pattern matching](#pattern-matching)
 - [Array initializers](#array-initializers)
@@ -807,6 +808,40 @@ new column.
 
 ---
 
+## Formatter directives (`@formatter:off` / `@formatter:on`)
+
+javafmt is zero-configuration, but it honors two opt-out markers so you can hand-format
+a region the formatter would otherwise rewrite — an aligned table, an ASCII diagram, a
+deliberately laid-out method chain:
+
+```java
+// @formatter:off
+static final int[][] M = {
+    {  1,   2,   3 },
+    { 10,  20,  30 },
+    {100, 200, 300 },
+};
+// @formatter:on
+```
+
+Everything from `// @formatter:off` up to and including the next `// @formatter:on` is
+emitted **byte-for-byte from the original source** — indentation, alignment, and line
+breaks are all preserved. Code outside the region is formatted normally.
+
+The rules:
+
+- A marker is a **`//` line comment** whose text is exactly `@formatter:off` or
+  `@formatter:on` (surrounding whitespace ignored, so `//@formatter:off` and
+  `//   @formatter:off` both work). Block comments (`/* @formatter:off */`), `///`
+  Javadoc, and **trailing** markers (anything other than whitespace before the `//` on
+  the line) are not directives.
+- It is a single on/off toggle. An `off` while already off, or an `on` while already on,
+  is ignored. A stray `on` with no preceding `off` does nothing.
+- An `off` with **no matching `on` disables formatting to the end of the file** — so a
+  `// @formatter:off` on the first line preserves the whole file verbatim.
+
+---
+
 ## Javadoc
 
 Both classic `/** ... */` and Markdown-style `///` Javadoc are preserved.
@@ -893,6 +928,10 @@ expect.
   `/** */` or `///` is untouched.
 - **Single-fragment field declarations** with very long RHS expressions may not
   always pick the most aesthetic break point. Extract to a local if it bothers you.
+- **`@formatter:off` is best-effort.** A region is preserved verbatim only when the
+  surrounding reformat keeps the markers in a consistent place; if a marker is relocated
+  across a structural boundary (e.g. between an `implements` list and its `{`, or across
+  the sorted import block) the directive is ignored for that file.
 
 If you hit something not covered here, the formatter's behavior is the source of
 truth: pipe a sample through `javafmt format -` and see what it does. If the result

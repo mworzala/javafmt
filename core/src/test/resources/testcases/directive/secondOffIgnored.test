@@ -1,0 +1,17 @@
+class A {
+    // @formatter:off
+    int  a=1;
+    // @formatter:off
+    int  b=2;
+    // @formatter:on
+    int c=3;
+}
+---
+class A {
+    // @formatter:off
+    int  a=1;
+    // @formatter:off
+    int  b=2;
+    // @formatter:on
+    int c = 3;
+}

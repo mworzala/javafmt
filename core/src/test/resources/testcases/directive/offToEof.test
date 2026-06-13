@@ -1,0 +1,13 @@
+class A {
+    int a=1;
+    // @formatter:off
+    int  b=2;
+    void  m( ){}
+}
+---
+class A {
+    int a = 1;
+    // @formatter:off
+    int  b=2;
+    void  m( ){}
+}

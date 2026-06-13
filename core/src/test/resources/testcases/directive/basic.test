@@ -1,0 +1,19 @@
+class A {
+    void m() {
+        int x=1;
+        // @formatter:off
+        int     y=2 ;
+        // @formatter:on
+        int z=3;
+    }
+}
+---
+class A {
+    void m() {
+        int x = 1;
+        // @formatter:off
+        int     y=2 ;
+        // @formatter:on
+        int z = 3;
+    }
+}

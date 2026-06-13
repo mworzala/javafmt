@@ -60,17 +60,7 @@ public final class FormatterImpl implements Formatter {
     @Override
     public Result format(String source, @Nullable String fileName) {
         try {
-            var parser = parserCache.get();
-            parser.setKind(ASTParser.K_COMPILATION_UNIT);
-            parser.setCompilerOptions(compilerOptions);
-            // JDT only switches its grammar into module mode when the unit is named
-            // module-info.java; without it, `module`/`requires`/`exports`/... are parsed as
-            // ordinary identifiers and the parse fails. Set the name every call (clearing it to
-            // null otherwise) so a module parse can't leak into the next file on this cached,
-            // per-thread parser.
-            parser.setUnitName(isModuleInfo(fileName) ? "module-info.java" : null);
-            parser.setSource(source.toCharArray());
-            var cu = (CompilationUnit) parser.createAST(null);
+            var cu = parse(source, fileName);
 
             var problems = cu.getProblems();
             if (problems.length > 0) {
@@ -93,10 +83,29 @@ public final class FormatterImpl implements Formatter {
             }
             var printer = new DocPrinter(lineLength);
             var formatted = printer.print(a2d.result());
+
+            // `// @formatter:off` / `on`: the whole file is already formatted; splice the original
+            // source back over any region the user opted out of (no-op when there are none).
+            formatted = FormatterDirectives.apply(source, cu, formatted, s -> parse(s, fileName));
+
             return new Result.Success(formatted);
         } catch (RuntimeException e) {
             return new Result.Failure(e);
         }
+    }
+
+    private CompilationUnit parse(String source, @Nullable String fileName) {
+        var parser = parserCache.get();
+        parser.setKind(ASTParser.K_COMPILATION_UNIT);
+        parser.setCompilerOptions(compilerOptions);
+        // JDT only switches its grammar into module mode when the unit is named
+        // module-info.java; without it, `module`/`requires`/`exports`/... are parsed as
+        // ordinary identifiers and the parse fails. Set the name every call (clearing it to
+        // null otherwise) so a module parse can't leak into the next file on this cached,
+        // per-thread parser.
+        parser.setUnitName(isModuleInfo(fileName) ? "module-info.java" : null);
+        parser.setSource(source.toCharArray());
+        return (CompilationUnit) parser.createAST(null);
     }
 
     private static List<Problem> collectErrors(String source, IProblem[] problems) {

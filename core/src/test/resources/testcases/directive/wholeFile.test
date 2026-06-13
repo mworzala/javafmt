@@ -1,0 +1,11 @@
+// @formatter:off
+class   A{
+  int x=1 ;
+    void  m( ) {  }
+}
+---
+// @formatter:off
+class   A{
+  int x=1 ;
+    void  m( ) {  }
+}

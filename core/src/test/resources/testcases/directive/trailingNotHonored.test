@@ -1,0 +1,11 @@
+class A {
+    int a=1; // @formatter:off
+    int  b=2;
+    int c=3;
+}
+---
+class A {
+    int a = 1; // @formatter:off
+    int b = 2;
+    int c = 3;
+}

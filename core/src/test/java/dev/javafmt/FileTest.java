@@ -33,30 +33,35 @@ public class FileTest {
         var input = parts[0];
         var expected = parts[1].strip();
 
-        var actual = formatSource(input);
+        // Cases under testcases/module/ are module-info.java units: the parser only accepts
+        // their module syntax when told the unit name.
+        boolean module = testFile.toString().replace('\\', '/').contains("/module/");
+
+        var actual = formatSource(input, module);
         assertEquals(expected, actual);
 
         // No curated case may drop or duplicate a comment.
-        CommentPreservation.assertPreserved(testFile.toString(), input, actual, parse(input), parse(actual));
+        CommentPreservation.assertPreserved(testFile.toString(), input, actual, parse(input, module), parse(actual, module));
 
         // Idempotence: formatting the expected output again must be a no-op.
-        var reformatted = formatSource(expected);
+        var reformatted = formatSource(expected, module);
         assertEquals(expected, reformatted, "formatter is not idempotent for " + testFile);
     }
 
-    private static org.eclipse.jdt.core.dom.CompilationUnit parse(String source) {
+    private static org.eclipse.jdt.core.dom.CompilationUnit parse(String source, boolean module) {
         var parser = ASTParser.newParser(AST.getJLSLatest());
-        parser.setSource(source.toCharArray());
         parser.setKind(ASTParser.K_COMPILATION_UNIT);
         Map<String, String> options = JavaCore.getOptions();
         options.put(JavaCore.COMPILER_SOURCE, "25");
         options.put(JavaCore.COMPILER_COMPLIANCE, "25");
         parser.setCompilerOptions(options);
+        if (module) parser.setUnitName("module-info.java");
+        parser.setSource(source.toCharArray());
         return (org.eclipse.jdt.core.dom.CompilationUnit) parser.createAST(null);
     }
 
-    private static String formatSource(String source) {
-        var ast = parse(source);
+    private static String formatSource(String source, boolean module) {
+        var ast = parse(source, module);
 
         var commentMap = CommentMap.build(ast, source);
         var a2d = new AstToDoc(source, commentMap);

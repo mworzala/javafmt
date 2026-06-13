@@ -82,6 +82,15 @@ The formatter is a classic Wadler/Prettier-style pretty-printer. The flow:
 
 `ImportOrderer` groups/sorts imports (consulted by `AstToDoc`).
 
+`ModuleInfoToDoc` is a companion to `AstToDoc` for `module-info.java`: `visit(CompilationUnit)`
+delegates the module declaration and its directives to it. It is not an `ASTVisitor` — module
+directives are an expression-free sublanguage rendered straight from the AST — but it shares
+`AstToDoc`'s `CommentMap` and emission ledger (via a back-reference) so the comment-conservation
+law spans both. `ModuleDirectiveOrderer` groups directives by kind (the module analogue of
+`ImportOrderer`). Module parsing requires the parser be told the unit name (`module-info.java`),
+so `Formatter.format(source, fileName)` threads it through; the no-filename overload can't format
+a module.
+
 ### The comment conservation law
 
 Comment handling is the subtlest part of the codebase and is guarded by a two-sided invariant:

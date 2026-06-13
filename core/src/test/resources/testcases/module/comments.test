@@ -1,0 +1,14 @@
+module com.foo {
+    // why we need sql
+    requires java.sql; // version note
+    exports a.b;
+    // trailing dangling note
+}
+---
+module com.foo {
+    exports a.b;
+
+    // why we need sql
+    requires java.sql; // version note
+    // trailing dangling note
+}

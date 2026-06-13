@@ -1,0 +1,11 @@
+/// A markdown-documented module.
+/// More detail here.
+module com.md {
+    requires java.base;
+}
+---
+/// A markdown-documented module.
+/// More detail here.
+module com.md {
+    requires java.base;
+}

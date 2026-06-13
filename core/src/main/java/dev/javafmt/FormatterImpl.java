@@ -5,6 +5,7 @@ import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.compiler.IProblem;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,12 +48,27 @@ public final class FormatterImpl implements Formatter {
         return release <= 8 ? "1." + release : String.valueOf(release);
     }
 
+    /// Whether {@code fileName}'s final path segment is {@code module-info.java}. Accepts a
+    /// bare name or a `/`- or `\`-separated path; {@code null} (e.g. stdin) is not a module.
+    private static boolean isModuleInfo(@Nullable String fileName) {
+        if (fileName == null) return false;
+        int slash = Math.max(fileName.lastIndexOf('/'), fileName.lastIndexOf('\\'));
+        var base = slash < 0 ? fileName : fileName.substring(slash + 1);
+        return base.equals("module-info.java");
+    }
+
     @Override
-    public Result format(String source) {
+    public Result format(String source, @Nullable String fileName) {
         try {
             var parser = parserCache.get();
             parser.setKind(ASTParser.K_COMPILATION_UNIT);
             parser.setCompilerOptions(compilerOptions);
+            // JDT only switches its grammar into module mode when the unit is named
+            // module-info.java; without it, `module`/`requires`/`exports`/... are parsed as
+            // ordinary identifiers and the parse fails. Set the name every call (clearing it to
+            // null otherwise) so a module parse can't leak into the next file on this cached,
+            // per-thread parser.
+            parser.setUnitName(isModuleInfo(fileName) ? "module-info.java" : null);
             parser.setSource(source.toCharArray());
             var cu = (CompilationUnit) parser.createAST(null);
 

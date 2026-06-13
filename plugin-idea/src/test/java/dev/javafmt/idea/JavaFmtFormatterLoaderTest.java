@@ -17,12 +17,29 @@ public class JavaFmtFormatterLoaderTest extends BasePlatformTestCase {
 
         var loader = JavaFmtFormatterLoader.getInstance(getProject());
         var input = "class Foo{void bar(){System.out.println(\"hi\");}}";
-        var output = loader.format(paths, input);
+        var output = loader.format(paths, input, "Foo.java");
 
         assertNotNull(output);
         assertFalse("Formatted output should not be empty", output.isEmpty());
         assertTrue("Expected formatted output to contain 'class Foo', was:\n" + output, output.contains("class Foo"));
         assertNotSame(input, output);
+    }
+
+    public void testFormatsModuleInfoUsingExternalClasspath() throws Exception {
+        // module-info.java only formats when the loader passes the file name through to the
+        // formatter, so this exercises both the dynamic-loading bridge and the new overload.
+        var paths = readTestClasspath();
+        var settings = JavaFmtProjectSettings.getInstance(getProject());
+        settings.setFormatterClasspath(paths);
+
+        var loader = JavaFmtFormatterLoader.getInstance(getProject());
+        var input = "module com.foo.bar {\nrequires java.base;\nexports com.foo.api;\n}\n";
+        var output = loader.format(paths, input, "module-info.java");
+
+        assertNotNull(output);
+        assertTrue("module declaration should survive formatting:\n" + output, output.contains("module com.foo.bar {"));
+        assertTrue("exports directive formatted:\n" + output, output.contains("    exports com.foo.api;"));
+        assertTrue("requires directive formatted:\n" + output, output.contains("    requires java.base;"));
     }
 
     public void testImplClassIsNotOnPluginClasspath() {
@@ -86,7 +103,7 @@ public class JavaFmtFormatterLoaderTest extends BasePlatformTestCase {
 
         // End-to-end: the formatter returned via the dynamic load path is castable
         // to the plugin's Formatter interface.
-        var result = loader.format(paths, "class A {}");
+        var result = loader.format(paths, "class A {}", "A.java");
         assertNotNull(result);
         // If the classloader override is wrong, the loader's internal cast already
         // threw before we got here — so reaching this point is the meaningful signal.
@@ -98,7 +115,7 @@ public class JavaFmtFormatterLoaderTest extends BasePlatformTestCase {
     public void testEmptyClasspathProducesError() {
         var loader = JavaFmtFormatterLoader.getInstance(getProject());
         try {
-            loader.format(List.of(), "class Foo {}");
+            loader.format(List.of(), "class Foo {}", "Foo.java");
             fail("Expected FormatException when classpath is empty");
         } catch (JavaFmtFormatterLoader.FormatException expected) {
             assertNotNull(expected.getMessage());

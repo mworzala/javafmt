@@ -107,7 +107,7 @@ final class AstToDoc extends ASTVisitor {
 
     /// Attached comments that start strictly within {@code node}'s source range and have not
     /// yet been emitted, in source order.
-    private List<Comment> orphansWithin(ASTNode node) {
+    List<Comment> orphansWithin(ASTNode node) {
         if (sortedComments == null) {
             sortedComments = comments.attachedComments().toArray(new Comment[0]);
             java.util.Arrays.sort(sortedComments, Comparator.comparingInt(Comment::getStartPosition));
@@ -147,8 +147,6 @@ final class AstToDoc extends ASTVisitor {
         this.compilationUnit = node;
         var parts = new ArrayList<Doc>();
 
-        // todo MODULE_PROPERTY
-
         var package_ = getProperty(node, CompilationUnit.PACKAGE_PROPERTY);
         if (package_ != null) {
             // Leading comments here are the file's license/copyright header (or any
@@ -180,6 +178,33 @@ final class AstToDoc extends ASTVisitor {
                 }
             }
             parts.add(hardLine());
+        }
+
+        // A `module-info.java` carries a module declaration instead of type declarations.
+        // It is rendered by the companion ModuleInfoToDoc, which shares this visitor's
+        // CommentMap and emission ledger (so the comment-conservation law sees one set).
+        var module = (ModuleDeclaration) getProperty(node, CompilationUnit.MODULE_PROPERTY);
+        if (module != null) {
+            emitLeadingComments(parts, module);
+            parts.add(new ModuleInfoToDoc(this, comments).render(module));
+            emitTrailingComments(parts, module);
+
+            // Comments after the module's closing `}` but before EOF attach as dangling of the
+            // compilation unit — the module-info analogue of the after-last-type case below.
+            var dangling = comments != null ? comments.dangling(node) : List.<Comment>of();
+            if (dangling.isEmpty()) {
+                parts.add(hardLine());
+                parts.add(hardLine());
+            } else {
+                ASTNode prev = module;
+                for (var dc : dangling) {
+                    parts.add(hardLine());
+                    if (blankLinesBetween(prev, dc) > 0) parts.add(hardLine());
+                    parts.add(renderComment(dc));
+                    prev = dc;
+                }
+                parts.add(hardLine());
+            }
         }
 
         var types = getProperty(node, CompilationUnit.TYPES_PROPERTY);
@@ -220,7 +245,7 @@ final class AstToDoc extends ASTVisitor {
         // A file with no type declarations (e.g. a bare license header) still carries
         // its comments as dangling on the compilation unit. The types loop above never
         // ran, so emit them here — otherwise they'd be silently dropped.
-        if (types.isEmpty() && comments != null) {
+        if (types.isEmpty() && module == null && comments != null) {
             ASTNode prev = null;
             for (var dc : comments.dangling(node)) {
                 if (prev != null && blankLinesBetween(prev, dc) > 0) parts.add(hardLine());
@@ -1141,7 +1166,7 @@ final class AstToDoc extends ASTVisitor {
     /// Returns whether rendering ended at the start of a line (true when there are no
     /// modifiers, or the last one was a declaration annotation / a modifier with a trailing
     /// line comment). Callers use this to place a comment that leads the declaration's type.
-    private boolean visitModifiers(List<Doc> doc, ASTNode node, ChildListPropertyDescriptor property) {
+    boolean visitModifiers(List<Doc> doc, ASTNode node, ChildListPropertyDescriptor property) {
         var modifiers = getProperty(node, property);
         if (modifiers.isEmpty()) return true;
 
@@ -4009,47 +4034,9 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
     }
 
-    // module-info nodes
-
-    @Override
-    public boolean visit(ModuleDeclaration node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(RequiresDirective node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(ExportsDirective node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(OpensDirective node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(UsesDirective node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(ProvidesDirective node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(ModuleModifier node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean visit(ModuleQualifiedName node) {
-        throw new UnsupportedOperationException("not implemented: " + node.getClass().getSimpleName());
-    }
+    // module-info nodes (ModuleDeclaration and its directives) are rendered by the companion
+    // ModuleInfoToDoc, dispatched from visit(CompilationUnit). They are never reached through
+    // visitor dispatch, so no visit(...) overrides for them live here.
 
     // nodes to always be handled by their parents.
 
@@ -4089,7 +4076,7 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         return Math.max(0, Math.min(newlines - 1, 1));
     }
 
-    private int blankLinesBetween(ASTNode first, ASTNode second) {
+    int blankLinesBetween(ASTNode first, ASTNode second) {
         if (source == null) return 1;
         return blankLinesBetweenPositions(
                 first.getStartPosition() + first.getLength(),
@@ -4113,7 +4100,7 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         return blankLinesBetweenPositions(lastBodyEnd, closeBrace);
     }
 
-    private void visitJavadoc(List<Doc> parts, ASTNode node, ChildPropertyDescriptor property) {
+    void visitJavadoc(List<Doc> parts, ASTNode node, ChildPropertyDescriptor property) {
         // Check for legacy /** ... */ javadoc via the AST
         var javadoc = getProperty(node, property);
         if (javadoc != null) {
@@ -4188,7 +4175,7 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         return concat(parts);
     }
 
-    private Doc renderComment(Comment comment) {
+    Doc renderComment(Comment comment) {
         // Ledger: renderComment is the universal leaf for the leading/trailing/dangling comment
         // channel, so recording here marks every such comment emitted exactly once.
         emitted.add(comment);

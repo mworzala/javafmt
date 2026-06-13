@@ -1,0 +1,11 @@
+module com.foo {
+    requires java.base;
+
+
+    requires java.sql;
+}
+---
+module com.foo {
+    requires java.base;
+    requires java.sql;
+}

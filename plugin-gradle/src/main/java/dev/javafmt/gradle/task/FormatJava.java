@@ -61,7 +61,7 @@ public abstract class FormatJava extends JavaFmtTask {
     private void processFile(File file, String relativePath, Formatter formatter, List<FormatError> errors) throws IOException {
         getLogger().debug("javafmt: formatting '{}'", relativePath);
         var source = Files.readString(file.toPath());
-        switch (formatter.format(source)) {
+        switch (formatter.format(source, file.getName())) {
             case Result.Success(var formatted) -> {
                 if (!formatted.equals(source)) {
                     Files.writeString(file.toPath(), formatted);

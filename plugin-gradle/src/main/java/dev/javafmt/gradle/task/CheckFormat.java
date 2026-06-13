@@ -59,7 +59,7 @@ public abstract class CheckFormat extends JavaFmtTask {
     private void checkFile(File file, String relativePath, Formatter formatter,
                            TreeSet<String> affected, List<FormatError> errors) throws IOException {
         var source = Files.readString(file.toPath());
-        switch (formatter.format(source)) {
+        switch (formatter.format(source, file.getName())) {
             case Result.Success(var formatted) -> {
                 if (!formatted.equals(source)) {
                     affected.add(relativePath);

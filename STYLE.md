@@ -16,6 +16,7 @@ The two invariants every reformat upholds:
 
 - [Width and indentation](#width-and-indentation)
 - [Files: package, imports, types](#files-package-imports-types)
+- [Module declarations (`module-info.java`)](#module-declarations-module-infojava)
 - [Blank lines](#blank-lines)
 - [Type declarations](#type-declarations)
 - [Records](#records)
@@ -87,6 +88,49 @@ a single blank line, each sorted alphabetically by fully-qualified name:
 3. `static` imports
 
 Imports are only reordered, never added, removed, deduplicated or changed to/from * imports.
+
+---
+
+## Module declarations (`module-info.java`)
+
+A `module-info.java` is formatted like any other file. Its directives are grouped by kind,
+each group separated from the next by a single blank line, in this order:
+
+1. `exports`
+2. `opens`
+3. `requires`
+4. `uses`
+5. `provides`
+
+`exports` and `opens` come first — they are what a downstream consumer reads — then the
+module's own requirements and the services it uses and provides. Within a group the directives
+keep their written order.
+
+```java
+import com.example.Marker;
+
+@Marker
+open module com.example.app {
+    exports com.example.api;
+    exports com.example.spi to com.example.plugin;
+
+    opens com.example.impl;
+
+    requires transitive java.sql;
+    requires static org.jspecify;
+
+    uses com.example.Service;
+
+    provides com.example.Service with com.example.DefaultService;
+}
+```
+
+- One directive per line, indented one level.
+- A `to` / `with` target list stays on one line when it fits, and otherwise breaks
+  one-per-line — **without** a trailing comma, which the module grammar does not allow.
+- `requires` modifiers (`transitive`, `static`) are kept as written.
+- The module's Javadoc and any annotations sit on their own lines above `module`, the same as
+  a type declaration.
 
 ---
 
@@ -848,8 +892,6 @@ expect.
 - **No import sorting or grouping.** Imports stay in the order you wrote them.
 - **Javadoc prose is not reformatted.** Lines are re-indented but the text inside
   `/** */` or `///` is untouched.
-- **Module declarations (`module-info.java`) are not yet supported.** The formatter
-  will throw on them.
 - **Single-fragment field declarations** with very long RHS expressions may not
   always pick the most aesthetic break point. Extract to a local if it bothers you.
 

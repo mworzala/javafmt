@@ -1,6 +1,7 @@
 package dev.javafmt.api;
 
 import dev.javafmt.api.spi.FormatterProvider;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.ServiceLoader;
@@ -18,7 +19,31 @@ public interface Formatter {
 
     /// Formats a complete Java compilation unit. Returns one of the nested {@link Result}
     /// variants — success, syntax error, or internal failure.
-    Result format(String source);
+    ///
+    /// Equivalent to {@link #format(String, String)} with no file name, so the source is
+    /// always parsed as an ordinary compilation unit. Use the two-argument overload for a
+    /// `module-info.java`, whose module syntax the parser only recognizes when told the unit
+    /// name.
+    default Result format(String source) {
+        return format(source, null);
+    }
+
+    /// Formats a complete Java compilation unit, using {@code fileName} (if any) to resolve
+    /// file-name-dependent parsing. The only case that currently matters is `module-info.java`:
+    /// its `module`/`requires`/`exports`/... grammar is a syntax error unless the parser knows
+    /// the unit is named `module-info.java`, so a module declaration is only formatted when a
+    /// matching {@code fileName} is supplied. {@code fileName} may be a bare name or a full
+    /// path; only its final path segment is consulted.
+    ///
+    /// @param fileName the source file's name or path, or {@code null} if unknown (e.g. stdin)
+    default Result format(String source, @Nullable String fileName) {
+        // Default cross-delegates to the single-argument form so that an implementation
+        // compiled against an older api — one that only overrides format(String) — still links
+        // when reached through this overload (it simply ignores the file name). A current
+        // implementation overrides this method and does the real work; every implementation
+        // overrides exactly one of the two, so there is no infinite recursion.
+        return format(source);
+    }
 
     // ── construction ─────────────────────────────────────────────────────────
 

@@ -1,0 +1,17 @@
+/**
+ * The core module.
+ *
+ * @provides com.foo.Spi
+ */
+module com.foo {
+    requires java.base;
+}
+---
+/**
+ * The core module.
+ *
+ * @provides com.foo.Spi
+ */
+module com.foo {
+    requires java.base;
+}

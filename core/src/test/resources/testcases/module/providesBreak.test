@@ -1,0 +1,10 @@
+module com.foo {
+    provides com.foo.spi.LongServiceName with com.foo.impl.FirstImplementation, com.foo.impl.SecondImplementation, com.foo.impl.ThirdImplementation;
+}
+---
+module com.foo {
+    provides com.foo.spi.LongServiceName with
+        com.foo.impl.FirstImplementation,
+        com.foo.impl.SecondImplementation,
+        com.foo.impl.ThirdImplementation;
+}

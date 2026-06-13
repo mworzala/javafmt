@@ -4,11 +4,18 @@ import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ChildListPropertyDescriptor;
 import org.eclipse.jdt.core.dom.ChildPropertyDescriptor;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.ExportsDirective;
 import org.eclipse.jdt.core.dom.ImportDeclaration;
 import org.eclipse.jdt.core.dom.Javadoc;
 import org.eclipse.jdt.core.dom.LambdaExpression;
+import org.eclipse.jdt.core.dom.ModuleDeclaration;
+import org.eclipse.jdt.core.dom.ModulePackageAccess;
+import org.eclipse.jdt.core.dom.OpensDirective;
+import org.eclipse.jdt.core.dom.ProvidesDirective;
+import org.eclipse.jdt.core.dom.RequiresDirective;
 import org.eclipse.jdt.core.dom.SimplePropertyDescriptor;
 import org.eclipse.jdt.core.dom.StructuralPropertyDescriptor;
+import org.eclipse.jdt.core.dom.UsesDirective;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -77,6 +84,16 @@ final class AstEquivalence {
                     al.sort(Comparator.comparing(AstEquivalence::importKey));
                     bl.sort(Comparator.comparing(AstEquivalence::importKey));
                 }
+                // The formatter regroups module directives into a fixed block order
+                // (exports/opens/requires/uses/provides), so the input and reparsed-output
+                // lists differ in order while preserving meaning. Compare as a multiset.
+                if (a instanceof ModuleDeclaration
+                        && lp.getId().equals(ModuleDeclaration.MODULE_DIRECTIVES_PROPERTY.getId())) {
+                    al = new ArrayList<>(al);
+                    bl = new ArrayList<>(bl);
+                    al.sort(Comparator.comparing(AstEquivalence::directiveKey));
+                    bl.sort(Comparator.comparing(AstEquivalence::directiveKey));
+                }
                 for (int i = 0; i < al.size(); i++) {
                     compare(al.get(i), bl.get(i), childPath + "[" + i + "]");
                 }
@@ -88,6 +105,19 @@ final class AstEquivalence {
         var imp = (ImportDeclaration) node;
         var fqn = imp.getName().getFullyQualifiedName();
         return (imp.isStatic() ? "s:" : "") + fqn + (imp.isOnDemand() ? ".*" : "");
+    }
+
+    /// Canonical key giving a module directive a stable total order: kind ordinal + the
+    /// directive's package/service/module name. Two directives in a valid module-info never
+    /// share both (a duplicate is a compile error), so sorting both sides by this key lines up
+    /// the reordered output with the original for an element-wise compare.
+    private static String directiveKey(ASTNode node) {
+        if (node instanceof RequiresDirective r) return "0:" + r.getName().getFullyQualifiedName();
+        if (node instanceof ExportsDirective e) return "1:" + ((ModulePackageAccess) e).getName().getFullyQualifiedName();
+        if (node instanceof OpensDirective o) return "2:" + ((ModulePackageAccess) o).getName().getFullyQualifiedName();
+        if (node instanceof UsesDirective u) return "3:" + u.getName().getFullyQualifiedName();
+        if (node instanceof ProvidesDirective p) return "4:" + p.getName().getFullyQualifiedName();
+        return "9:" + node;
     }
 
     private AstEquivalence() {}

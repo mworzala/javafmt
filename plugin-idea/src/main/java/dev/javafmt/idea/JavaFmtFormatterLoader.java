@@ -43,12 +43,15 @@ public final class JavaFmtFormatterLoader implements Disposable {
     private @Nullable URLClassLoader cachedLoader;
     private @Nullable Formatter cachedFormatter;
 
-    public synchronized @NotNull String format(@NotNull List<String> paths, @NotNull String source) throws FormatException {
+    public synchronized @NotNull String format(@NotNull List<String> paths, @NotNull String source,
+            @Nullable String fileName) throws FormatException {
         if (paths.isEmpty()) {
             throw new FormatException("javafmt is not configured for this project (no formatter jar detected)");
         }
         var formatter = formatterFor(paths);
-        var result = formatter.format(source);
+        // Pass the file name so a module-info.java is parsed as a module unit. A formatter
+        // pinned to an older api ignores it (the two-arg overload defaults to the one-arg form).
+        var result = formatter.format(source, fileName);
         return switch (result) {
             case Result.Success s -> s.formatted();
             case Result.Failure f -> throw new FormatException(

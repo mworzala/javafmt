@@ -45,8 +45,10 @@ public class JavaFmtFormattingService extends AsyncDocumentFormattingService {
                 var paths = JavaFmtProjectSettings.getInstance(project).getFormatterClasspath();
                 var loader = JavaFmtFormatterLoader.getInstance(project);
                 var source = request.getDocumentText();
+                var virtualFile = request.getContext().getVirtualFile();
+                var fileName = virtualFile != null ? virtualFile.getName() : null;
                 try {
-                    var formatted = loader.format(paths, source);
+                    var formatted = loader.format(paths, source, fileName);
                     var result = RangeRestrictedFormat.restrict(source, formatted, request.getFormattingRanges());
                     request.onTextReady(result);
                 } catch (JavaFmtFormatterLoader.FormatException e) {

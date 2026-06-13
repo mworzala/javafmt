@@ -280,7 +280,9 @@ public class Main {
         var printPath = cwd.relativize(path);
         try {
             var source = Files.readString(path);
-            switch (formatter.format(source)) {
+            // Pass the file name so a module-info.java is parsed as a module unit rather than
+            // erroring on its `module`/`requires`/`exports`/... syntax.
+            switch (formatter.format(source, path.getFileName().toString())) {
                 case Result.Success(var formatted) -> {
                     var changed = !formatted.equals(source);
                     if (!changed) return;

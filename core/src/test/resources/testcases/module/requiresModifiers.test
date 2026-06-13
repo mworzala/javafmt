@@ -1,0 +1,9 @@
+module com.foo {
+    requires transitive static java.base;
+    requires static transitive java.sql;
+}
+---
+module com.foo {
+    requires transitive static java.base;
+    requires static transitive java.sql;
+}

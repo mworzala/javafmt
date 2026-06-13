@@ -1,0 +1,4 @@
+module com.empty {
+}
+---
+module com.empty {}

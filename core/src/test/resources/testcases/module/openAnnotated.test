@@ -1,0 +1,11 @@
+import com.foo.Annot;
+@Annot open module com.foo.bar {
+    requires java.base;
+}
+---
+import com.foo.Annot;
+
+@Annot
+open module com.foo.bar {
+    requires java.base;
+}

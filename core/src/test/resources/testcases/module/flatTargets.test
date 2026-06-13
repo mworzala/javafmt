@@ -1,0 +1,10 @@
+module com.foo {
+    exports a.b to c.d;
+    requires java.base;
+}
+---
+module com.foo {
+    exports a.b to c.d;
+
+    requires java.base;
+}

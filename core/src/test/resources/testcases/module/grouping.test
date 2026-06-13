@@ -1,0 +1,28 @@
+module com.foo.bar {
+    uses com.foo.Spi;
+    requires transitive java.sql;
+    exports com.foo.api to com.consumer.one, com.consumer.two, com.consumer.three, com.consumer.four, com.consumer.five;
+    provides com.foo.Spi with com.foo.Impl;
+    exports com.foo.api2;
+    opens com.foo.impl to org.junit;
+    requires java.base;
+}
+---
+module com.foo.bar {
+    exports com.foo.api to
+        com.consumer.one,
+        com.consumer.two,
+        com.consumer.three,
+        com.consumer.four,
+        com.consumer.five;
+    exports com.foo.api2;
+
+    opens com.foo.impl to org.junit;
+
+    requires transitive java.sql;
+    requires java.base;
+
+    uses com.foo.Spi;
+
+    provides com.foo.Spi with com.foo.Impl;
+}

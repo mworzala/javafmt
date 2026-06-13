@@ -1,0 +1,11 @@
+module com.foo {
+    exports com.foo.api /* internal note */ to com.bar;
+    requires java.base;
+}
+---
+module com.foo {
+    exports com.foo.api to com.bar;
+
+    requires java.base;
+    /* internal note */
+}

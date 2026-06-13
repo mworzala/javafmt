@@ -1,0 +1,10 @@
+module com.svc {
+    uses com.svc.Plugin;
+    provides com.svc.Plugin with com.svc.DefaultPlugin;
+}
+---
+module com.svc {
+    uses com.svc.Plugin;
+
+    provides com.svc.Plugin with com.svc.DefaultPlugin;
+}

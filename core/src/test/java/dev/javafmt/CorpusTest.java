@@ -70,17 +70,20 @@ public class CorpusTest {
     @MethodSource("corpusFiles")
     void roundTripPreservesAst(Path file) throws IOException {
         var source = Files.readString(file);
+        var fileName = file.getFileName().toString();
+        boolean module = fileName.equals("module-info.java");
 
-        var original = parse(source);
+        var original = parse(source, module);
         // Skip files the JDT parser itself can't handle at our compliance level —
-        // module-info, package-info with weird annotations, or newer syntax
+        // package-info with weird annotations, or newer syntax. A module-info parses cleanly
+        // once we hand the parser the unit name (see parse()).
         Assumptions.assumeTrue(original.getProblems().length == 0,
                 "skipping unparseable source");
 
-        var result = Formatter.defaults().format(source);
+        var result = Formatter.defaults().format(source, fileName);
         switch (result) {
             case Formatter.Result.Success(var formatted) -> {
-                var reparsed = parse(formatted);
+                var reparsed = parse(formatted, module);
                 assertTrue(reparsed.getProblems().length == 0,
                         () -> "formatter produced unparseable output: "
                                 + Arrays.toString(reparsed.getProblems()));
@@ -97,11 +100,11 @@ public class CorpusTest {
         // Idempotence: a second format must change nothing. A known reflow file is exempt from
         // strict single-pass idempotence but must still settle on the next pass (pass 2 == pass 3).
         var first = ((Formatter.Result.Success) result).formatted();
-        var second = Formatter.defaults().format(first);
+        var second = Formatter.defaults().format(first, fileName);
         assertTrue(second instanceof Formatter.Result.Success, "second pass failed: " + second);
         var secondOut = ((Formatter.Result.Success) second).formatted();
         if (IDEMPOTENCE_REFLOW.contains(relativeId(file))) {
-            var third = Formatter.defaults().format(secondOut);
+            var third = Formatter.defaults().format(secondOut, fileName);
             assertTrue(third instanceof Formatter.Result.Success, "third pass failed: " + third);
             assertEquals(secondOut, ((Formatter.Result.Success) third).formatted(),
                     "reflow file did not settle on the second pass");
@@ -110,13 +113,14 @@ public class CorpusTest {
         }
     }
 
-    private static CompilationUnit parse(String source) {
+    private static CompilationUnit parse(String source, boolean module) {
         var parser = ASTParser.newParser(AST.getJLSLatest());
         parser.setKind(ASTParser.K_COMPILATION_UNIT);
         Map<String, String> options = JavaCore.getOptions();
         options.put(JavaCore.COMPILER_SOURCE, "25");
         options.put(JavaCore.COMPILER_COMPLIANCE, "25");
         parser.setCompilerOptions(options);
+        if (module) parser.setUnitName("module-info.java");
         parser.setSource(source.toCharArray());
         return (CompilationUnit) parser.createAST(null);
     }
@@ -124,10 +128,11 @@ public class CorpusTest {
     private static boolean isUnderTestFixtures(Path p) {
         var s = p.toString().replace('\\', '/');
         // JUnit's own intentionally-malformed fixtures live under these dirs; skip them.
+        // module-info.java is NOT skipped — it is formatted (and parsed with its unit name) so the
+        // module path gets real-world coverage; package-info.java stays skipped for now.
         return s.contains("/src/test/resources/")
                 || s.contains("/jqwik/")
-                || s.endsWith("package-info.java")
-                || s.endsWith("module-info.java");
+                || s.endsWith("package-info.java");
     }
 
     private static String relativeId(Path p) {

@@ -1,0 +1,54 @@
+class Example {
+    // Regression: an array-access LHS of an assignment must stay glued when the RHS is a
+    // long call. The RHS args wrap; the brackets must NOT explode into the orphan shape
+    // `sections[\n index\n] = ...`. (The rest-aware fit check used to measure the long RHS
+    // flat and wrongly conclude even `sections[index]` did not fit.)
+    void simpleAssign() {
+        sections[index] = new PolarSection(blockPalette.toArray(new String[0]), blockData, biomePalette.toArray(new String[0]), biomeData, getLightContent(blockLight));
+    }
+
+    // Same for a compound assignment operator.
+    void compoundAssign() {
+        totals[bucket] += computeWeightedContributionForThisParticularBucketUsing(alpha, beta, gamma, delta);
+    }
+
+    // A nested array-access LHS (`grid[x][y]`) stays glued as one unit; the RHS wraps.
+    void nestedAccess() {
+        grid[rowIndexValue][colIndexValue] = buildCellFromComponents(firstComponentValue, secondComponentValue, third);
+    }
+}
+---
+class Example {
+    // Regression: an array-access LHS of an assignment must stay glued when the RHS is a
+    // long call. The RHS args wrap; the brackets must NOT explode into the orphan shape
+    // `sections[\n index\n] = ...`. (The rest-aware fit check used to measure the long RHS
+    // flat and wrongly conclude even `sections[index]` did not fit.)
+    void simpleAssign() {
+        sections[index] = new PolarSection(
+            blockPalette.toArray(new String[0]),
+            blockData,
+            biomePalette.toArray(new String[0]),
+            biomeData,
+            getLightContent(blockLight)
+        );
+    }
+
+    // Same for a compound assignment operator.
+    void compoundAssign() {
+        totals[bucket] += computeWeightedContributionForThisParticularBucketUsing(
+            alpha,
+            beta,
+            gamma,
+            delta
+        );
+    }
+
+    // A nested array-access LHS (`grid[x][y]`) stays glued as one unit; the RHS wraps.
+    void nestedAccess() {
+        grid[rowIndexValue][colIndexValue] = buildCellFromComponents(
+            firstComponentValue,
+            secondComponentValue,
+            third
+        );
+    }
+}

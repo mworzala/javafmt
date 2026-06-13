@@ -889,7 +889,6 @@ These are documented behaviors of the current version. Some are intentional, som
 rough edges that will improve over time. They are listed here so you know what to
 expect.
 
-- **No import sorting or grouping.** Imports stay in the order you wrote them.
 - **Javadoc prose is not reformatted.** Lines are re-indented but the text inside
   `/** */` or `///` is untouched.
 - **Single-fragment field declarations** with very long RHS expressions may not

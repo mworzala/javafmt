@@ -1,0 +1,41 @@
+class Example {
+    // A too-long assert with a message wraps at the `:` and keeps the asserted
+    // expression flat, rather than breaking inside the expression at `==`.
+    void wrapsAtColon() {
+        assert sectionCount == chunk.sections().length : "section count and chunk section length mismatch";
+    }
+
+    // When `assert <expr>` alone still overflows, the expression chops too — the `:`
+    // break (outer group) is taken first, then the expression breaks at its operators.
+    void expressionAlsoChopsWhenStillTooLong() {
+        assert someReasonablyLongConditionExpressionHere == anotherFairlyLongValueExpression && extraCondition : "boom";
+    }
+
+    // No message: there is nothing to wrap at, so the expression breaks internally.
+    void noMessageBreaksInExpression() {
+        assert valueThatIsExtremelyLongAndGoesOnForeverAndEverPastTheLimit == otherEquallyVerboseValueHereToo;
+    }
+}
+---
+class Example {
+    // A too-long assert with a message wraps at the `:` and keeps the asserted
+    // expression flat, rather than breaking inside the expression at `==`.
+    void wrapsAtColon() {
+        assert sectionCount == chunk.sections().length
+            : "section count and chunk section length mismatch";
+    }
+
+    // When `assert <expr>` alone still overflows, the expression chops too — the `:`
+    // break (outer group) is taken first, then the expression breaks at its operators.
+    void expressionAlsoChopsWhenStillTooLong() {
+        assert someReasonablyLongConditionExpressionHere == anotherFairlyLongValueExpression
+            && extraCondition
+            : "boom";
+    }
+
+    // No message: there is nothing to wrap at, so the expression breaks internally.
+    void noMessageBreaksInExpression() {
+        assert valueThatIsExtremelyLongAndGoesOnForeverAndEverPastTheLimit
+            == otherEquallyVerboseValueHereToo;
+    }
+}

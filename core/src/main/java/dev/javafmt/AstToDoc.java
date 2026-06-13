@@ -26,14 +26,17 @@ final class AstToDoc extends ASTVisitor {
     // set but absent here was silently dropped.
     private final Set<Comment> emitted = Collections.newSetFromMap(new IdentityHashMap<>());
 
-    /// True while rendering the receiver spine of a `recv.method(...)` call. Consumed
-    /// by visit(ArrayAccess) to suppress its bracket-break alternative: an array access
-    /// used as a call receiver stays glued (`arr[i].m(...)`) and the call's own argument
-    /// list wraps instead of exploding the brackets into the orphan `arr[\n i\n].m(...)`.
-    /// The bracket break stays available for a standalone access (`int x = arr[longIdx];`),
-    /// the last resort when nothing else on the line can wrap. Saved/restored around the
-    /// set in visit(MethodInvocation) and cleared before an array index, so it never leaks
-    /// into siblings, arguments, or index subexpressions.
+    /// True while rendering a position where an array access must stay glued: the receiver
+    /// spine of a `recv.method(...)` call, or the left-hand side of an assignment. Consumed
+    /// by visit(ArrayAccess) to suppress its bracket-break alternative — `arr[i].m(...)` and
+    /// `arr[i] = ...` keep the access glued and let the trailing call's args / the RHS wrap,
+    /// instead of exploding the brackets into the orphan `arr[\n i\n] = ...`. (Without this,
+    /// the rest-aware fit check measures the long trailing RHS flat and wrongly concludes even
+    /// `arr[i]` doesn't fit.) The bracket break stays available for a standalone access
+    /// (`int x = arr[longIdx];`), the last resort when nothing else on the line can wrap.
+    /// Saved/restored around the set in visit(MethodInvocation) and visit(Assignment), and
+    /// cleared before an array index, so it never leaks into siblings, arguments, RHS values,
+    /// or index subexpressions.
     private boolean flatReceiver = false;
 
     // When true, any comment still unemitted after the whole tree is visited is force-appended
@@ -2137,7 +2140,13 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
     @Override
     public boolean visit(Assignment node) {
         var left = getProperty(node, Assignment.LEFT_HAND_SIDE_PROPERTY);
+        // The LHS is a glued target: an array-access LHS (`arr[i] = ...`) must not explode its
+        // brackets just because the RHS is long — the RHS wraps instead. Same suppression as a
+        // call receiver spine. Restored before the RHS so its own array accesses keep breaking.
+        boolean prevFlatReceiver = flatReceiver;
+        flatReceiver = true;
         left.accept(this);
+        flatReceiver = prevFlatReceiver;
         var leftDoc = result;
         var op = node.getOperator().toString();
 

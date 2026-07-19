@@ -1,0 +1,45 @@
+class SomeVeryLongClassName implements InterfaceNumberOne,InterfaceNumberTwo,InterfaceNumberThree,InterfaceNumberFour{}
+interface CombinedThing extends InterfaceNumberOne,InterfaceNumberTwo,InterfaceNumberThree,InterfaceNumberFour{}
+sealed interface Shape permits Circle,Square,Triangle,Rectangle,Pentagon,Hexagon,Heptagon,Octagon,Nonagon,Decagon,Ellipse,Rhombus{}
+sealed class MegaWidget extends AbstractWidget implements InterfaceNumberOne,InterfaceNumberTwo,InterfaceNumberThree permits WidgetKindOne,WidgetKindTwo,WidgetKindThree,WidgetKindFour,WidgetKindFive,WidgetKindSix,WidgetKindSeven,WidgetKindEight{}
+final class Circle implements Shape{}
+record LongRecordName(int alpha,int beta) implements InterfaceNumberOne,InterfaceNumberTwo,InterfaceNumberThree{}
+enum LongEnumThing implements InterfaceNumberOne,InterfaceNumberTwo,InterfaceNumberThree,InterfaceNumberFour{A}
+---
+class SomeVeryLongClassName implements
+    InterfaceNumberOne,
+    InterfaceNumberTwo,
+    InterfaceNumberThree,
+    InterfaceNumberFour {}
+
+interface CombinedThing extends
+    InterfaceNumberOne,
+    InterfaceNumberTwo,
+    InterfaceNumberThree,
+    InterfaceNumberFour {}
+
+sealed interface Shape permits
+    Circle, Square, Triangle, Rectangle, Pentagon, Hexagon, Heptagon, Octagon, Nonagon, Decagon,
+    Ellipse, Rhombus {}
+
+sealed class MegaWidget extends AbstractWidget implements
+    InterfaceNumberOne,
+    InterfaceNumberTwo,
+    InterfaceNumberThree permits
+    WidgetKindOne, WidgetKindTwo, WidgetKindThree, WidgetKindFour, WidgetKindFive, WidgetKindSix,
+    WidgetKindSeven, WidgetKindEight {}
+
+final class Circle implements Shape {}
+
+record LongRecordName(
+    int alpha,
+    int beta
+) implements InterfaceNumberOne, InterfaceNumberTwo, InterfaceNumberThree {}
+
+enum LongEnumThing implements
+    InterfaceNumberOne,
+    InterfaceNumberTwo,
+    InterfaceNumberThree,
+    InterfaceNumberFour {
+    A,
+}

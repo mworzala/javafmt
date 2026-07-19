@@ -31,7 +31,9 @@ class Both extends Parent implements Runnable, Serializable {}
 
 class Generic<T> extends AbstractList<T> implements List<T>, Serializable {}
 
-class Deep extends AbstractMap<String, List<Integer>> implements Map<String, List<Integer>>, Serializable {}
+class Deep extends AbstractMap<String, List<Integer>> implements
+    Map<String, List<Integer>>,
+    Serializable {}
 
 interface ExtendsInterface extends Runnable {}
 
@@ -61,4 +63,7 @@ enum WithInterface implements Comparable<WithInterface> {
 
 record WithImpl(int x, int y) implements Serializable, Comparable<WithImpl> {}
 
-class Complex<K extends Comparable<K>, V> extends AbstractMap<K, V> implements Map<K, V>, Serializable, Cloneable {}
+class Complex<K extends Comparable<K>, V> extends AbstractMap<K, V> implements
+    Map<K, V>,
+    Serializable,
+    Cloneable {}

@@ -64,6 +64,14 @@ sealed interface Doc {
      */
     record ConditionalGroup(java.util.List<Doc> alternatives) implements Doc {}
 
+    /// Fill layout: {@code parts} alternates content and separator
+    /// (content, separator, content, ...). Each separator renders flat (its Lines
+    /// as spaces) when the following content still fits on the current line, and
+    /// breaks otherwise — packing as many items per line as the width allows,
+    /// unlike {@link Group} which is all-flat or all-broken. Inside a flat
+    /// enclosing group the whole fill renders flat. Mirrors Prettier's fill.
+    record Fill(java.util.List<Doc> parts) implements Doc {}
+
     // ── convenience builders ──
 
     static Doc space()                  { return text(" "); }
@@ -95,5 +103,16 @@ sealed interface Doc {
             parts.add(docs.get(i));
         }
         return new Concat(parts);
+    }
+
+    /** Join docs with a separator into a {@link Fill} (as many items per line as fit). */
+    static Doc fillJoin(Doc separator, java.util.List<Doc> docs) {
+        if (docs.isEmpty()) return text("");
+        var parts = new java.util.ArrayList<Doc>();
+        for (int i = 0; i < docs.size(); i++) {
+            if (i > 0) parts.add(separator);
+            parts.add(docs.get(i));
+        }
+        return new Fill(parts);
     }
 }

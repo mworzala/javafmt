@@ -110,6 +110,36 @@ final class DocPrinter {
                     }
                     if (!found) pushMain(indent, false, alts.getLast());
                 }
+
+                case Doc.Fill f -> {
+                    var parts = f.parts();
+                    int n = parts.size();
+                    if (n == 0) {
+                        // nothing to print
+                    } else if (flat) {
+                        pushMainReversed(indent, true, parts);
+                    } else if (n == 1) {
+                        Doc content = parts.getFirst();
+                        pushMain(indent, fits(indent, content), content);
+                    } else {
+                        // Pair-fit: the rest of the fill goes on the main stack first, so the
+                        // fits check's phase 2 extends the candidate with the NEXT content up
+                        // to its own (break-mode) separator. The separator between this pair
+                        // renders flat only if content + separator + next content all fit.
+                        Doc content = parts.get(0);
+                        Doc separator = parts.get(1);
+                        pushMain(indent, false, new Doc.Fill(parts.subList(2, n)));
+                        if (fits(indent, new Doc.Concat(List.of(content, separator)))) {
+                            pushMain(indent, true, separator);
+                            pushMain(indent, true, content);
+                        } else {
+                            // Separator breaks; with it on the stack (break mode ends the
+                            // line), measure whether the content itself can render flat.
+                            pushMain(indent, false, separator);
+                            pushMain(indent, fits(indent, content), content);
+                        }
+                    }
+                }
             }
         }
         return out.toString();
@@ -198,6 +228,7 @@ final class DocPrinter {
                 case Doc.Indent i -> pushScratch(indent + indentStep, true, i.doc());
                 case Doc.Group g -> pushScratch(indent, true, g.doc());
                 case Doc.ConditionalGroup cg -> pushScratch(indent, true, cg.alternatives().getFirst());
+                case Doc.Fill f -> pushScratchReversed(indent, true, f.parts());
                 case Doc.Concat c -> pushScratchReversed(indent, true, c.parts());
             }
         }
@@ -235,6 +266,7 @@ final class DocPrinter {
                 case Doc.Indent i -> pushScratch(indent + indentStep, true, i.doc());
                 case Doc.Group g -> pushScratch(indent, true, g.doc());
                 case Doc.ConditionalGroup cg -> pushScratch(indent, true, cg.alternatives().getFirst());
+                case Doc.Fill f -> pushScratchReversed(indent, true, f.parts());
                 case Doc.Concat c -> pushScratchReversed(indent, true, c.parts());
             }
         }
@@ -271,6 +303,9 @@ final class DocPrinter {
                 case Doc.Indent i -> pushScratch(indent + indentStep, flat, i.doc());
                 case Doc.Group g -> pushScratch(indent, true, g.doc());
                 case Doc.ConditionalGroup cg -> pushScratch(indent, flat, cg.alternatives().getFirst());
+                // In break mode the fill's first separator is a break opportunity that ends
+                // the line (optimistic, like a break-mode Line); flat renders fully flat.
+                case Doc.Fill f -> pushScratchReversed(indent, flat, f.parts());
                 case Doc.Concat c -> pushScratchReversed(indent, flat, c.parts());
             }
         }

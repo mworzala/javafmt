@@ -186,6 +186,32 @@ record R() {}
 Empty bodies render as `{}` on the same line as the declaration. Members are separated
 by one blank line. Top-level types are separated by one blank line.
 
+### Wrapping the header
+
+A short `implements` (or interface `extends`) list stays on the header line. One that
+pushes the header over the line length breaks after the keyword, one interface per
+line — the same shape as [`throws` clauses](#throws-clauses):
+
+```java
+class Deep extends AbstractMap<String, List<Integer>> implements
+    Map<String, List<Integer>>,
+    Serializable {}
+```
+
+An overlong `permits` list also breaks after the keyword, but **fill-wraps**: as many
+names per line as fit, not one per line.
+
+```java
+sealed interface Shape permits
+    Circle, Square, Triangle, Rectangle, Pentagon, Hexagon, Heptagon, Octagon, Nonagon, Decagon,
+    Ellipse, Rhombus {}
+```
+
+> Why the difference? Permits entries are bare class names with no per-entry structure
+> to scan, and sealed hierarchies force the *full* enumeration of subtypes — one per
+> line would turn a 15-subtype header into 15 lines before the body even starts.
+> Interfaces, by contrast, can be generic types worth a line each.
+
 ---
 
 ## Records

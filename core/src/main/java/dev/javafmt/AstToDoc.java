@@ -768,7 +768,6 @@ final class AstToDoc extends ASTVisitor {
 
         var keyword = node instanceof TypeDeclaration td && td.isInterface()
                 ? "extends" : "implements";
-        parts.add(text(keyword));
         var ifaceDocs = new ArrayList<Doc>();
         for (var iface : interfaces) {
             iface.accept(this);
@@ -781,6 +780,7 @@ final class AstToDoc extends ASTVisitor {
         // last interface as trailing but belongs on the brace — it's in braceTrailing and is
         // emitted there, so it's excluded here.
         if (interfaceListHasComments(interfaces, braceTrailing)) {
+            parts.add(text(keyword));
             var inner = new ArrayList<Doc>();
             int n = interfaces.size();
             for (int i = 0; i < n; i++) {
@@ -801,8 +801,14 @@ final class AstToDoc extends ASTVisitor {
             parts.add(indent(concat(inner)));
             parts.add(space());
         } else {
-            parts.add(space());
-            parts.add(join(concat(text(","), space()), ifaceDocs));
+            // Overlong list breaks vertically, one interface per line, like `throws`.
+            parts.add(group(concat(
+                    text(keyword),
+                    indent(concat(
+                            line(),
+                            join(concat(text(","), line()), ifaceDocs)
+                    ))
+            )));
             parts.add(space());
         }
     }
@@ -811,13 +817,21 @@ final class AstToDoc extends ASTVisitor {
         var permits = getProperty(node, property);
         if (permits.isEmpty()) return;
 
-        parts.add(text("permits "));
         var permitDocs = new ArrayList<Doc>();
         for (var permit : permits) {
             permit.accept(this);
             permitDocs.add(result);
         }
-        parts.add(join(concat(text(","), space()), permitDocs));
+        // Permits entries are bare class names, and sealed hierarchies force the full
+        // enumeration — so an overlong list fill-wraps (as many per line as fit) rather
+        // than one-per-line, which would bloat the header for no per-entry structure.
+        parts.add(group(concat(
+                text("permits"),
+                indent(concat(
+                        line(),
+                        fillJoin(concat(text(","), line()), permitDocs)
+                ))
+        )));
         parts.add(space());
     }
 

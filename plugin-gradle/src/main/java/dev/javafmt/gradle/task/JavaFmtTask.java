@@ -14,7 +14,6 @@ import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.work.DisableCachingByDefault;
-import org.gradle.work.Incremental;
 
 import javax.inject.Inject;
 
@@ -22,7 +21,6 @@ import javax.inject.Inject;
 public abstract class JavaFmtTask extends DefaultTask {
 
     @InputFiles
-    @Incremental
     @PathSensitive(PathSensitivity.RELATIVE)
     public abstract ConfigurableFileCollection getSourceFiles();
 

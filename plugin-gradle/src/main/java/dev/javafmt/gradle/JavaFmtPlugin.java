@@ -50,7 +50,6 @@ public class JavaFmtPlugin implements Plugin<Project> {
 
             task.getLanguageVersion().set(java.getToolchain().getLanguageVersion());
             task.getEnablePreview().set(false);
-            task.getStampFile().convention(buildDir.file("javafmt/format-stamp.txt"));
             task.getProjectDirectory().convention(projectDir);
 
             wireSources(task, sourceSets);

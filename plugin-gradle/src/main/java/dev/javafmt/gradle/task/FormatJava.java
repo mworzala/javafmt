@@ -3,18 +3,12 @@ package dev.javafmt.gradle.task;
 import dev.javafmt.api.Formatter;
 import dev.javafmt.api.Formatter.Result;
 import org.gradle.api.GradleException;
-import org.gradle.api.file.FileType;
-import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.problems.ProblemGroup;
 import org.gradle.api.problems.ProblemId;
 import org.gradle.api.problems.Severity;
-import org.gradle.api.tasks.CacheableTask;
-import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.api.tasks.UntrackedTask;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
-import org.gradle.work.ChangeType;
-import org.gradle.work.FileChange;
-import org.gradle.work.InputChanges;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,14 +17,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@CacheableTask
+// Untracked, not incremental/cacheable: the task's real output is an in-place rewrite of its
+// *input* files, which Gradle cannot model. Tracked state fingerprints inputs pre-execution, so a
+// git revert back to that exact content makes the task UP-TO-DATE while the tree is unformatted,
+// and a build-cache hit would replay only declared outputs, skipping the rewrite entirely.
+@UntrackedTask(because = "Rewrites its input files in place; the formatted sources are not declarable outputs.")
 public abstract class FormatJava extends JavaFmtTask {
 
-    @OutputFile
-    public abstract RegularFileProperty getStampFile();
-
     @TaskAction
-    public void format(InputChanges inputChanges) {
+    public void format() {
         var languageVersion = getLanguageVersion().getOrElse(JavaLanguageVersion.current());
         var enablePreview = getEnablePreview().getOrElse(false);
         var formatter = Formatter.create(Formatter.Config.defaults()
@@ -38,23 +33,16 @@ public abstract class FormatJava extends JavaFmtTask {
                 .withPreview(enablePreview));
         var projectDir = getProjectDirectory().get().getAsFile().toPath();
         var errors = new ArrayList<FormatError>();
-        var processed = 0;
 
-        for (FileChange change : inputChanges.getFileChanges(getSourceFiles())) {
-            if (change.getFileType() == FileType.DIRECTORY) continue;
-            if (change.getChangeType() == ChangeType.REMOVED) continue;
-
-            var file = change.getFile();
+        for (File file : getSourceFiles().getAsFileTree()) {
             var relativePath = projectDir.relativize(file.toPath()).toString();
             try {
                 processFile(file, relativePath, formatter, errors);
-                processed++;
             } catch (IOException e) {
                 errors.add(new FormatError(file, relativePath, "I/O error: " + e.getMessage()));
             }
         }
 
-        writeStamp(processed);
         reportErrors(errors);
     }
 
@@ -71,16 +59,6 @@ public abstract class FormatJava extends JavaFmtTask {
                     errors.add(new FormatError(file, relativePath, "syntax error", problems));
             case Result.Failure(var t) ->
                     errors.add(new FormatError(file, relativePath, "format failed: " + t.getMessage()));
-        }
-    }
-
-    private void writeStamp(int processed) {
-        try {
-            var stamp = getStampFile().get().getAsFile().toPath();
-            Files.createDirectories(stamp.getParent());
-            Files.writeString(stamp, "processed=" + processed + "\n");
-        } catch (IOException e) {
-            throw new GradleException("javafmt: failed to write stamp file", e);
         }
     }
 

@@ -713,6 +713,10 @@ try (
 }
 ```
 
+If the parser cannot represent a resource such as `this`, the
+original try header is preserved, including all resources and comments. The body
+is still formatted normally.
+
 `catch` and `finally` continue to follow the closing `}` on the same line, as with any
 braced block.
 

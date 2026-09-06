@@ -1,0 +1,59 @@
+class Example implements AutoCloseable {
+    byte[] readAllBytes() throws Exception {
+        try (this) {return stream.readAllBytes();}
+    }
+
+    void multiple() throws Exception {
+        try (var first = open(); this; var last = open()) {use(first, last);}
+    }
+
+    void commented() throws Exception {
+        try (
+            // Close this instance.
+            this; /* keep the following resource */ var other = open()
+        ) {use(other);}
+    }
+
+    void withHandlers() throws Exception {
+        try (this) // close on exit
+        {use(this);} catch (Exception e) {throw e;} finally {cleanup();}
+    }
+
+    public void close() {}
+}
+---
+class Example implements AutoCloseable {
+    byte[] readAllBytes() throws Exception {
+        try (this) {
+            return stream.readAllBytes();
+        }
+    }
+
+    void multiple() throws Exception {
+        try (var first = open(); this; var last = open()) {
+            use(first, last);
+        }
+    }
+
+    void commented() throws Exception {
+        try (
+            // Close this instance.
+            this; /* keep the following resource */ var other = open()
+        ) {
+            use(other);
+        }
+    }
+
+    void withHandlers() throws Exception {
+        try (this) // close on exit
+        {
+            use(this);
+        } catch (Exception e) {
+            throw e;
+        } finally {
+            cleanup();
+        }
+    }
+
+    public void close() {}
+}

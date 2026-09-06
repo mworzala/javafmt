@@ -3,9 +3,29 @@ package dev.javafmt;
 import dev.javafmt.api.Formatter;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 class FormatterReleaseTest {
+
+    @Test
+    void preservesThisResource() {
+        var fmt = Formatter.defaults();
+        var source = """
+                class M implements AutoCloseable {
+                    byte[] readAllBytes() throws Exception {
+                        try (this) {
+                            return stream.readAllBytes();
+                        }
+                    }
+
+                    public void close() {}
+                }
+                """;
+        var result = assertInstanceOf(Formatter.Result.Success.class, fmt.format(source));
+        assertEquals(source, result.formatted());
+        assertEquals(result, fmt.format(result.formatted()));
+    }
 
     @Test
     void release25AcceptsSwitchArrow() {

@@ -1949,10 +1949,29 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
     @Override
     public boolean visit(TryStatement node) {
         var parts = new ArrayList<Doc>();
-        parts.add(text("try "));
-
+        var body = getProperty(node, TryStatement.BODY_PROPERTY);
         var resources = getProperty(node, TryStatement.RESOURCES2_PROPERTY);
-        if (!resources.isEmpty()) {
+        if ((node.getFlags() & ASTNode.MALFORMED) != 0) {
+            // JDT 3.45 accepts `try (this)` but its DOM converter drops `this` and
+            // every subsequent resource, marking only the try node MALFORMED.
+            // Preserve the entire header: even a nonempty resource list is incomplete.
+            if (source == null) throw new IllegalStateException("Malformed try statement requires source");
+            int start = node.getStartPosition();
+            int end = body.getStartPosition();
+            var header = source.substring(start, end);
+            int length = header.stripTrailing().length();
+            parts.add(renderSourceRange(start, length));
+            parts.add(header.substring(length).contains("\n") ? hardLine() : space());
+            if (comments != null) {
+                for (var comment : comments.attachedComments()) {
+                    int position = comment.getStartPosition();
+                    if (position >= start && position < end) emitted.add(comment);
+                }
+            }
+        } else {
+            parts.add(text("try "));
+        }
+        if ((node.getFlags() & ASTNode.MALFORMED) == 0 && !resources.isEmpty()) {
             var resourceParts = new ArrayList<Doc>();
             for (var resource : resources) {
                 resource.accept(this);
@@ -1977,7 +1996,6 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             parts.add(text(" "));
         }
 
-        var body = getProperty(node, TryStatement.BODY_PROPERTY);
         body.accept(this);
         parts.add(result);
 
@@ -4171,15 +4189,14 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
     }
 
     private Doc renderBlockComment(BlockComment bc) {
-        return renderRawComment(bc.getStartPosition(), bc.getLength());
+        return renderSourceRange(bc.getStartPosition(), bc.getLength());
     }
 
-    /// Render a multi-line comment's source verbatim, stripping the comment's own start
-    /// column from each continuation line so it re-indents to the new column. Shared by
-    /// block comments and out-of-position Javadoc comments.
-    private Doc renderRawComment(int startPos, int length) {
+    /// Render source verbatim, stripping its original start column from continuation
+    /// lines so it re-indents to the new column. Used for comments and incomplete try ASTs.
+    private Doc renderSourceRange(int startPos, int length) {
         var text = source.substring(startPos, startPos + length);
-        // Compute column of the comment start to strip that indentation from subsequent lines
+        // Compute the original column to strip that indentation from subsequent lines
         int col = 0;
         for (int i = startPos - 1; i >= 0 && source.charAt(i) != '\n'; i--) col++;
         var parts = new ArrayList<Doc>();
@@ -4200,7 +4217,7 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         // doc comment between two declarations, or commented-out `///` code in a method — is
         // classified as an ordinary leading/trailing/dangling comment and lands here. Render
         // its source verbatim with the same re-indentation as a block comment.
-        if (comment instanceof Javadoc jd) return renderRawComment(jd.getStartPosition(), jd.getLength());
+        if (comment instanceof Javadoc jd) return renderSourceRange(jd.getStartPosition(), jd.getLength());
         throw new IllegalArgumentException("Unexpected comment type: " + comment.getClass());
     }
 

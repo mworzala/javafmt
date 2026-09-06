@@ -1,0 +1,27 @@
+class Example {
+    void foo() {
+        while(ready());
+        next();
+        while(ready()) ; // intentional empty body
+        for(int i=0;i<10;i++);
+        for(var item:items);
+        do;while(ready());
+        if(ready());else;
+        empty:;
+    }
+}
+---
+class Example {
+    void foo() {
+        while (ready()) ;
+        next();
+        while (ready()) ; // intentional empty body
+        for (int i = 0; i < 10; i++) ;
+        for (var item : items) ;
+        do ; while (ready());
+        if (ready()) ;
+        else ;
+        empty:
+        ;
+    }
+}

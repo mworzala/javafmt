@@ -325,6 +325,9 @@ class A {
 `if`, `while`, `for`, `synchronized`, etc. follow C-style spacing: `keyword (cond)`
 followed by either a brace-block or a single statement.
 
+An empty statement used as a control-flow or labeled body retains its semicolon
+(for example, `while (ready()) ;`). Redundant empty statements inside blocks are removed.
+
 ```java
 for (int i = 0; i < arr.length; i++) System.out.println(arr[i]);
 for (var v : arr) System.out.println(v);

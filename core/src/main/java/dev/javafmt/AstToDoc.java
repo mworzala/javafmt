@@ -1306,6 +1306,14 @@ final class AstToDoc extends ASTVisitor {
     // statements
 
     @Override
+    public boolean visit(EmptyStatement node) {
+        // Blocks remove redundant empty statements, but a control-flow or labeled body
+        // must retain its semicolon so the following statement does not become its body.
+        result = text(";");
+        return false;
+    }
+
+    @Override
     public boolean visit(Block node) {
         var stmts = new ArrayList<>(getProperty(node, Block.STATEMENTS_PROPERTY));
         stmts.removeIf(stmt -> stmt instanceof EmptyStatement);
@@ -4082,11 +4090,6 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
     public boolean visit(BlockComment node) {
         // Block comments are handled via CompilationUnit.getCommentList(), not via visitor dispatch
         return false;
-    }
-
-    @Override
-    public boolean visit(EmptyStatement node) {
-        throw new IllegalStateException("EmptyStatement should have been removed");
     }
 
     // Helpers

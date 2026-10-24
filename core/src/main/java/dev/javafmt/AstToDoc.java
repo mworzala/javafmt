@@ -3450,13 +3450,20 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             return false;
         }
 
-        // A ternary body breaks cleanly before `?`/`:` on its own, so wrapping the params can't
-        // help it fit — only let them wrap when the param list itself overflows. Other bodies
-        // have no break after `->`, so wrapping the params stays their last resort.
-        var arrowDoc = concat(paramListDoc, text(" ->"));
-        parts.add(body instanceof ConditionalExpression ? isolatedGroup(arrowDoc) : group(arrowDoc));
+        // Isolated: the params wrap only when the param list itself overflows. A long body has
+        // its own break points (below), so wrapping params that fit can never help it.
+        parts.add(isolatedGroup(concat(paramListDoc, text(" ->"))));
         parts.add(text(" "));
-        parts.add(bodyDoc);
+        if (body instanceof Block || body instanceof MethodInvocation || body instanceof SuperMethodInvocation
+                || body instanceof ClassInstanceCreation || body instanceof SwitchExpression
+                || body instanceof ConditionalExpression || body instanceof LambdaExpression) {
+            // Hugged: these break cleanly inside themselves (args, braces, `?`/`:`), so moving
+            // them to their own line would only waste an indent level.
+            parts.add(bodyDoc);
+        } else {
+            // Anything else that overflows moves to its own indented line after `->`.
+            parts.add(group(indent(concat(softLine(), bodyDoc))));
+        }
 
         var partsDoc = concat(parts);
         result = body instanceof Block

@@ -666,7 +666,16 @@ list.forEach(x -> {
 A single-identifier parameter list drops the parentheses (`x -> ...`); multi-parameter
 or typed parameter lists keep them.
 
-A ternary body breaks before `?`/`:` rather than wrapping a parameter list that fits:
+A parameter list wraps only when it doesn't fit on its own. An overflowing expression body
+moves to its own indented line after `->`:
+
+```java
+BiFunction<Integer, Integer, Integer> f = (Integer first, Integer second) ->
+    someVeryLongMethodName(first) + anotherVeryLongMethodName(second);
+```
+
+Calls, `new`, switch expressions, ternaries, and nested lambdas stay hugged to the arrow,
+because they already break cleanly inside themselves:
 
 ```java
 LongArrays.stableSort(

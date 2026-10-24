@@ -1,0 +1,23 @@
+class A {
+    void f() {
+        LongArrays.stableSort(keys, (a, b) -> chunkIndexGetZ(a) != chunkIndexGetZ(b) ? Integer.compare(chunkIndexGetZ(a), chunkIndexGetZ(b)) : Integer.compare(chunkIndexGetX(a), chunkIndexGetX(b)));
+        BiFunction<Integer, Integer, Integer> f = (Integer first, Integer second) -> someVeryLongMethodName(first) + anotherVeryLongMethodName(second);
+        executor.submit((first, second) -> someVeryLongMethodName(first, second, aThirdArgumentHere, andAFourth));
+    }
+}
+---
+class A {
+    void f() {
+        LongArrays.stableSort(
+            keys,
+            (a, b) -> chunkIndexGetZ(a) != chunkIndexGetZ(b)
+                ? Integer.compare(chunkIndexGetZ(a), chunkIndexGetZ(b))
+                : Integer.compare(chunkIndexGetX(a), chunkIndexGetX(b))
+        );
+        BiFunction<Integer, Integer, Integer> f = (Integer first, Integer second) ->
+            someVeryLongMethodName(first) + anotherVeryLongMethodName(second);
+        executor.submit(
+            (first, second) -> someVeryLongMethodName(first, second, aThirdArgumentHere, andAFourth)
+        );
+    }
+}

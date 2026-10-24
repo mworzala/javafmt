@@ -94,7 +94,8 @@ final class DocPrinter {
                 }
 
                 case Doc.Group g -> {
-                    boolean flatMode = !g.shouldBreak() && fits(indent, g.doc());
+                    boolean flatMode = !g.shouldBreak()
+                            && (g.isolated() ? fitsAlone(indent, g.doc()) : fits(indent, g.doc()));
                     pushMain(indent, flatMode, g.doc());
                 }
 
@@ -240,6 +241,17 @@ final class DocPrinter {
             pushScratch(mainIndents[i], mainFlats[i], mainDocs[i]);
         }
         return walkRest(remaining);
+    }
+
+    /// Phase 1 of `fits` only: does the candidate fit flat, ignoring the rest of the line?
+    private boolean fitsAlone(int candidateIndent, Doc candidateDoc) {
+        int savedMainTop = mainTop;
+        mainTop = 0;
+        try {
+            return fits(candidateIndent, candidateDoc);
+        } finally {
+            mainTop = savedMainTop;
+        }
     }
 
     private boolean fitsFirstLine(int candidateIndent, Doc candidateDoc) {

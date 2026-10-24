@@ -52,9 +52,12 @@ sealed interface Doc {
      * If it doesn't fit within the remaining width, break all Line/SoftLine nodes.
      * When {@code shouldBreak} is true, the group enters break mode immediately
      * without consulting the available width.
+     * When {@code isolated} is true, the fit check measures only {@code doc} itself,
+     * not the rest of the line that follows it (see {@link Doc#isolatedGroup}).
      */
-    record Group(Doc doc, boolean shouldBreak) implements Doc {
-        public Group(Doc doc) { this(doc, false); }
+    record Group(Doc doc, boolean shouldBreak, boolean isolated) implements Doc {
+        public Group(Doc doc) { this(doc, false, false); }
+        public Group(Doc doc, boolean shouldBreak) { this(doc, shouldBreak, false); }
     }
 
     /**
@@ -84,6 +87,10 @@ sealed interface Doc {
     static Doc indent(Doc d)            { return new Indent(d); }
     static Doc group(Doc d)             { return new Group(d); }
     static Doc breakGroup(Doc d)        { return new Group(d, true); }
+    /// A group that breaks only when its own content overflows. It ignores whatever follows
+    /// on the line, for prefixes where breaking can't help that rest fit anyway, e.g. lambda
+    /// params, whose body stays glued after `) ->` either way.
+    static Doc isolatedGroup(Doc d)     { return new Group(d, false, true); }
     static Doc conditionalGroup(java.util.List<Doc> alts) { return new ConditionalGroup(alts); }
 
     static Doc concat(Doc... parts) {

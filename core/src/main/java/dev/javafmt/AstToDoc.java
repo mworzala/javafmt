@@ -3450,7 +3450,12 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             return false;
         }
 
-        parts.add(group(concat(paramListDoc, text(" -> "))));
+        // A ternary body breaks cleanly before `?`/`:` on its own, so wrapping the params can't
+        // help it fit — only let them wrap when the param list itself overflows. Other bodies
+        // have no break after `->`, so wrapping the params stays their last resort.
+        var arrowDoc = concat(paramListDoc, text(" ->"));
+        parts.add(body instanceof ConditionalExpression ? isolatedGroup(arrowDoc) : group(arrowDoc));
+        parts.add(text(" "));
         parts.add(bodyDoc);
 
         var partsDoc = concat(parts);

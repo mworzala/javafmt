@@ -666,6 +666,17 @@ list.forEach(x -> {
 A single-identifier parameter list drops the parentheses (`x -> ...`); multi-parameter
 or typed parameter lists keep them.
 
+A ternary body breaks before `?`/`:` rather than wrapping a parameter list that fits:
+
+```java
+LongArrays.stableSort(
+    keys,
+    (a, b) -> chunkIndexGetZ(a) != chunkIndexGetZ(b)
+        ? Integer.compare(chunkIndexGetZ(a), chunkIndexGetZ(b))
+        : Integer.compare(chunkIndexGetX(a), chunkIndexGetX(b))
+);
+```
+
 ---
 
 ## Switch

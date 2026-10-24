@@ -1,0 +1,16 @@
+class A {
+    void f() {
+        LongArrays.stableSort(keys, (a, b) -> chunkIndexGetZ(a) != chunkIndexGetZ(b) ? Integer.compare(chunkIndexGetZ(a), chunkIndexGetZ(b)) : Integer.compare(chunkIndexGetX(a), chunkIndexGetX(b)));
+    }
+}
+---
+class A {
+    void f() {
+        LongArrays.stableSort(
+            keys,
+            (a, b) -> chunkIndexGetZ(a) != chunkIndexGetZ(b)
+                ? Integer.compare(chunkIndexGetZ(a), chunkIndexGetZ(b))
+                : Integer.compare(chunkIndexGetX(a), chunkIndexGetX(b))
+        );
+    }
+}

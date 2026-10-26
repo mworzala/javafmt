@@ -40,7 +40,7 @@ gradlePlugin {
 
             displayName = "javafmt"
             description = "Highly opinionated Java formatter"
-            tags.set(listOf("java", "format", "formatter", "code style"))
+            tags.set(listOf("java", "format", "formatter", "code-style"))
 
             compatibility {
                 features.configurationCache = true

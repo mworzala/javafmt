@@ -4200,7 +4200,7 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
     }
 
     private Doc renderLineComment(LineComment lc) {
-        return text(source.substring(lc.getStartPosition(), lc.getStartPosition() + lc.getLength()).stripTrailing());
+        return lineSuffix(source.substring(lc.getStartPosition(), lc.getStartPosition() + lc.getLength()).stripTrailing());
     }
 
     private Doc renderBlockComment(BlockComment bc) {

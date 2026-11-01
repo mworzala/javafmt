@@ -855,6 +855,14 @@ class A {
 }
 ```
 
+A trailing `//` comment does not count toward the line length: code that fits on its
+own stays on one line, and the comment follows it even past the limit. Breaking the code
+would not shorten the comment, it would only strand it on a lone `);`.
+
+```java
+static final Instant EPOCH = Instant.ofEpochMilli(1756771200000L); // 2025-09-02 12:00:00 GMT
+```
+
 Line comments keep their original text (with trailing whitespace stripped). Block
 comments keep their original text and re-indent multi-line `/* ... */` blocks to the
 new column.

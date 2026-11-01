@@ -1,0 +1,17 @@
+class A {
+    static final Instant NO_POSE_CHANGES_EPOCH = Instant.ofEpochMilli(1756771200000L); // 2025-09-02 12:00:00 GMT
+
+    void f() {
+        add(2, 0, new Text("gui.action.search.empty", 7, 1, "Search...").align(8, 5)); // TODO: search support
+        long next = System.currentTimeMillis() + delay * MinecraftServer.TICK_MS; // ticks to millis
+    }
+}
+---
+class A {
+    static final Instant NO_POSE_CHANGES_EPOCH = Instant.ofEpochMilli(1756771200000L); // 2025-09-02 12:00:00 GMT
+
+    void f() {
+        add(2, 0, new Text("gui.action.search.empty", 7, 1, "Search...").align(8, 5)); // TODO: search support
+        long next = System.currentTimeMillis() + delay * MinecraftServer.TICK_MS; // ticks to millis
+    }
+}

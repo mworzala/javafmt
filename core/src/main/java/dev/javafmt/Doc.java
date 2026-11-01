@@ -5,6 +5,12 @@ sealed interface Doc {
     /** Literal text (no newlines allowed inside). */
     record Text(String value) implements Doc {}
 
+    /// Literal text that renders like {@link Text} but is zero-width to every fit check.
+    /// Used for `//` line comments: a trailing comment always ends its line, so letting
+    /// its width force the code before it to break would only move the comment onto a
+    /// lone `);` (Prettier's lineSuffix serves the same purpose).
+    record LineSuffix(String value) implements Doc {}
+
     /** Space when the enclosing group fits flat; newline when broken. */
     record Line() implements Doc {}
 
@@ -79,6 +85,7 @@ sealed interface Doc {
 
     static Doc space()                  { return text(" "); }
     static Doc text(String s)           { return new Text(s); }
+    static Doc lineSuffix(String s)     { return new LineSuffix(s); }
     static Doc line()                   { return new Line(); }
     static Doc softLine()               { return new SoftLine(); }
     static Doc boundaryLine()           { return new BoundaryLine(); }

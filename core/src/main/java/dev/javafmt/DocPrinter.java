@@ -58,6 +58,12 @@ final class DocPrinter {
                     currentLineWidth += t.value().length();
                 }
 
+                case Doc.LineSuffix t -> {
+                    flushPendingIndent();
+                    out.append(t.value());
+                    currentLineWidth += t.value().length();
+                }
+
                 case Doc.Concat c -> pushMainReversed(indent, flat, c.parts());
 
                 case Doc.Indent inner -> pushMain(indent + indentStep, flat, inner.doc());
@@ -221,6 +227,7 @@ final class DocPrinter {
 
             switch (doc) {
                 case Doc.Text t -> remaining -= t.value().length();
+                case Doc.LineSuffix ignored -> { /* zero-width: never forces a break */ }
                 case Doc.Line ignored -> remaining -= 1;
                 case Doc.SoftLine ignored -> { /* zero-width when flat */ }
                 case Doc.BoundaryLine ignored -> { /* zero-width when flat */ }
@@ -270,6 +277,7 @@ final class DocPrinter {
 
             switch (doc) {
                 case Doc.Text t -> remaining -= t.value().length();
+                case Doc.LineSuffix ignored -> { /* zero-width: never forces a break */ }
                 case Doc.Line ignored -> remaining -= 1;
                 case Doc.SoftLine ignored -> { /* zero-width when flat */ }
                 case Doc.BoundaryLine ignored -> { /* zero-width when flat */ }
@@ -302,6 +310,7 @@ final class DocPrinter {
 
             switch (doc) {
                 case Doc.Text t -> remaining -= t.value().length();
+                case Doc.LineSuffix ignored -> { /* zero-width: never forces a break */ }
                 case Doc.Line ignored -> {
                     if (flat) remaining -= 1;
                     else return true;

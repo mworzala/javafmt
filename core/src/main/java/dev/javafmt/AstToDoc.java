@@ -2534,10 +2534,21 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
         for (var c : condTrailing) parts.add(concat(text(" "), renderComment(c)));
 
+        // An operand's leading comment stays on the same side of its operator as in the
+        // source: `// note\n? a` keeps the comment above the `?`, `? // note\n a` after it.
+        int questionPos = operatorPosition(condition, thenExpr, '?');
+        int colonPos = operatorPosition(thenExpr, elseExpr, ':');
+
         var body = new ArrayList<Doc>();
         body.add(line());
+        for (var c : thenLeading) {
+            if (c.getStartPosition() >= questionPos) continue;
+            body.add(renderComment(c));
+            body.add(line());
+        }
         body.add(text("? "));
         for (var c : thenLeading) {
+            if (c.getStartPosition() < questionPos) continue;
             body.add(renderComment(c));
             body.add(line());
         }
@@ -2545,10 +2556,16 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         for (var c : thenTrailing) body.add(concat(text(" "), renderComment(c)));
         body.add(line());
         for (var c : elseLeading) {
+            if (c.getStartPosition() >= colonPos) continue;
             body.add(renderComment(c));
             body.add(line());
         }
         body.add(text(": "));
+        for (var c : elseLeading) {
+            if (c.getStartPosition() < colonPos) continue;
+            body.add(renderComment(c));
+            body.add(line());
+        }
         body.add(elseDoc);
 
         parts.add(indent(concat(body)));
@@ -2556,6 +2573,29 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         var doc = concat(parts);
         result = hasComments ? breakGroup(doc) : group(doc);
         return false;
+    }
+
+    /// Source offset of the operator token {@code op} between {@code left} and {@code right},
+    /// skipping any comment in that gap. Falls back to {@code right}'s start (treating every
+    /// comment as preceding the operator) when there is no source to scan.
+    private int operatorPosition(ASTNode left, ASTNode right, char op) {
+        int end = right.getStartPosition();
+        if (source == null) return end;
+        int i = left.getStartPosition() + left.getLength();
+        while (i < end) {
+            char ch = source.charAt(i);
+            if (ch == '/' && i + 1 < end && source.charAt(i + 1) == '/') {
+                while (i < end && source.charAt(i) != '\n') i++;
+            } else if (ch == '/' && i + 1 < end && source.charAt(i + 1) == '*') {
+                int close = source.indexOf("*/", i + 2);
+                i = close < 0 ? end : close + 2;
+            } else if (ch == op) {
+                return i;
+            } else {
+                i++;
+            }
+        }
+        return end;
     }
 
     @Override

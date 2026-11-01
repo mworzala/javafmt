@@ -1,0 +1,29 @@
+class A {
+    void f() {
+        boolean isFail = MapSettings.get(map.settings(), MapSettings.PROGRESS_INDEX_ADDITION)
+                // With additive index you can get anything <= current + 1
+                ? (progressIndex > currentIndex + 1)
+                // Without additive progress index you must be at the prior index or the current one
+                : (progressIndex != currentIndex && progressIndex != currentIndex + 1);
+        int x = flag
+                ? // after question
+                firstReasonablyLongBranchValueHere()
+                : // after colon
+                secondReasonablyLongBranchValueHere();
+    }
+}
+---
+class A {
+    void f() {
+        boolean isFail = MapSettings.get(map.settings(), MapSettings.PROGRESS_INDEX_ADDITION)
+            // With additive index you can get anything <= current + 1
+            ? (progressIndex > currentIndex + 1)
+            // Without additive progress index you must be at the prior index or the current one
+            : (progressIndex != currentIndex && progressIndex != currentIndex + 1);
+        int x = flag
+            ? // after question
+            firstReasonablyLongBranchValueHere()
+            : // after colon
+            secondReasonablyLongBranchValueHere();
+    }
+}

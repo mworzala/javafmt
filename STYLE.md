@@ -369,6 +369,16 @@ else {
 }
 ```
 
+A braceless body that doesn't fit after its header moves to its own indented line before
+it breaks internally. That applies to an `else` body exactly as to an `if` body:
+
+```java
+if (data == null)
+    state.set(SAVE_DATA, new Data(lives, lives, this.deathPosition));
+else
+    state.set(SAVE_DATA, data.withValue(Math.min(data.value() + lives, data.max + lives)));
+```
+
 A labeled statement puts the label on its own line:
 
 ```java

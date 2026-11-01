@@ -1428,7 +1428,15 @@ final class AstToDoc extends ASTVisitor {
                 parts.add(text("else "));
             }
             elseStmt.accept(this);
-            parts.add(result);
+            if (elseStmt instanceof Block || elseStmt instanceof IfStatement) {
+                parts.add(result);
+            } else {
+                // A braceless else body wraps like a braceless then body: onto its own
+                // indented line before it breaks inside itself.
+                boolean spaceBefore = ((Doc.Text) parts.removeLast()).value().startsWith(" ");
+                if (spaceBefore) parts.add(space());
+                parts.add(group(concat(text("else"), indent(concat(line(), result)))));
+            }
         }
 
         result = concat(parts);

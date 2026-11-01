@@ -1,0 +1,28 @@
+class A {
+    void f() {
+        if (data == null) state.set(SAVE_DATA, new EditLivesAction.Data(lives, lives, this.deathPosition));
+        else state.set(SAVE_DATA, data.withValue(Math.min(data.value() + lives, data.max + livesAndMore)));
+        if (a) {
+            b();
+        } else state.set(SAVE_DATA, data.withValue(Math.min(data.value() + lives, data.max + livesAndMore)));
+    }
+}
+---
+class A {
+    void f() {
+        if (data == null)
+            state.set(SAVE_DATA, new EditLivesAction.Data(lives, lives, this.deathPosition));
+        else
+            state.set(
+                SAVE_DATA,
+                data.withValue(Math.min(data.value() + lives, data.max + livesAndMore))
+            );
+        if (a) {
+            b();
+        } else
+            state.set(
+                SAVE_DATA,
+                data.withValue(Math.min(data.value() + lives, data.max + livesAndMore))
+            );
+    }
+}

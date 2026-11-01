@@ -438,6 +438,20 @@ register(
 );
 ```
 
+A blank line you leave between two arguments (or parameters, or record components) is
+kept when the list breaks, so related items stay visibly grouped or a commented item stays
+set apart. Several blank lines collapse to one:
+
+```java
+public record UpdateStateEvent(
+    Player player,
+    boolean isMapJoin,
+
+    // isReset exists only because of global map settings.
+    boolean isReset
+) {}
+```
+
 ---
 
 ## Tuple-style arguments

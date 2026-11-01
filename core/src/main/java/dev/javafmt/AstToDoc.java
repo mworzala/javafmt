@@ -479,15 +479,7 @@ final class AstToDoc extends ASTVisitor {
             if (!afterOpen.isEmpty() || !beforeClose.isEmpty() || argumentsHaveComments(components)) {
                 parts.add(argsWithComments(components, componentDocs, afterOpen, beforeClose));
             } else {
-                parts.add(group(concat(
-                        text("("),
-                        indent(concat(
-                                softLine(),
-                                join(concat(text(","), line()), componentDocs)
-                        )),
-                        softLine(),
-                        text(")")
-                )));
+                parts.add(onePerLineArgs(components, componentDocs));
             }
         }
 
@@ -1112,15 +1104,7 @@ final class AstToDoc extends ASTVisitor {
                     && (!afterOpen.isEmpty() || !beforeClose.isEmpty() || argumentsHaveComments(params))) {
                 parts.add(argsWithComments(params, paramDocs, afterOpen, beforeClose));
             } else {
-                parts.add(group(concat(
-                        text("("),
-                        indent(concat(
-                                softLine(),
-                                join(concat(text(","), line()), paramDocs)
-                        )),
-                        softLine(),
-                        text(")")
-                )));
+                parts.add(onePerLineArgs(receiverDoc == null ? params : null, paramDocs));
             }
         }
 
@@ -3185,19 +3169,48 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
                 if (tupleSizes != null) {
                     parts.add(buildTupleArgs(argDocs, tupleSizes));
                 } else {
-                    parts.add(onePerLineArgs(argDocs));
+                    parts.add(onePerLineArgs(arguments, argDocs));
                 }
             }
         }
     }
 
-    private static Doc onePerLineArgs(List<Doc> argDocs) {
-        return group(concat(
-                text("("),
-                indent(concat(softLine(), join(concat(text(","), line()), argDocs))),
-                softLine(),
-                text(")")
-        ));
+    /// `(a, b, c)` flat, or one item per line when it doesn't fit. A blank line the source
+    /// put between two items (grouping them, or setting off a commented one) is kept when
+    /// broken. {@code items} may be null when the docs don't map 1:1 onto nodes.
+    private Doc onePerLineArgs(List<? extends ASTNode> items, List<Doc> docs) {
+        var inner = new ArrayList<Doc>();
+        inner.add(softLine());
+        for (int i = 0; i < docs.size(); i++) {
+            if (i > 0) {
+                inner.add(text(","));
+                inner.add(line());
+                if (items != null && blankLineBetween(items.get(i - 1), items.get(i))) inner.add(softLine());
+            }
+            inner.add(docs.get(i));
+        }
+        return group(concat(text("("), indent(concat(inner)), softLine(), text(")")));
+    }
+
+    /// Whether the source has a blank line between {@code prev} and {@code next} (or
+    /// {@code next}'s first leading comment).
+    private boolean blankLineBetween(ASTNode prev, ASTNode next) {
+        if (source == null) return false;
+        int from = prev.getStartPosition() + prev.getLength();
+        int to = next.getStartPosition();
+        var leading = comments != null ? comments.leading(next) : List.<Comment>of();
+        if (!leading.isEmpty()) to = Math.min(to, leading.getFirst().getStartPosition());
+        boolean sawNewline = false;
+        for (int i = from; i < to; i++) {
+            char ch = source.charAt(i);
+            if (ch == '\n') {
+                if (sawNewline) return true;
+                sawNewline = true;
+            } else if (ch != ' ' && ch != '\t' && ch != '\r') {
+                sawNewline = false;
+            }
+        }
+        return false;
     }
 
     private boolean argumentsHaveComments(List<ASTNode> arguments) {
@@ -3245,7 +3258,10 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
                 inner.add(text(" "));
                 inner.add(renderComment(tc));
             }
-            if (i < n - 1) inner.add(breakUnit);
+            if (i < n - 1) {
+                inner.add(breakUnit);
+                if (blankLineBetween(item, items.get(i + 1))) inner.add(edgeBreak);
+            }
         }
         for (var dc : dangling) {
             inner.add(breakUnit);
@@ -3441,15 +3457,7 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             if (!ctorAfterOpen.isEmpty() || !ctorBeforeClose.isEmpty() || argumentsHaveComments(arguments)) {
                 parts.add(argsWithComments(arguments, argDocs, ctorAfterOpen, ctorBeforeClose));
             } else {
-                parts.add(group(concat(
-                        text("("),
-                        indent(concat(
-                                softLine(),
-                                join(concat(text(","), line()), argDocs)
-                        )),
-                        softLine(),
-                        text(")")
-                )));
+                parts.add(onePerLineArgs(arguments, argDocs));
             }
         }
 

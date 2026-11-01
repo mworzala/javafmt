@@ -1,0 +1,48 @@
+public record ParkourMapPlayerUpdateStateEvent(
+        ParkourMapWorld world, Player player,
+        SaveState saveState, PlayState playState,
+        boolean isFreshState, boolean isMapJoin,
+
+        // isReset is gross and exists exclusively because of global map settings.
+        boolean isReset
+) implements Map2PlayerEvent {
+    void f() {
+        assertEquals(
+            List.of(
+                new ClearGhostBlocksEvent(),
+                new AbsoluteMoveEvent(0, new Pos(0, 64, 0), new Vec(1, 0, -1)),
+
+                new DeltaMoveEvent(0, new Pos(0, 0, 0), new Vec(0, 1, 0))
+            ),
+            recorded
+        );
+        foo(a,
+
+            b);
+    }
+}
+---
+public record ParkourMapPlayerUpdateStateEvent(
+    ParkourMapWorld world,
+    Player player,
+    SaveState saveState,
+    PlayState playState,
+    boolean isFreshState,
+    boolean isMapJoin,
+
+    // isReset is gross and exists exclusively because of global map settings.
+    boolean isReset
+) implements Map2PlayerEvent {
+    void f() {
+        assertEquals(
+            List.of(
+                new ClearGhostBlocksEvent(),
+                new AbsoluteMoveEvent(0, new Pos(0, 64, 0), new Vec(1, 0, -1)),
+
+                new DeltaMoveEvent(0, new Pos(0, 0, 0), new Vec(0, 1, 0))
+            ),
+            recorded
+        );
+        foo(a, b);
+    }
+}

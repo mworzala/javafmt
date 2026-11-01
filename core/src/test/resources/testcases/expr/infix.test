@@ -85,10 +85,7 @@ class Example {
     }
 
     String wideStringConcat(String aLongVar, String bLongVar) {
-        return "this is a really long prefix string "
-            + aLongVar
-            + " middle bit "
-            + bLongVar
+        return "this is a really long prefix string " + aLongVar + " middle bit " + bLongVar
             + " end";
     }
 

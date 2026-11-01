@@ -578,12 +578,16 @@ return aaaaaaaaaaaaaaaa
     + eeeeeeeeeeeeeeeeee;
 ```
 
+String concatenation (a `+` chain with a string literal operand) is the exception: it
+packs as many `+ operand`s onto each line as fit, so a long message doesn't turn into
+one fragment per line:
+
 ```java
-return "this is a really long prefix string "
-    + aLongVar
-    + " middle bit "
-    + bLongVar
-    + " end";
+throw new IllegalArgumentException(
+    helper + " called with stack index " + index + " but top is " + state.top()
+        + " — usually a sign that the caller forgot the `self` slot was removed by"
+        + " namecall dispatch, or that an argument check failed silently."
+);
 ```
 
 ```java

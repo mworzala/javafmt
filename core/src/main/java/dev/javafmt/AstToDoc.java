@@ -2509,6 +2509,20 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             }
             tail.add(od);
         }
+        if (!forceBreak && op == InfixExpression.Operator.PLUS
+                && operands.stream().anyMatch(o -> o instanceof StringLiteral || o instanceof TextBlock)) {
+            // String concatenation packs: as many `+ operand`s per line as fit, since a
+            // message split one fragment per line is much harder to read than to write.
+            var fill = new ArrayList<Doc>();
+            fill.add(head);
+            for (int i = 1; i < operandDocs.size(); i++) {
+                fill.add(indent(line()));
+                fill.add(concat(text(operator + " "), operandDocs.get(i)));
+            }
+            result = group(new Doc.Fill(fill));
+            return false;
+        }
+
         var doc = concat(head, indent(concat(tail)));
         result = forceBreak ? breakGroup(doc) : group(doc);
         return false;

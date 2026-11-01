@@ -1,0 +1,28 @@
+class A {
+    void f() {
+        if (index > 0 && index > state.top())
+            throw new IllegalArgumentException(
+                helper + " called with stack index " + index + " but top is " + state.top()
+                + " — usually a sign that the caller forgot the `self` slot was removed by"
+                + " namecall dispatch, or that an argument check failed silently.");
+        String s = "this is a really long prefix string " + aLongVar + " middle bit " + bLongVar + " end";
+        int n = aaaaaaaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbbbbbbb + cccccccccccccccccccccccccc + ddddddddd;
+    }
+}
+---
+class A {
+    void f() {
+        if (index > 0 && index > state.top())
+            throw new IllegalArgumentException(
+                helper + " called with stack index " + index + " but top is " + state.top()
+                    + " — usually a sign that the caller forgot the `self` slot was removed by"
+                    + " namecall dispatch, or that an argument check failed silently."
+            );
+        String s = "this is a really long prefix string " + aLongVar + " middle bit " + bLongVar
+            + " end";
+        int n = aaaaaaaaaaaaaaaaaaaaaaaaa
+            + bbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+            + cccccccccccccccccccccccccc
+            + ddddddddd;
+    }
+}

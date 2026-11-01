@@ -1197,6 +1197,14 @@ final class AstToDoc extends ASTVisitor {
         // ...\n) @Bar long x`) when all that was needed was a break between annotations.
         boolean breakableAnnotations = node instanceof SingleVariableDeclaration;
 
+        // A trailing run of well-known type-use annotations right before the type
+        // (`@Nullable Vec get()`, `@Override @Nullable Foo bar()`) binds to the type even
+        // with no keyword modifier in front, so it stays inline like `public @Nullable Vec`.
+        int typeUseFrom = modifiers.size();
+        if (node instanceof MethodDeclaration md ? md.getReturnType2() != null : node instanceof FieldDeclaration) {
+            while (typeUseFrom > 0 && isKnownTypeUseAnnotation(modifiers.get(typeUseFrom - 1))) typeUseFrom--;
+        }
+
         boolean seenKeyword = false;
         boolean atLineStart = true; // the container starts us on a fresh line
         for (int i = 0; i < modifiers.size(); i++) {
@@ -1241,7 +1249,7 @@ final class AstToDoc extends ASTVisitor {
             // On a parameter/record component a leading declaration annotation gets a
             // breakable separator instead of a hard one: inline while the declaration fits,
             // its own line once it overflows.
-            boolean leadingAnnotation = modifier instanceof Annotation && !seenKeyword;
+            boolean leadingAnnotation = modifier instanceof Annotation && !seenKeyword && i < typeUseFrom;
             boolean declAnnotation = leadingAnnotation && !inline;
             if (trailingLine || declAnnotation) {
                 doc.add(hardLine());
@@ -1255,6 +1263,19 @@ final class AstToDoc extends ASTVisitor {
             }
         }
         return atLineStart;
+    }
+
+    /// Simple names of the nullness annotations (JSpecify, JetBrains, Checker Framework,
+    /// JSR-305, AndroidX, Eclipse) that are type-use annotations in practice.
+    private static final Set<String> TYPE_USE_ANNOTATIONS = Set.of(
+            "Nullable", "NonNull", "Nonnull", "NotNull", "NullUnmarked", "UnknownNullness",
+            "MonotonicNonNull", "PolyNull", "NullableDecl", "NonNullDecl");
+
+    private static boolean isKnownTypeUseAnnotation(ASTNode modifier) {
+        if (!(modifier instanceof MarkerAnnotation ma)) return false;
+        var name = ma.getTypeName();
+        var simple = name instanceof QualifiedName qn ? qn.getName().getIdentifier() : ((SimpleName) name).getIdentifier();
+        return TYPE_USE_ANNOTATIONS.contains(simple);
     }
 
     /// Emit own-line comments that sit between a declaration's modifier list and its type

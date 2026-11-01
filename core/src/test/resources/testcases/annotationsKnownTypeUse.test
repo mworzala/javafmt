@@ -1,0 +1,41 @@
+interface A {
+    @Nullable
+    Vec get(Player player);
+
+    @Override
+    @Nullable Throwable failure();
+
+    @Nullable String field = null;
+
+    private static @Nullable String x() { return null; }
+
+    @Deprecated
+    String y();
+
+    @org.jspecify.annotations.Nullable
+    String z();
+
+    @Nullable
+    public String w();
+}
+---
+interface A {
+    @Nullable Vec get(Player player);
+
+    @Override
+    @Nullable Throwable failure();
+
+    @Nullable String field = null;
+
+    private static @Nullable String x() {
+        return null;
+    }
+
+    @Deprecated
+    String y();
+
+    @org.jspecify.annotations.Nullable String z();
+
+    @Nullable
+    public String w();
+}

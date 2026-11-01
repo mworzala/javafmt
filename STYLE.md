@@ -845,6 +845,18 @@ The formatter distinguishes the two cases by where the annotation appears: an
 annotation that comes after a keyword modifier (`private`, `static`, etc.) is treated
 as type-use; one that comes before any keyword modifiers is treated as declarational.
 
+The exception is the well-known nullness annotations (`@Nullable`, `@NonNull`,
+`@Nonnull`, `@NotNull`, and a few relatives, by simple name). Directly before a method's
+return type or a field's type they are always type-use, with or without a modifier in
+front:
+
+```java
+@Override
+@Nullable Throwable failure();
+
+@Nullable Vec get(Player player);
+```
+
 **Parameters and record components** are the exception to "declaration annotations go
 on their own line": their leading annotations stay inline with the declaration while it
 fits on one line, the same as a type-use annotation:

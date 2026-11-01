@@ -61,8 +61,7 @@ class Test {
     List<@Nullable ? super @NonNull Integer> i;
 
     // Parameterized type annotations
-    @Nullable
-    List<String> j;
+    @Nullable List<String> j;
 
     // Type parameter annotations
     <@NonNull T> void generic(T value) {}
@@ -72,12 +71,10 @@ class Test {
     void varargs(String @Nullable ... args) {}
 
     // Combined
-    @Nullable
-    Map<@NonNull String, @Nullable List<@NonNull Integer>> complex;
+    @Nullable Map<@NonNull String, @Nullable List<@NonNull Integer>> complex;
 
     // Annotations in method return types
-    @Nullable
-    String getStuff() {
+    @Nullable String getStuff() {
         return null;
     }
 

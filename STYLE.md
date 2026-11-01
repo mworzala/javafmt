@@ -621,6 +621,16 @@ return conditionWithLongName
     : alternativeBranchExpression();
 ```
 
+A condition that itself wraps continues one level deeper than the `?`/`:` lines, so its
+operators aren't mistaken for the branches:
+
+```java
+it -> it.action() instanceof EditVelocityAction(VelocityModifier modifier)
+        && modifier instanceof VelocityModifiers.DirectionPower
+    ? new VelocityEditor(it)
+    : null
+```
+
 ---
 
 ## Assignments

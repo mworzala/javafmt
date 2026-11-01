@@ -2570,7 +2570,10 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
         var condition = getProperty(node, ConditionalExpression.EXPRESSION_PROPERTY);
         condition.accept(this);
-        parts.add(result);
+        // A condition that wraps (`a\n&& b`) continues one level deeper than the `?`/`:`
+        // lines, so its operators don't read as siblings of the branches.
+        parts.add(condition instanceof InfixExpression || condition instanceof InstanceofExpression
+                || condition instanceof PatternInstanceofExpression ? indent(result) : result);
 
         var thenExpr = getProperty(node, ConditionalExpression.THEN_EXPRESSION_PROPERTY);
         thenExpr.accept(this);

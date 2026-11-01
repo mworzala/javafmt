@@ -2831,12 +2831,17 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         boolean rootBreaks = startIndex == 1
                 ? segmentBreaks(innermost)
                 : hasTrailingComment(rootExpr);
-        var firstSegInner = indent(concat(boundaryLine(), segDocs.getFirst()));
-        var firstSegGroup = rootBreaks ? breakGroup(firstSegInner) : group(firstSegInner);
-
         var outerParts = new ArrayList<Doc>();
         outerParts.add(rootDoc);
-        outerParts.add(firstSegGroup);
+        if (!rootBreaks && breaksEverySegment(rootExpr)) {
+            // A call or complex root (`build(x)`, `new X(a)`, `(T) y`) — once the chain
+            // breaks, every segment, the first included, goes on its own line, so a builder
+            // chain reads the same whether or not its first segment happened to fit.
+            outerParts.add(indent(concat(softLine(), segDocs.getFirst())));
+        } else {
+            var firstSegInner = indent(concat(boundaryLine(), segDocs.getFirst()));
+            outerParts.add(rootBreaks ? breakGroup(firstSegInner) : group(firstSegInner));
+        }
 
         if (segDocs.size() > 1) {
             // Remaining segments always break together with the outer group —
@@ -2852,6 +2857,12 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
         var doc = concat(outerParts);
         result = forceBreak ? breakGroup(doc) : group(doc);
+    }
+
+    /// A chain whose root is a call (`build(x).a().b()`) or a complex receiver
+    /// (`new X(a).b().c()`): once broken, every segment goes on its own line.
+    private static boolean breaksEverySegment(ASTNode rootExpr) {
+        return rootExpr == null || !isNameLikeReceiver(rootExpr);
     }
 
     private void collectMethodChain(MethodInvocation node, List<MethodInvocation> chain) {

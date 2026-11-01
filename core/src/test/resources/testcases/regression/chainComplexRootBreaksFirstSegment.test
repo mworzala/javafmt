@@ -1,0 +1,28 @@
+class A {
+    void f() {
+        var button = makeBlockButton(block).lorePostfix(LORE_POSTFIX_CLICKREMOVE).onLeftClick(() -> {
+            foo();
+        }).onRightClick(() -> bar());
+        add(2, 0, new Text("gui.action.search.empty", 7, 1, "Search...").align(8, 5).background("action/editor/search_bar"));
+        var fits = makeBlockButton(block).lorePostfix(LORE_POSTFIX_CLICKREMOVE).onLeftClick(x);
+    }
+}
+---
+class A {
+    void f() {
+        var button = makeBlockButton(block)
+            .lorePostfix(LORE_POSTFIX_CLICKREMOVE)
+            .onLeftClick(() -> {
+                foo();
+            })
+            .onRightClick(() -> bar());
+        add(
+            2,
+            0,
+            new Text("gui.action.search.empty", 7, 1, "Search...")
+                .align(8, 5)
+                .background("action/editor/search_bar")
+        );
+        var fits = makeBlockButton(block).lorePostfix(LORE_POSTFIX_CLICKREMOVE).onLeftClick(x);
+    }
+}

@@ -512,7 +512,9 @@ compute(longArg)
     .dddddddddddddd(more);
 ```
 
-This layout is used for chains whose root is a method call or other complex expression.
+This layout is used for chains whose root is a method call or other complex expression
+(`new X(...)`, a cast, ...), even when the first segment alone would fit after the root,
+so a builder chain reads the same wherever its first call happens to end.
 
 A chain of only 1 or 2 calls usually stays flat (or, when it overflows, just wraps the
 final call's own arguments). It still breaks at the `.`, though, when wrapping the

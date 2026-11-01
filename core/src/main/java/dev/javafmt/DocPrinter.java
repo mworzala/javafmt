@@ -100,9 +100,29 @@ final class DocPrinter {
                 }
 
                 case Doc.Group g -> {
-                    boolean flatMode = !g.shouldBreak()
-                            && (g.isolated() ? fitsAlone(indent, g.doc()) : fits(indent, g.doc()));
-                    pushMain(indent, flatMode, g.doc());
+                    if (g.isolated()) {
+                        // An isolated group that fits is flat all the way down: its nested
+                        // groups must not re-measure against the rest of the line (which is
+                        // exactly what isolation ignores) and break on their own.
+                        boolean fitsFlat = !g.shouldBreak() && fitsAlone(indent, g.doc());
+                        pushMain(indent, fitsFlat, fitsFlat ? flatten(g.doc()) : g.doc());
+                    } else {
+                        boolean flatMode = !g.shouldBreak() && fits(indent, g.doc());
+                        pushMain(indent, flatMode, g.doc());
+                    }
+                }
+
+                case Doc.Hug h -> {
+                    var hugged = new Doc.Concat(List.of(Doc.space(), h.doc()));
+                    // Measured even under a "flat" parent: switch bodies are pushed flat by
+                    // their conditionalGroup while still containing hard breaks.
+                    if (fits(indent, hugged)) {
+                        pushMain(indent, true, hugged);
+                    } else if (!fitsOnNextLine(indent + indentStep, h.doc()) && headFits(hugged)) {
+                        pushMain(indent, false, hugged);
+                    } else {
+                        pushMain(indent + indentStep, false, new Doc.Concat(List.of(Doc.hardLine(), h.doc())));
+                    }
                 }
 
                 case Doc.ConditionalGroup cg -> {
@@ -150,6 +170,20 @@ final class DocPrinter {
             }
         }
         return out.toString();
+    }
+
+    /// {@code doc} with every group dissolved, so the whole of it renders in the flat mode it
+    /// is pushed with. Only called on content already known to fit flat (no hard breaks).
+    private static Doc flatten(Doc doc) {
+        return switch (doc) {
+            case Doc.Group g -> flatten(g.doc());
+            case Doc.ConditionalGroup cg -> flatten(cg.alternatives().getFirst());
+            case Doc.Indent i -> new Doc.Indent(flatten(i.doc()));
+            case Doc.Hug h -> new Doc.Concat(List.of(Doc.space(), flatten(h.doc())));
+            case Doc.Concat c -> new Doc.Concat(c.parts().stream().map(DocPrinter::flatten).toList());
+            case Doc.Fill f -> new Doc.Concat(f.parts().stream().map(DocPrinter::flatten).toList());
+            default -> doc;
+        };
     }
 
     private void emitNewline(int indent) {
@@ -233,6 +267,7 @@ final class DocPrinter {
                 case Doc.BoundaryLine ignored -> { /* zero-width when flat */ }
                 case Doc.HardLine h -> { return false; }
                 case Doc.CommentBreak cb -> { return false; }
+                case Doc.Hug h -> { remaining -= 1; pushScratch(indent, true, h.doc()); }
                 case Doc.Indent i -> pushScratch(indent + indentStep, true, i.doc());
                 case Doc.Group g -> pushScratch(indent, true, g.doc());
                 case Doc.ConditionalGroup cg -> pushScratch(indent, true, cg.alternatives().getFirst());
@@ -248,6 +283,46 @@ final class DocPrinter {
             pushScratch(mainIndents[i], mainFlats[i], mainDocs[i]);
         }
         return walkRest(remaining);
+    }
+
+    /// Would {@code doc} fit flat (with the rest of its line) on a fresh line at {@code column}?
+    private boolean fitsOnNextLine(int column, Doc doc) {
+        int savedPending = pendingIndent;
+        pendingIndent = column;
+        try {
+            return fits(column, doc);
+        } finally {
+            pendingIndent = savedPending;
+        }
+    }
+
+    /// Does {@code doc}'s first line fit, taking EVERY break opportunity in it as a line end
+    /// (the optimistic shape: each group in it may still break)?
+    private boolean headFits(Doc doc) {
+        scratchTop = 0;
+        pushScratch(0, true, doc);
+        int remaining = maxWidth - (pendingIndent >= 0 ? pendingIndent : currentLineWidth);
+        while (scratchTop > 0) {
+            if (remaining < 0) return false;
+            scratchTop--;
+            Doc d = scratchDocs[scratchTop];
+            switch (d) {
+                case Doc.Text t -> remaining -= t.value().length();
+                case Doc.LineSuffix ignored -> { }
+                case Doc.Line ignored -> { return true; }
+                case Doc.SoftLine ignored -> { return true; }
+                case Doc.BoundaryLine ignored -> { return true; }
+                case Doc.HardLine ignored -> { return true; }
+                case Doc.CommentBreak ignored -> { return true; }
+                case Doc.Hug ignored -> { return true; }
+                case Doc.Indent i -> pushScratch(0, true, i.doc());
+                case Doc.Group g -> pushScratch(0, true, g.doc());
+                case Doc.ConditionalGroup cg -> pushScratch(0, true, cg.alternatives().getFirst());
+                case Doc.Fill f -> pushScratchReversed(0, true, f.parts());
+                case Doc.Concat c -> pushScratchReversed(0, true, c.parts());
+            }
+        }
+        return remaining >= 0;
     }
 
     /// Phase 1 of `fits` only: does the candidate fit flat, ignoring the rest of the line?
@@ -283,6 +358,7 @@ final class DocPrinter {
                 case Doc.BoundaryLine ignored -> { /* zero-width when flat */ }
                 case Doc.HardLine h -> { return true; }
                 case Doc.CommentBreak cb -> { return true; }
+                case Doc.Hug h -> { remaining -= 1; pushScratch(indent, true, h.doc()); }
                 case Doc.Indent i -> pushScratch(indent + indentStep, true, i.doc());
                 case Doc.Group g -> pushScratch(indent, true, g.doc());
                 case Doc.ConditionalGroup cg -> pushScratch(indent, true, cg.alternatives().getFirst());
@@ -321,6 +397,8 @@ final class DocPrinter {
                 case Doc.BoundaryLine ignored -> { return true; }
                 case Doc.HardLine h -> { return true; }
                 case Doc.CommentBreak cb -> { return true; }
+                // The hugged doc can still move to its own line, so it's a break opportunity.
+                case Doc.Hug ignored -> { return true; }
                 case Doc.Indent i -> pushScratch(indent + indentStep, flat, i.doc());
                 case Doc.Group g -> pushScratch(indent, true, g.doc());
                 case Doc.ConditionalGroup cg -> pushScratch(indent, flat, cg.alternatives().getFirst());

@@ -1,0 +1,31 @@
+class A {
+    void f() {
+        var nextState = switch (world.getPlayerState(player)) {
+            case ParkourState.Playing2(var saveState) when nextSpecState != TriState.FALSE ->
+                    new ParkourState.Spectating(saveState);
+            case ParkourState.Testing(var _, var parent) when nextSpecState != TriState.TRUE && parent != null ->
+                    world.createPlayingState(parent.savedState());
+            case ParkourState.Testing(var _, var spec) when nextGameplayState != TriState.TRUE && spec != null -> spec;
+            case NOT_SET -> mp.setCanSendPose(map.publishedAt() != null && map.publishedAt().isBefore(NO_POSE_CHANGES_EPOCH));
+            case null, default -> null;
+        };
+    }
+}
+---
+class A {
+    void f() {
+        var nextState = switch (world.getPlayerState(player)) {
+            case ParkourState.Playing2(var saveState) when nextSpecState != TriState.FALSE ->
+                new ParkourState.Spectating(saveState);
+            case ParkourState.Testing(var _, var parent)
+                when nextSpecState != TriState.TRUE && parent != null ->
+                world.createPlayingState(parent.savedState());
+            case ParkourState.Testing(var _, var spec)
+                when nextGameplayState != TriState.TRUE && spec != null -> spec;
+            case NOT_SET -> mp.setCanSendPose(
+                map.publishedAt() != null && map.publishedAt().isBefore(NO_POSE_CHANGES_EPOCH)
+            );
+            case null, default -> null;
+        };
+    }
+}

@@ -711,6 +711,26 @@ String f(int x) {
 Arrow-style `case` rules keep the body on the same line. Block bodies open inline,
 just like methods. Colon-style cases use a standard indented body.
 
+When a rule doesn't fit, the label and body break independently. The label (`case`
+patterns plus guard) wraps only if it overflows on its own, breaking before `when` first
+and inside a record pattern last. The body moves to its own indented line if it fits
+there; a call or `new` body that is too long even for that stays hugged to the `->` and
+breaks its arguments:
+
+```java
+return switch (state) {
+    case Playing(var saveState) when nextSpecState != TriState.FALSE ->
+        new Spectating(saveState);
+    case Testing(var _, var parent)
+        when nextSpecState != TriState.TRUE && parent != null ->
+        world.createPlayingState(parent.savedState());
+    case NOT_SET -> mp.setCanSendPose(
+        map.publishedAt() != null && map.publishedAt().isBefore(NO_POSE_CHANGES_EPOCH)
+    );
+    default -> null;
+};
+```
+
 ---
 
 ## try-with-resources
@@ -945,7 +965,8 @@ return switch (s) {
 ```
 
 Record patterns with many components follow the same break rule as record headers and
-method parameters: flat when they fit, one-per-line when they don't.
+method parameters: flat when they fit, one-per-line when they don't. In a `case` label a
+guard breaks before `when` before the pattern is split (see [Switch](#switch)).
 
 ---
 

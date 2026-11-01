@@ -1619,6 +1619,10 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             }
 
             stmt.accept(this);
+            // Isolated, like lambda params: a rule's label wraps only when the label itself
+            // overflows. A long body has its own break points (see ruleBody), so breaking a
+            // record pattern or guard that fits can never help it.
+            if (stmt instanceof SwitchCase rule && rule.isSwitchLabeledRule()) result = isolatedGroup(result);
             Doc stmtDoc;
             // A labeled rule's body normally joins on the same line (`case X -> body`), but a
             // line comment trailing the `->` (`case X -> // note`) would swallow the joined
@@ -1627,7 +1631,7 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
                     && prevStmt instanceof SwitchCase sc && sc.isSwitchLabeledRule()
                     && !prevTrailingLine;
             if (joinToRule) {
-                stmtDoc = concat(space(), result);
+                stmtDoc = ruleBody(stmt, result);
             } else {
                 stmtDoc = concat(hardLine(), result);
                 if (!(stmt instanceof SwitchCase)) stmtDoc = indent(stmtDoc);
@@ -1659,6 +1663,23 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
 
         result = concat(parts);
         return false;
+    }
+
+    /// The body of an arrow rule, joined after `case ... ->`. Blocks, `throw`, and calls /
+    /// `new` / switch / ternary / lambda expressions hug the arrow, as lambda bodies do, as
+    /// long as their first line fits there; any other expression that overflows, or a hugged
+    /// one whose head doesn't fit, moves to its own indented line.
+    private static Doc ruleBody(ASTNode body, Doc bodyDoc) {
+        boolean hug = true;
+        Expression e = body instanceof ExpressionStatement es ? es.getExpression()
+                : body instanceof YieldStatement ys && ys.isImplicit() ? ys.getExpression()
+                : null;
+        if (e != null) {
+            hug = e instanceof MethodInvocation || e instanceof SuperMethodInvocation
+                    || e instanceof ClassInstanceCreation || e instanceof SwitchExpression
+                    || e instanceof ConditionalExpression || e instanceof LambdaExpression;
+        }
+        return hug ? Doc.hug(bodyDoc) : group(indent(concat(line(), bodyDoc)));
     }
 
     @Override
@@ -1699,13 +1720,12 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         pattern.accept(this);
         parts.add(result);
 
-        parts.add(text(" when "));
-
         var expression = getProperty(node, GuardedPattern.EXPRESSION_PROPERTY);
         expression.accept(this);
-        parts.add(result);
+        // An overflowing guard breaks before `when` first, so the pattern stays whole.
+        parts.add(indent(concat(line(), text("when "), result)));
 
-        result = concat(parts);
+        result = group(concat(parts));
         return false;
     }
 
@@ -2310,6 +2330,10 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             }
 
             statement.accept(this);
+            // Isolated, like lambda params: a rule's label wraps only when the label itself
+            // overflows. A long body has its own break points (see ruleBody), so breaking a
+            // record pattern or guard that fits can never help it.
+            if (statement instanceof SwitchCase rule && rule.isSwitchLabeledRule()) result = isolatedGroup(result);
             Doc stmtDoc;
             // A labeled rule's body normally joins on the same line (`case X -> body`), but a
             // line comment trailing the `->` (`case X -> // note`) would swallow the joined
@@ -2318,7 +2342,7 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
                     && prevStmt instanceof SwitchCase sc && sc.isSwitchLabeledRule()
                     && !prevTrailingLine;
             if (joinToRule) {
-                stmtDoc = concat(space(), result);
+                stmtDoc = ruleBody(statement, result);
             } else {
                 stmtDoc = concat(hardLine(), result);
                 if (!(statement instanceof SwitchCase)) stmtDoc = indent(stmtDoc);

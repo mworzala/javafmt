@@ -47,6 +47,13 @@ sealed interface Doc {
     /// site knowing whether its surroundings already break.
     record CommentBreak() implements Doc {}
 
+    /// `" " + doc` hugged onto the current line when that fits flat. Otherwise {@code doc}
+    /// moves to its own line, indented one step, if it fits flat there; failing that it stays
+    /// hugged (breaking internally) when at least its first line — up to its first break
+    /// opportunity — fits, and moves to its own line when not even that does. Used for bodies after an arrow
+    /// (`case X -> call(...)`), which read best hugged unless even their head overflows.
+    record Hug(Doc doc) implements Doc {}
+
     /** Sequence of docs. */
     record Concat(java.util.List<Doc> parts) implements Doc {}
 
@@ -92,6 +99,7 @@ sealed interface Doc {
     static Doc hardLine()               { return new HardLine(); }
     static Doc commentBreak()           { return new CommentBreak(); }
     static Doc indent(Doc d)            { return new Indent(d); }
+    static Doc hug(Doc d)               { return new Hug(d); }
     static Doc group(Doc d)             { return new Group(d); }
     static Doc breakGroup(Doc d)        { return new Group(d, true); }
     /// A group that breaks only when its own content overflows. It ignores whatever follows

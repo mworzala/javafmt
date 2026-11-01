@@ -1,0 +1,64 @@
+class Example {
+    void foo() {
+        someLongMethodName(
+                firstArgument, secondArgument,
+                thirdArgument, fourthArgument,
+                fifthArgument, sixthArgument
+        );
+    }
+
+    private static final Map<Attribute, String> ATTRIBUTE_CODES = Map.of(
+        Attribute.SCALE, "s",
+        Attribute.BLOCK_INTERACTION_RANGE, "ir",
+        Attribute.STEP_HEIGHT, "sh",
+        Attribute.GRAVITY, "g");
+
+    void multiLineArgumentDisqualifies() {
+        register(first, () -> {
+            x();
+        },
+            second, third);
+    }
+
+    void handWrappedCallIsNotATable() {
+        Optional<A> metaAnnotation = findAnnotation(candidateAnnotationType, annotationType,
+                inherited, visitedAnnotationsSet);
+    }
+}
+---
+class Example {
+    void foo() {
+        someLongMethodName(
+            firstArgument, secondArgument,
+            thirdArgument, fourthArgument,
+            fifthArgument, sixthArgument
+        );
+    }
+
+    private static final Map<Attribute, String> ATTRIBUTE_CODES = Map.of(
+        Attribute.SCALE, "s",
+        Attribute.BLOCK_INTERACTION_RANGE, "ir",
+        Attribute.STEP_HEIGHT, "sh",
+        Attribute.GRAVITY, "g"
+    );
+
+    void multiLineArgumentDisqualifies() {
+        register(
+            first,
+            () -> {
+                x();
+            },
+            second,
+            third
+        );
+    }
+
+    void handWrappedCallIsNotATable() {
+        Optional<A> metaAnnotation = findAnnotation(
+            candidateAnnotationType,
+            annotationType,
+            inherited,
+            visitedAnnotationsSet
+        );
+    }
+}

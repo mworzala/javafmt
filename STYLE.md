@@ -442,9 +442,10 @@ register(
 
 ## Tuple-style arguments
 
-If your call has arguments arranged across multiple source lines in a "uniform rows
-plus a smaller trailing row" shape (for example, a matrix or a coordinate list),
-javafmt preserves the row structure rather than collapsing it to one-arg-per-line.
+If your call has arguments arranged across multiple source lines in uniform rows,
+optionally followed by a smaller trailing row (for example, `Map.of` key/value pairs, a
+matrix, or a coordinate list), javafmt preserves the row structure rather than
+collapsing it to one-arg-per-line.
 
 The trigger conditions are all of:
 
@@ -452,7 +453,8 @@ The trigger conditions are all of:
 - Arguments span 2 or more source lines
 - The first row has 2 or more arguments
 - Every row except the last has the same number of arguments
-- The last row has fewer arguments than the others
+- The last row has the same number of arguments or fewer
+- No argument spans more than one source line (e.g. a block lambda)
 - The call doesn't fit flat on one line
 
 When all of those hold, javafmt emits:
@@ -480,9 +482,22 @@ callMyMatrixOperationLong(
 );
 ```
 
+```java
+Map.of(
+    Attribute.SCALE, "s",
+    Attribute.BLOCK_INTERACTION_RANGE, "ir",
+    Attribute.GRAVITY, "g"
+);
+```
+
 This means **you control row width by where you put your line breaks in the source.**
 The formatter will keep your `2×N`, `3×N`, etc. layout intact. If the call already fits
 flat, the rows collapse to a single line regardless of how the source was written.
+
+Rows are rendered as written even when one of them is longer than the line length:
+the row grouping is the point of the layout, so javafmt doesn't break up a row or fall
+back to one-per-line to save a few columns. Split the row, or shorten it, if that bothers
+you.
 
 > Why does this exist? Things like coordinate lists, matrix literals, and
 > `register(NAME, value, NAME, value, ...)` calls become unreadable when broken to one

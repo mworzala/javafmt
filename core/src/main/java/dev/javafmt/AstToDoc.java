@@ -3118,18 +3118,19 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
                 if (tupleSizes != null) {
                     parts.add(buildTupleArgs(argDocs, tupleSizes));
                 } else {
-                    parts.add(group(concat(
-                            text("("),
-                            indent(concat(
-                                    softLine(),
-                                    join(concat(text(","), line()), argDocs)
-                            )),
-                            softLine(),
-                            text(")")
-                    )));
+                    parts.add(onePerLineArgs(argDocs));
                 }
             }
         }
+    }
+
+    private static Doc onePerLineArgs(List<Doc> argDocs) {
+        return group(concat(
+                text("("),
+                indent(concat(softLine(), join(concat(text(","), line()), argDocs))),
+                softLine(),
+                text(")")
+        ));
     }
 
     private boolean argumentsHaveComments(List<ASTNode> arguments) {
@@ -3217,8 +3218,30 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         for (int i = 1; i < sizes.size() - 1; i++) {
             if (sizes.get(i) != n) return null;
         }
-        if (sizes.getLast() >= n) return null;
+        // The last row may be shorter (a trailing `::new`) or the same width (`Map.of` pairs),
+        // never wider. Equal-width rows count only when they start on the line after `(`:
+        // `call(a, b,\n c, d)` is just a call wrapped by hand, not a table.
+        if (sizes.getLast() > n) return null;
+        if (sizes.getLast() == n && !startsOnLineAfterOpenParen(arguments.getFirst())) return null;
+        // Rows are rendered from flattened text, so an argument spanning several lines (a
+        // block lambda, a text block) can't take part.
+        for (var arg : arguments) {
+            int end = arg.getStartPosition() + arg.getLength();
+            if (compilationUnit.getLineNumber(end) != compilationUnit.getLineNumber(arg.getStartPosition())) return null;
+        }
         return sizes;
+    }
+
+    /// Whether nothing but whitespace precedes {@code first} on its source line, i.e. the
+    /// argument list's `(` ended the previous line.
+    private boolean startsOnLineAfterOpenParen(ASTNode first) {
+        if (source == null) return false;
+        for (int i = first.getStartPosition() - 1; i >= 0; i--) {
+            char ch = source.charAt(i);
+            if (ch == '\n') return true;
+            if (ch != ' ' && ch != '\t') return false;
+        }
+        return false;
     }
 
     // Alt 1 flat; Alt 2 chunked with HardLine (always fails fits() so it's the fallback).

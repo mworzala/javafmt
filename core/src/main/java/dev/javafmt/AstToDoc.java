@@ -420,6 +420,19 @@ final class AstToDoc extends ASTVisitor {
 
     @Override
     public boolean visit(AnonymousClassDeclaration node) {
+        // Double-brace initialization (`new ArrayList<>(xs) {{ add(x); }}`): an anonymous body
+        // holding nothing but one instance initializer reads as a single construct, so the two
+        // braces stay together rather than nesting a lone `{` block inside the class body.
+        var decls = getProperty(node, AnonymousClassDeclaration.BODY_DECLARATIONS_PROPERTY);
+        if (decls.size() == 1 && decls.getFirst() instanceof Initializer init
+                && init.modifiers().isEmpty() && init.getJavadoc() == null
+                && (comments == null || (comments.leading(init).isEmpty()
+                        && comments.trailing(init).isEmpty() && comments.dangling(node).isEmpty()))) {
+            init.getBody().accept(this);
+            result = concat(text("{"), result, text("}"));
+            return false;
+        }
+
         var parts = new ArrayList<Doc>();
 
         visitBodyDeclarations(parts, node, AnonymousClassDeclaration.BODY_DECLARATIONS_PROPERTY, true);

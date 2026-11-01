@@ -41,13 +41,11 @@ void example() {
             System.out.println("world");
         }
     };
-    List<String> l = new ArrayList<String>() {
-        {
-            add("a");
-            add("b");
-            add("c");
-        }
-    };
+    List<String> l = new ArrayList<String>() {{
+        add("a");
+        add("b");
+        add("c");
+    }};
     Comparator<String> m = new Comparator<String>() {
         @Override
         public int compare(String a, String b) {

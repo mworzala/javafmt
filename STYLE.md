@@ -670,6 +670,15 @@ String reallyLongVariableName = "a string literal that pushes this field declara
 
 Compound assignments (`+=`, `-=`, etc.) follow the same rule.
 
+An anonymous class whose body is nothing but one instance initializer (double-brace
+initialization) keeps its two braces together:
+
+```java
+onChange.accept(new ArrayList<>(blocks) {{
+    set(blockIndex, block);
+}});
+```
+
 ---
 
 ## Lambdas

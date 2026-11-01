@@ -1,0 +1,37 @@
+class A {
+    void f() {
+        onChange.accept(new ArrayList<>(blocks) {{
+            set(blockIndex, block2);
+        }});
+        var m = new HashMap<String, Integer>() {
+            {
+                put("a", 1);
+                put("b", 2);
+            }
+        };
+        var keep = new HashMap<String, Integer>() {
+            // has a comment
+            {
+                put("a", 1);
+            }
+        };
+    }
+}
+---
+class A {
+    void f() {
+        onChange.accept(new ArrayList<>(blocks) {{
+            set(blockIndex, block2);
+        }});
+        var m = new HashMap<String, Integer>() {{
+            put("a", 1);
+            put("b", 2);
+        }};
+        var keep = new HashMap<String, Integer>() {
+            // has a comment
+            {
+                put("a", 1);
+            }
+        };
+    }
+}

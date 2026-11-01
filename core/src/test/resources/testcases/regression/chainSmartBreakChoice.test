@@ -2,8 +2,9 @@ class Example {
     // Reported case: a chain where `root.firstSeg(args)` doesn't fit on the
     // current line because the assignment prefix is wide and firstSeg's args
     // are long. Partial-break would force firstSeg's args to wrap (the bad
-    // `).addListener(` orphan shape we'd otherwise produce). Full-break wins:
-    // each segment on its own line, none with wrapped args.
+    // `).addListener(` orphan shape we'd otherwise produce), and full-break would
+    // strand `EventNode` on its own line. Breaking after `=` wins: the chain
+    // starts on a fresh line where `root.firstSeg(args)` fits.
     EventNode<InstanceEvent> EVENT_NODE = EventNode.type("mapmaker:hub/npc_handler", EventFilter.INSTANCE).addListener(PlayerEntityInteractEvent.class, event -> { doSomething(event); });
 
     // Companion case: same root and chain structure but firstSeg's args fit
@@ -31,13 +32,14 @@ class Example {
     // Reported case: a chain where `root.firstSeg(args)` doesn't fit on the
     // current line because the assignment prefix is wide and firstSeg's args
     // are long. Partial-break would force firstSeg's args to wrap (the bad
-    // `).addListener(` orphan shape we'd otherwise produce). Full-break wins:
-    // each segment on its own line, none with wrapped args.
-    EventNode<InstanceEvent> EVENT_NODE = EventNode
-        .type("mapmaker:hub/npc_handler", EventFilter.INSTANCE)
-        .addListener(PlayerEntityInteractEvent.class, event -> {
-            doSomething(event);
-        });
+    // `).addListener(` orphan shape we'd otherwise produce), and full-break would
+    // strand `EventNode` on its own line. Breaking after `=` wins: the chain
+    // starts on a fresh line where `root.firstSeg(args)` fits.
+    EventNode<InstanceEvent> EVENT_NODE =
+        EventNode.type("mapmaker:hub/npc_handler", EventFilter.INSTANCE)
+            .addListener(PlayerEntityInteractEvent.class, event -> {
+                doSomething(event);
+            });
 
     // Companion case: same root and chain structure but firstSeg's args fit
     // on the partial-break line. Partial-break should be chosen (not full).

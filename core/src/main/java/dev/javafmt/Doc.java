@@ -47,12 +47,23 @@ sealed interface Doc {
     /// site knowing whether its surroundings already break.
     record CommentBreak() implements Doc {}
 
-    /// `" " + doc` hugged onto the current line when that fits flat. Otherwise {@code doc}
-    /// moves to its own line, indented one step, if it fits flat there; failing that it stays
-    /// hugged (breaking internally) when at least its first line — up to its first break
-    /// opportunity — fits, and moves to its own line when not even that does. Used for bodies after an arrow
-    /// (`case X -> call(...)`), which read best hugged unless even their head overflows.
-    record Hug(Doc doc) implements Doc {}
+    /// `" " + doc` hugged onto the current line when that fits flat; otherwise one of two
+    /// policies picks between hugging it (breaking internally) and moving it to its own line,
+    /// indented one step. Its "head" is its first line up to its first break opportunity, or
+    /// up to a {@link HeadEnd} marker when it contains one.
+    ///
+    /// {@code preferNextLine} (bodies after an arrow, `case X -> call(...)`): its own line if
+    /// it fits flat there, else hugged if its head fits, else its own line.
+    ///
+    /// Otherwise (the right-hand side of `=`): hugged if its head fits; else its own line if
+    /// its head fits there; else hugged anyway, since breaking after `=` wouldn't help.
+    record Hug(Doc doc, boolean preferNextLine) implements Doc {}
+
+    /// Zero-width marker for {@link Hug}: the hugged doc's head extends to here, measured
+    /// flat, instead of ending at its first break opportunity. A method chain on a plain-name
+    /// receiver marks the end of its first segment, so `x = Tag.Integer(...)` counts as
+    /// fitting only if the whole first call does.
+    record HeadEnd() implements Doc {}
 
     /** Sequence of docs. */
     record Concat(java.util.List<Doc> parts) implements Doc {}
@@ -99,7 +110,9 @@ sealed interface Doc {
     static Doc hardLine()               { return new HardLine(); }
     static Doc commentBreak()           { return new CommentBreak(); }
     static Doc indent(Doc d)            { return new Indent(d); }
-    static Doc hug(Doc d)               { return new Hug(d); }
+    static Doc hug(Doc d)               { return new Hug(d, true); }
+    static Doc assignHug(Doc d)         { return new Hug(d, false); }
+    static Doc headEnd()                { return new HeadEnd(); }
     static Doc group(Doc d)             { return new Group(d); }
     static Doc breakGroup(Doc d)        { return new Group(d, true); }
     /// A group that breaks only when its own content overflows. It ignores whatever follows

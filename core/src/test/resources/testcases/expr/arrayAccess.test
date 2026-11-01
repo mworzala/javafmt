@@ -11,8 +11,7 @@ class Example {
     void foo() {
         int x = myArray[0];
 
-        int aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa[
-            aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-        ];
+        int aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa =
+            aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa];
     }
 }

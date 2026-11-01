@@ -1,0 +1,47 @@
+class A {
+    private static final DynamicRegistry<StructCodec<? extends CheckpointItem>> REGISTRY = DynamicRegistry.create(Key.key("a"), b);
+    private static final PlainTextComponentSerializer PLAIN_TEXT_SERIALIZER = PlainTextComponentSerializer.plainText();
+    public static final Tag<Integer> DEFAULT_RESET_HEIGHT = Tag.Integer("mapmaker:play/reset_height").defaultValue(-64 - DEFAULT_RESET_HEIGHT_OFFSET);
+    public static final Tag<ActionTriggerData> ENTITY_DATA_TAG = DFU.Tag(ActionTriggerData.CODEC, "checkpoint").path("data");
+    String reallyLongVariableName = "a string literal that pushes this field declaration past the line length limit";
+    int aLocalVariableName = someMethodCallThatReturnsAnInteger(arg1, arg2, arg3, arg4, arg5, arg6);
+
+    void f() {
+        var msg = "bundle %s was built with luau bytecode version %d but this runtime supports %d.".formatted(a, b, c);
+        this.someFieldWithALongName.anotherField = SomeFactoryClassWithLongName.createInstance(first);
+    }
+
+    private static final Map<String, InventoryType> ID_TO_CUSTOM_TYPES_WITH_LONGER_NAME = Map.of(
+            "anvil", InventoryType.ANVIL,
+            "cartography", InventoryType.CARTOGRAPHY);
+}
+---
+class A {
+    private static final DynamicRegistry<StructCodec<? extends CheckpointItem>> REGISTRY =
+        DynamicRegistry.create(Key.key("a"), b);
+    private static final PlainTextComponentSerializer PLAIN_TEXT_SERIALIZER =
+        PlainTextComponentSerializer.plainText();
+    public static final Tag<Integer> DEFAULT_RESET_HEIGHT =
+        Tag.Integer("mapmaker:play/reset_height").defaultValue(-64 - DEFAULT_RESET_HEIGHT_OFFSET);
+    public static final Tag<ActionTriggerData> ENTITY_DATA_TAG =
+        DFU.Tag(ActionTriggerData.CODEC, "checkpoint").path("data");
+    String reallyLongVariableName =
+        "a string literal that pushes this field declaration past the line length limit";
+    int aLocalVariableName = someMethodCallThatReturnsAnInteger(arg1, arg2, arg3, arg4, arg5, arg6);
+
+    void f() {
+        var msg = "bundle %s was built with luau bytecode version %d but this runtime supports %d.".formatted(
+            a,
+            b,
+            c
+        );
+        this.someFieldWithALongName.anotherField = SomeFactoryClassWithLongName.createInstance(
+            first
+        );
+    }
+
+    private static final Map<String, InventoryType> ID_TO_CUSTOM_TYPES_WITH_LONGER_NAME = Map.of(
+        "anvil", InventoryType.ANVIL,
+        "cartography", InventoryType.CARTOGRAPHY
+    );
+}

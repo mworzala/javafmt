@@ -1906,8 +1906,21 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             return false;
         }
 
-        result = group(concat(name, text(" = "), initDoc));
+        result = group(concat(name, text(" ="), assignmentValue(init, initDoc)));
         return false;
+    }
+
+    /// ` value` after an `=`. The value hugs the operator and breaks internally; only when
+    /// even its head (up to its first break, e.g. `Foo.create(`) overflows there does it move
+    /// to its own indented line, and only if that makes the head fit. Block-like values
+    /// (lambdas, anonymous classes, switch expressions, array literals, text blocks) always
+    /// open on the `=` line.
+    private static Doc assignmentValue(ASTNode value, Doc valueDoc) {
+        boolean blockLike = value instanceof LambdaExpression || value instanceof SwitchExpression
+                || value instanceof ArrayCreation || value instanceof ArrayInitializer
+                || value instanceof TextBlock
+                || value instanceof ClassInstanceCreation cic && cic.getAnonymousClassDeclaration() != null;
+        return blockLike ? concat(space(), valueDoc) : Doc.assignHug(valueDoc);
     }
 
     /// Render `<head> <comments> <newline> <init>` for an assignment-like construct whose
@@ -2299,7 +2312,7 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             return false;
         }
 
-        result = concat(leftDoc, space(), text(op), space(), rightDoc);
+        result = concat(leftDoc, space(), text(op), assignmentValue(right, rightDoc));
         return false;
     }
 
@@ -2924,6 +2937,9 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
         } else {
             var firstSegInner = indent(concat(boundaryLine(), segDocs.getFirst()));
             outerParts.add(rootBreaks ? breakGroup(firstSegInner) : group(firstSegInner));
+            // `x = Tag.Integer(...)...` hugs the `=` only if `Tag.Integer(...)` fits there;
+            // otherwise the assignment breaks after `=` rather than strand `Tag` on its line.
+            outerParts.add(headEnd());
         }
 
         if (segDocs.size() > 1) {
@@ -3307,8 +3323,12 @@ var statements = getProperty(node, SwitchStatement.STATEMENTS_PROPERTY);
             flatArgs.add(text(new DocPrinter(Integer.MAX_VALUE).print(arg)));
         }
 
+        // The softLine is zero-width when flat; it marks the `(` as the call's first break
+        // opportunity, so `x = call(` counts as the call's head (see Doc.Hug) just as it does
+        // for an ordinary argument list.
         var flatAlt = concat(
                 text("("),
+                softLine(),
                 join(concat(text(","), text(" ")), flatArgs),
                 text(")")
         );

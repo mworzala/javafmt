@@ -17,7 +17,7 @@ class Example {
         var x = streamLongName.filter(predicateFn).map(transformerFn).collect(Collectors.toList());
     }
 
-    void unbreakableIdentifierStaysOnOneLine() {
+    void unbreakableIdentifierMovesAfterEquals() {
         int x = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
     }
 }
@@ -48,7 +48,8 @@ class Example {
         var x = streamLongName.filter(predicateFn).map(transformerFn).collect(Collectors.toList());
     }
 
-    void unbreakableIdentifierStaysOnOneLine() {
-        int x = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+    void unbreakableIdentifierMovesAfterEquals() {
+        int x =
+            aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
     }
 }

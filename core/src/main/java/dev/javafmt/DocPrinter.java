@@ -58,6 +58,8 @@ final class DocPrinter {
                     currentLineWidth += t.value().length();
                 }
 
+                case Doc.HeadEnd ignored -> { }
+
                 case Doc.LineSuffix t -> {
                     flushPendingIndent();
                     out.append(t.value());
@@ -116,12 +118,21 @@ final class DocPrinter {
                     var hugged = new Doc.Concat(List.of(Doc.space(), h.doc()));
                     // Measured even under a "flat" parent: switch bodies are pushed flat by
                     // their conditionalGroup while still containing hard breaks.
+                    int here = pendingIndent >= 0 ? pendingIndent : currentLineWidth;
+                    int nextLine = indent + indentStep;
+                    boolean hug;
                     if (fits(indent, hugged)) {
                         pushMain(indent, true, hugged);
-                    } else if (!fitsOnNextLine(indent + indentStep, h.doc()) && headFits(hugged)) {
+                        break;
+                    } else if (h.preferNextLine()) {
+                        hug = !fitsOnNextLine(nextLine, h.doc()) && headFits(here, hugged);
+                    } else {
+                        hug = headFits(here, hugged) || !headFits(nextLine, h.doc());
+                    }
+                    if (hug) {
                         pushMain(indent, false, hugged);
                     } else {
-                        pushMain(indent + indentStep, false, new Doc.Concat(List.of(Doc.hardLine(), h.doc())));
+                        pushMain(nextLine, false, new Doc.Concat(List.of(Doc.hardLine(), h.doc())));
                     }
                 }
 
@@ -262,6 +273,7 @@ final class DocPrinter {
             switch (doc) {
                 case Doc.Text t -> remaining -= t.value().length();
                 case Doc.LineSuffix ignored -> { /* zero-width: never forces a break */ }
+                case Doc.HeadEnd ignored -> { }
                 case Doc.Line ignored -> remaining -= 1;
                 case Doc.SoftLine ignored -> { /* zero-width when flat */ }
                 case Doc.BoundaryLine ignored -> { /* zero-width when flat */ }
@@ -296,12 +308,15 @@ final class DocPrinter {
         }
     }
 
-    /// Does {@code doc}'s first line fit, taking EVERY break opportunity in it as a line end
-    /// (the optimistic shape: each group in it may still break)?
-    private boolean headFits(Doc doc) {
+    /// Does {@code doc}'s head fit, starting at column {@code startWidth}? The head ends at
+    /// the doc's {@link Doc.HeadEnd} marker if it has one (everything before it measured
+    /// flat), else at its first break opportunity (the optimistic shape: each group in it
+    /// may still break).
+    private boolean headFits(int startWidth, Doc doc) {
+        boolean untilMarker = containsHeadEnd(doc);
         scratchTop = 0;
         pushScratch(0, true, doc);
-        int remaining = maxWidth - (pendingIndent >= 0 ? pendingIndent : currentLineWidth);
+        int remaining = maxWidth - startWidth;
         while (scratchTop > 0) {
             if (remaining < 0) return false;
             scratchTop--;
@@ -309,12 +324,20 @@ final class DocPrinter {
             switch (d) {
                 case Doc.Text t -> remaining -= t.value().length();
                 case Doc.LineSuffix ignored -> { }
-                case Doc.Line ignored -> { return true; }
-                case Doc.SoftLine ignored -> { return true; }
-                case Doc.BoundaryLine ignored -> { return true; }
+                case Doc.HeadEnd ignored -> { return remaining >= 0; }
+                case Doc.Line ignored -> {
+                    if (!untilMarker) return true;
+                    remaining -= 1;
+                }
+                case Doc.SoftLine ignored -> { if (!untilMarker) return true; }
+                case Doc.BoundaryLine ignored -> { if (!untilMarker) return true; }
                 case Doc.HardLine ignored -> { return true; }
                 case Doc.CommentBreak ignored -> { return true; }
-                case Doc.Hug ignored -> { return true; }
+                case Doc.Hug h -> {
+                    if (!untilMarker) return true;
+                    remaining -= 1;
+                    pushScratch(0, true, h.doc());
+                }
                 case Doc.Indent i -> pushScratch(0, true, i.doc());
                 case Doc.Group g -> pushScratch(0, true, g.doc());
                 case Doc.ConditionalGroup cg -> pushScratch(0, true, cg.alternatives().getFirst());
@@ -323,6 +346,17 @@ final class DocPrinter {
             }
         }
         return remaining >= 0;
+    }
+
+    private static boolean containsHeadEnd(Doc doc) {
+        return switch (doc) {
+            case Doc.HeadEnd ignored -> true;
+            case Doc.Concat c -> c.parts().stream().anyMatch(DocPrinter::containsHeadEnd);
+            case Doc.Group g -> containsHeadEnd(g.doc());
+            // Only a marker on the doc's own first line counts: anything indented (arguments,
+            // a ternary's branches) or nested in another Hug belongs to a later line.
+            default -> false;
+        };
     }
 
     /// Phase 1 of `fits` only: does the candidate fit flat, ignoring the rest of the line?
@@ -353,6 +387,7 @@ final class DocPrinter {
             switch (doc) {
                 case Doc.Text t -> remaining -= t.value().length();
                 case Doc.LineSuffix ignored -> { /* zero-width: never forces a break */ }
+                case Doc.HeadEnd ignored -> { }
                 case Doc.Line ignored -> remaining -= 1;
                 case Doc.SoftLine ignored -> { /* zero-width when flat */ }
                 case Doc.BoundaryLine ignored -> { /* zero-width when flat */ }
@@ -387,6 +422,7 @@ final class DocPrinter {
             switch (doc) {
                 case Doc.Text t -> remaining -= t.value().length();
                 case Doc.LineSuffix ignored -> { /* zero-width: never forces a break */ }
+                case Doc.HeadEnd ignored -> { }
                 case Doc.Line ignored -> {
                     if (flat) remaining -= 1;
                     else return true;

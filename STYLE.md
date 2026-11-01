@@ -640,7 +640,8 @@ it -> it.action() instanceof EditVelocityAction(VelocityModifier modifier)
 ## Assignments
 
 The `=` always stays on the same line as the left-hand side. If the assignment
-doesn't fit flat, the RHS breaks internally — never after the `=`.
+doesn't fit flat, the RHS breaks internally. Breaking after the `=` is a last resort
+(see below).
 
 Short assignments stay inline:
 
@@ -674,13 +675,25 @@ var x = new ArrayList<String>() {
 };
 ```
 
-When the RHS has no internal break point — a long string literal, a single very long
-identifier — the line stays on one line and exceeds the line length. javafmt will
-never insert a meaning-preserving break that splits the assignment.
+The last resort: when even the start of the RHS — up to its first break point, such
+as `DynamicRegistry.create(`, or the whole first call of a chain on a plain name like
+`Tag.Integer("...")` — doesn't fit after the `=`, the RHS moves to its own indented line,
+provided it starts there without overflowing. This is also how a long string literal
+or identifier, which has no break point of its own, gets wrapped:
 
 ```java
-String reallyLongVariableName = "a string literal that pushes this field declaration past the line length limit";
+private static final DynamicRegistry<StructCodec<? extends CheckpointItem>> REGISTRY =
+    DynamicRegistry.create(Key.key("a"), b);
+
+public static final Tag<Integer> DEFAULT_RESET_HEIGHT =
+    Tag.Integer("mapmaker:play/reset_height").defaultValue(-64 - DEFAULT_RESET_HEIGHT_OFFSET);
+
+String reallyLongVariableName =
+    "a string literal that pushes this field declaration past the line length limit";
 ```
+
+If the RHS wouldn't start without overflowing on its own line either, it stays after
+the `=`.
 
 Compound assignments (`+=`, `-=`, etc.) follow the same rule.
 
